@@ -1,0 +1,8 @@
+secrets.h
+.claude/
+*.tmp
+.DS_Store
+*.bak
+*.env
+secrets*.h
+CLAUDE.md
