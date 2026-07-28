@@ -4,6 +4,28 @@
 #include <cmath>
 #include <cstring>
 
+// === S H A R E D  E S P - N O W  P R O T O C O L ===
+//
+// This file is copied by hand into every ESP32 project on the boat. All devices must
+// agree on it, but no single project owns it, so the copies drift. This one is the
+// merged superset as of 2026-07-28 — copy it outward, do not merge inward.
+//
+// ESPNowMsgType is a single fleet-wide number space. Before allocating a new value,
+// check every copy, not just the sender's and the receiver's:
+//     grep -A16 'enum class ESPNowMsgType' ~/Documents/Arduino/*/espnow_protocol.h
+//
+// Senders:
+//   1 HEADING_DELTA        CMPS14-ESP32-SignalK-gateway
+//   2 BATTERY_DELTA        VEDirect-ESP32-SignalK-gateway
+//   3 WEATHER_DELTA        BME280-ESP32-SignalK-gateway
+//   4 GNSS_DELTA           UBLOX-ESP32-SignalK-gateway
+//   5 HALMET_ENGINE_DELTA  HALMET-ESP32-SignalK-gateway
+//   6 HALMET_TANK_DELTA    HALMET-ESP32-SignalK-gateway
+//   7 HALMET_WATER_DELTA   HALMET-ESP32-SignalK-gateway
+//   8 DEPTH_DELTA          SignalK-ESP-NOW-gateway
+//
+// Receivers: ESP32-Crowpanel-SkippersWatch, ESP32-Crowpanel-compass
+
 namespace ESPNow {
 
     // Magic identifies our own packets among all ESP-NOW devices
@@ -17,6 +39,13 @@ namespace ESPNow {
         GNSS_DELTA           = 4,
         HALMET_ENGINE_DELTA  = 5,
         HALMET_TANK_DELTA    = 6,
+        HALMET_WATER_DELTA   = 7,
+        DEPTH_DELTA          = 8,
+        // Reserved for runtime-configurable path relaying — NOT implemented.
+        // A self-describing message would let a web UI add SignalK paths without a
+        // firmware change at either end, at the cost of 48 bytes of path per packet:
+        //   struct GenericSKDelta { char path[48]; float value; uint32_t age_ms; };
+        // GENERIC_SK_DELTA  = 20,
     };
 
     // === H E A D E R ===
@@ -86,6 +115,27 @@ namespace ESPNow {
         float fuel_level_ratio;  // tanks.fuel.0.currentLevel [0.0..1.0]
     };
 
+    // Fresh water tank data
+    // Sent by HALMET-ESP32-SignalK-gateway
+    struct HALMETWaterDelta {
+        float water_level_ratio;  // tanks.freshWater.0.currentLevel [0.0..1.0]
+    };
+
+    // Depth relayed from the SignalK server, not measured locally.
+    // Source chain: Raymarine Element 12S sounder → NMEA2000 → SH-wg → UDP → SignalK.
+    // Sent by SignalK-ESP-NOW-gateway.
+    //
+    // A relayed value carries no freshness of its own, so the receiver cannot tell a live
+    // reading from a frozen one. Both signals below are therefore required:
+    //   - a field is NAN when that individual path is stale or has never arrived
+    //   - age_ms describes the depth feed as a whole (bottom lost, or N2K chain down)
+    struct DepthDelta {
+        float    below_surface_m;     // environment.depth.belowSurface [m]
+        float    below_transducer_m;  // environment.depth.belowTransducer [m]
+        float    below_keel_m;        // environment.depth.belowKeel [m]
+        uint32_t age_ms;              // ms since the freshest of the three; UINT32_MAX = never received
+    };  // 16 bytes
+
     // === W R A P P E R ===
 
     template <typename TPayload>
@@ -105,6 +155,10 @@ namespace ESPNow {
     }
 
     // === C R O W P A N E L  I N T E R N A L  D A T A ===
+    //
+    // Receiver-side only: the CrowPanel displays convert incoming wire structs into these
+    // once, then work in integers. Not part of the wire format — sending projects compile
+    // them but never use them (structs and inline functions, so nothing is emitted).
 
     // Internal struct for compass data, values stored as uint16_t/int16_t scaled x10.
     // Example: 234.5° stored as 2345.
