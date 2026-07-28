@@ -33,6 +33,10 @@ private:
     void showWaiting();
     void updateMarkers();
 
+    // Show |value| on the side it belongs to (positive → positive_label,
+    // negative → negative_label), blank the opposite side. Exactly 0 → "0" on both.
+    void showAxis(lv_obj_t* positive_label, lv_obj_t* negative_label, int16_t value);
+
     static constexpr uint32_t HEADING_TIMEOUT_MS = 5000;
 
 };

@@ -29,19 +29,14 @@ void AttitudeUI::update() {
     bool ok = (rx > 0) && ((millis() - rx) < HEADING_TIMEOUT_MS);
 
     if (ok) {
-        int16_t pitch = h.getPitchDeg();   // + = bow up
-        int16_t roll  = h.getRollDeg();    // + = starboard heel
+        int16_t pitch = h.getPitchDeg();   // + = bow up,        - = bow down
+        int16_t roll  = h.getRollDeg();    // + = starboard heel, - = port heel
 
-        int bow_up   = pitch > 0 ?  pitch : 0;
-        int bow_down = pitch < 0 ? -pitch : 0;
-        int stbd     = roll  > 0 ?  roll  : 0;
-        int port     = roll  < 0 ? -roll  : 0;
-
-        char buf[8];
-        snprintf(buf, sizeof(buf), "%d", bow_up);   lv_label_set_text(ui_LabelBowUpValue, buf);
-        snprintf(buf, sizeof(buf), "%d", bow_down); lv_label_set_text(ui_LabelBowDownValue, buf);
-        snprintf(buf, sizeof(buf), "%d", stbd);     lv_label_set_text(ui_LabelStbdValue, buf);
-        snprintf(buf, sizeof(buf), "%d", port);     lv_label_set_text(ui_LabelPortValue, buf);
+        // Show the angle only on the side it belongs to; the opposite side is
+        // blank (not even dashes). Exactly level (0° to whole-degree) shows "0"
+        // on BOTH sides. Magnitude only — the side is conveyed by the label.
+        this->showAxis(ui_LabelBowUpValue, ui_LabelBowDownValue, pitch);  // + = up (BowUp)
+        this->showAxis(ui_LabelStbdValue,  ui_LabelPortValue,   roll);    // + = stbd, - = port
     } else {
         lv_label_set_text(ui_LabelBowUpValue, "---");
         lv_label_set_text(ui_LabelBowDownValue, "---");
@@ -53,6 +48,23 @@ void AttitudeUI::update() {
 }
 
 // === P R I V A T E ===
+
+// One heel/pitch axis: value on its own side, opposite side blank; 0 → both "0"
+void AttitudeUI::showAxis(lv_obj_t* positive_label, lv_obj_t* negative_label, int16_t value) {
+    char buf[8];
+    if (value == 0) {
+        lv_label_set_text(positive_label, "0");
+        lv_label_set_text(negative_label, "0");
+    } else if (value > 0) {
+        snprintf(buf, sizeof(buf), "%d", value);
+        lv_label_set_text(positive_label, buf);
+        lv_label_set_text(negative_label, "");
+    } else {
+        snprintf(buf, sizeof(buf), "%d", -value);
+        lv_label_set_text(positive_label, "");
+        lv_label_set_text(negative_label, buf);
+    }
+}
 
 void AttitudeUI::showWaiting() {
     lv_label_set_text(ui_LabelBowUpValue, "---");

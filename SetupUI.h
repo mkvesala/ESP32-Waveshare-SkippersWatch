@@ -58,6 +58,8 @@ private:
 
     static constexpr const char* NVS_NAMESPACE = "display";
     static constexpr const char* NVS_KEY_BRIGHTNESS = "brightness";
-    static constexpr int8_t DEFAULT_BRIGHTNESS_PERCENT = 48;  // ~122/255 PWM
+    static constexpr int8_t DEFAULT_BRIGHTNESS_PERCENT = 30;  // ~76/255 PWM — readable in
+                                                             // daylight, low continuous draw
+                                                             // (backlight = biggest load)
 
 };
