@@ -12,8 +12,6 @@ lv_obj_t* EngineUI::getLvglScreen() const {
 
 void EngineUI::begin() {
     if (_initialized) return;
-    // Freshwater has no fleet sender — fixed placeholder until a source exists
-    lv_label_set_text(ui_LabelFreshwaterLValue, "---");
     this->showWaiting();
     _initialized = true;
 }
@@ -50,6 +48,18 @@ void EngineUI::update() {
     } else {
         lv_label_set_text(ui_LabelFuelLValue, "---");
     }
+
+    // --- Fresh water (ratio 0..1 → liters) ---
+    HALMETWaterDelta water = _receiver.getWaterData();
+    uint32_t water_rx = _receiver.lastWaterRxMillis();
+    bool water_ok = (water_rx > 0) && ((now - water_rx) < WATER_TIMEOUT_MS);
+    if (water_ok) {
+        char buf[16];
+        snprintf(buf, sizeof(buf), "%.0f", water.water_level_ratio * WATER_TANK_CAPACITY_L);
+        lv_label_set_text(ui_LabelFreshwaterLValue, buf);
+    } else {
+        lv_label_set_text(ui_LabelFreshwaterLValue, "---");
+    }
 }
 
 // === P R I V A T E ===
@@ -57,4 +67,5 @@ void EngineUI::update() {
 void EngineUI::showWaiting() {
     lv_label_set_text(ui_LabelExhaustCValue, "---");
     lv_label_set_text(ui_LabelFuelLValue, "---");
+    lv_label_set_text(ui_LabelFreshwaterLValue, "---");
 }

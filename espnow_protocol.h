@@ -206,10 +206,16 @@ namespace ESPNow {
     }
 
     // Internal struct for GNSS data, values stored scaled x10 for integer arithmetic.
+    //
+    // fix_ok and cog_valid are DISTINCT and must stay that way. A stationary boat (at
+    // anchor) has a valid position fix but an undefined course: fix_ok == 1, cog_valid == 0.
+    // Consumers gate position/SOG on hasFix() and COG on hasCog() — never fold the two
+    // together (an earlier version did, which hid position + SOG at anchor).
     struct GnssData {
-        uint16_t cog_true_x10;   // COG true 0-3599 (0.0° - 359.9°)
-        uint16_t sog_knots_x10;  // SOG in knots × 10 (e.g. 72 = 7.2 kn)
-        uint8_t  fix_ok;         // 1 = valid fix (getGnssFixOk())
+        uint16_t cog_true_x10;   // COG true 0-3599 (0.0° - 359.9°); meaningful only if cog_valid
+        uint16_t sog_knots_x10;  // SOG in knots × 10 (e.g. 72 = 7.2 kn); 0 when no fix
+        uint8_t  fix_ok;         // 1 = valid POSITION fix (getGnssFixOk()) — independent of COG
+        bool     cog_valid;      // 1 = COG present (moving); 0 when stationary (COG was NaN)
         float    lat_deg;        // Latitude, decimal degrees (watch POS display; NAN until fix)
         float    lon_deg;        // Longitude, decimal degrees (watch POS display; NAN until fix)
 
@@ -217,6 +223,7 @@ namespace ESPNow {
             : cog_true_x10(0)
             , sog_knots_x10(0)
             , fix_ok(0)
+            , cog_valid(false)
             , lat_deg(NAN)
             , lon_deg(NAN)
         {}
@@ -224,6 +231,7 @@ namespace ESPNow {
         uint16_t getCogDeg()   const { return cog_true_x10  / 10; }
         float    getSogKnots() const { return sog_knots_x10 / 10.0f; }
         bool     hasFix()      const { return fix_ok == 1; }
+        bool     hasCog()      const { return cog_valid; }
     };
 
     // Convert GnssDelta (float wire format) to GnssData (int x10, internal)
@@ -232,12 +240,18 @@ namespace ESPNow {
         constexpr float RAD_TO_DEG_X10  = 180.0f * 10.0f / M_PI;
         constexpr float MS_TO_KNOTS_X10 = 1.94384f * 10.0f;
 
-        // COG: NaN when stationary (UB cast → 0xFFFF = 65535 on ESP32) — treat as no fix
-        data.fix_ok        = (std::isnan(delta.cog_true_rad)) ? 0 : delta.fix_ok;
-        data.cog_true_x10  = data.fix_ok ? (uint16_t)(delta.cog_true_rad * RAD_TO_DEG_X10) : 0;
-        data.sog_knots_x10 = (uint16_t)(delta.sog_ms * MS_TO_KNOTS_X10);
+        // Position fix validity is authoritative and must NOT be diluted by COG availability.
+        // A stationary boat still has a valid fix, position and SOG — only its course is
+        // undefined. (Folding COG-NaN into fix_ok hid position/SOG at anchor, exactly the
+        // anchored-glance case the watch exists for.)
+        data.fix_ok = delta.fix_ok;
 
-        // Position for the watch POS label — valid only with a fix
+        // COG is NaN when stationary (UB cast → 0xFFFF garbage) — tracked separately from fix.
+        data.cog_valid     = delta.fix_ok && !std::isnan(delta.cog_true_rad);
+        data.cog_true_x10  = data.cog_valid ? (uint16_t)(delta.cog_true_rad * RAD_TO_DEG_X10) : 0;
+        data.sog_knots_x10 = delta.fix_ok ? (uint16_t)(delta.sog_ms * MS_TO_KNOTS_X10) : 0;
+
+        // Position for the watch POS label — valid only with a fix (same flag as fix_ok now)
         data.lat_deg = delta.fix_ok ? delta.lat_deg : NAN;
         data.lon_deg = delta.fix_ok ? delta.lon_deg : NAN;
 

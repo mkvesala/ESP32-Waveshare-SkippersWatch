@@ -180,6 +180,30 @@ void ESPNowReceiver::onDataRecv(const esp_now_recv_info_t* recv_info, const uint
             break;
         }
 
+        case ESPNowMsgType::HALMET_WATER_DELTA: {
+            if (hdr.payload_len != sizeof(HALMETWaterDelta)) return;
+            HALMETWaterDelta water;
+            memcpy(&water, payload, sizeof(HALMETWaterDelta));
+            portENTER_CRITICAL(&s_spinlock);
+            s_latest_water  = water;
+            s_has_new_water = true;
+            s_last_water_millis = millis();
+            portEXIT_CRITICAL(&s_spinlock);
+            break;
+        }
+
+        case ESPNowMsgType::DEPTH_DELTA: {
+            if (hdr.payload_len != sizeof(DepthDelta)) return;
+            DepthDelta depth;
+            memcpy(&depth, payload, sizeof(DepthDelta));
+            portENTER_CRITICAL(&s_spinlock);
+            s_latest_depth  = depth;
+            s_has_new_depth = true;
+            s_last_depth_millis = millis();
+            portEXIT_CRITICAL(&s_spinlock);
+            break;
+        }
+
         default:
             // Unknown msg_type — ignore
             break;
@@ -281,6 +305,44 @@ HALMETTankDelta ESPNowReceiver::getTankData() {
     return data;
 }
 
+// Returns true if new HALMET fresh water data packet available, otherwise false
+bool ESPNowReceiver::hasNewWaterData() const {
+    bool result;
+    portENTER_CRITICAL(&s_spinlock);
+    result = s_has_new_water;
+    portEXIT_CRITICAL(&s_spinlock);
+    return result;
+}
+
+// Returns the latest HALMET fresh water data packet received via ESP-NOW
+HALMETWaterDelta ESPNowReceiver::getWaterData() {
+    HALMETWaterDelta data;
+    portENTER_CRITICAL(&s_spinlock);
+    data = s_latest_water;
+    s_has_new_water = false;
+    portEXIT_CRITICAL(&s_spinlock);
+    return data;
+}
+
+// Returns true if new depth data packet available, otherwise false
+bool ESPNowReceiver::hasNewDepthData() const {
+    bool result;
+    portENTER_CRITICAL(&s_spinlock);
+    result = s_has_new_depth;
+    portEXIT_CRITICAL(&s_spinlock);
+    return result;
+}
+
+// Returns the latest depth data packet received via ESP-NOW
+DepthDelta ESPNowReceiver::getDepthData() {
+    DepthDelta data;
+    portENTER_CRITICAL(&s_spinlock);
+    data = s_latest_depth;
+    s_has_new_depth = false;
+    portEXIT_CRITICAL(&s_spinlock);
+    return data;
+}
+
 // Per-source last-receive timestamps (millis, 0 = never). Read under spinlock.
 uint32_t ESPNowReceiver::lastHeadingRxMillis() const {
     uint32_t v; portENTER_CRITICAL(&s_spinlock); v = s_last_rx_millis;      portEXIT_CRITICAL(&s_spinlock); return v;
@@ -299,6 +361,12 @@ uint32_t ESPNowReceiver::lastEngineRxMillis() const {
 }
 uint32_t ESPNowReceiver::lastTankRxMillis() const {
     uint32_t v; portENTER_CRITICAL(&s_spinlock); v = s_last_tank_millis;    portEXIT_CRITICAL(&s_spinlock); return v;
+}
+uint32_t ESPNowReceiver::lastWaterRxMillis() const {
+    uint32_t v; portENTER_CRITICAL(&s_spinlock); v = s_last_water_millis;   portEXIT_CRITICAL(&s_spinlock); return v;
+}
+uint32_t ESPNowReceiver::lastDepthRxMillis() const {
+    uint32_t v; portENTER_CRITICAL(&s_spinlock); v = s_last_depth_millis;   portEXIT_CRITICAL(&s_spinlock); return v;
 }
 
 // Lifetime min/max pitch/roll getters — tracked across all screens since boot

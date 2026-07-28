@@ -13,7 +13,8 @@ using namespace ESPNow;
 // - Class ESPNowReceiver - responsible for ESP-NOW inbound/outbound communication
 //
 // - Provides public API to manage incoming instrument data (receive-only)
-// - Receives: HEADING_DELTA (compass/attitude), WEATHER_DELTA (weather sensor), BATTERY_DELTA, GNSS_DELTA
+// - Receives: HEADING_DELTA (compass/attitude), WEATHER_DELTA (weather sensor), BATTERY_DELTA,
+//   GNSS_DELTA, HALMET_ENGINE_DELTA, HALMET_TANK_DELTA, HALMET_WATER_DELTA, DEPTH_DELTA
 // - Init: _receiver.begin(channel)
 // - Owned by: CrowPanelApplication
 
@@ -39,6 +40,10 @@ public:
     HALMETEngineDelta getEngineData();
     bool hasNewTankData() const;
     HALMETTankDelta getTankData();
+    bool hasNewWaterData() const;
+    HALMETWaterDelta getWaterData();
+    bool hasNewDepthData() const;
+    DepthDelta getDepthData();
 
     // Per-source last-receive timestamps (millis). 0 = never received.
     // Authoritative freshness — lets the UI (and PowerManager) age out a value even
@@ -49,6 +54,8 @@ public:
     uint32_t lastGnssRxMillis() const;
     uint32_t lastEngineRxMillis() const;
     uint32_t lastTankRxMillis() const;
+    uint32_t lastWaterRxMillis() const;
+    uint32_t lastDepthRxMillis() const;
 
     float getPacketsPerSecond() const { return _packets_per_second; }
 
@@ -98,6 +105,18 @@ private:
     inline static HALMETTankDelta s_latest_tank = {};
     inline static volatile bool   s_has_new_tank = false;
     inline static volatile uint32_t s_last_tank_millis = 0;
+
+    // Static variables for HALMET fresh water tank data handling
+    inline static HALMETWaterDelta s_latest_water = {};
+    inline static volatile bool     s_has_new_water = false;
+    inline static volatile uint32_t  s_last_water_millis = 0;
+
+    // Static variables for depth data handling. NOTE: depth is relayed, so freshness is
+    // two-fold — s_last_depth_millis is ESP-NOW gateway liveness; DepthDelta.age_ms inside
+    // the payload is the underlying N2K sounder feed liveness. The UI must gate on both.
+    inline static DepthDelta s_latest_depth = {};
+    inline static volatile bool     s_has_new_depth = false;
+    inline static volatile uint32_t  s_last_depth_millis = 0;
 
     // Lifetime min/max pitch and roll — updated in onDataRecv() for every packet
     inline static int16_t s_min_pitch_x10 = MINMAX_SENTINEL;
