@@ -84,9 +84,15 @@ table, unlike the verrokki's RGB ST7701).
 ## Build requirements (Arduino IDE / arduino-cli)
 - **Board:** ESP32-S3 (Arduino-ESP32 core 3.x — needs `ledcAttach`/`ledcWrite`,
   `ledcRead`, `ledcDetach`). Enable **PSRAM** (OPI), Flash 16 MB, USB-CDC on boot.
-- **Arduino_GFX_Library** with the **`Arduino_GC9309`** driver class — use the
-  version bundled in the Elecrow example (`example/V1.0/Arduino/libraries`);
-  mainline Arduino_GFX may not include GC9309.
+- **Arduino_GFX_Library** ("GFX Library for Arduino") with the **`Arduino_GC9309`**
+  driver class. Mainline releases (e.g. 1.6.7) do NOT include GC9309 — Elecrow
+  added it. This install was patched by dropping Elecrow's
+  `src/display/Arduino_GC9309.{h,cpp}` into the installed library and adding
+  `#include "display/Arduino_GC9309.h"` to `src/Arduino_GFX_Library.h`. **If the
+  GFX library is ever updated/reinstalled, re-apply this patch** (source:
+  Elecrow repo `example/V1.0/Arduino/libraries/GFX_Library_for_Arduino`). The
+  driver derives from `Arduino_TFT` and is signature-compatible with 1.6.7. The
+  verrokki shares this library but doesn't use GC9309, so it is unaffected.
 - **LVGL 9.x** with an `lv_conf.h` where `LV_COLOR_DEPTH 16`. The app calls
   `lv_tick_set_cb(millis)` (no `LV_TICK_CUSTOM` needed). If colors look
   byte-swapped, enable the `lv_draw_sw_rgb565_swap` line noted in
