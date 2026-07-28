@@ -1,0 +1,116 @@
+#pragma once
+
+#include <Arduino.h>
+#include <WiFi.h>
+#include <esp_wifi.h>
+#include <esp_now.h>
+#include "espnow_protocol.h"
+
+using namespace ESPNow;
+
+// === C L A S S  E S P N O W R E C E I V E R ===
+//
+// - Class ESPNowReceiver - responsible for ESP-NOW inbound/outbound communication
+//
+// - Provides public API to manage incoming instrument data (receive-only)
+// - Receives: HEADING_DELTA (compass/attitude), WEATHER_DELTA (weather sensor), BATTERY_DELTA, GNSS_DELTA
+// - Init: _receiver.begin(channel)
+// - Owned by: CrowPanelApplication
+
+class ESPNowReceiver {
+
+public:
+    
+    explicit ESPNowReceiver();
+
+    bool begin(uint8_t channel = 6);
+    bool hasNewData() const;
+    HeadingData getData();
+    bool isConnected(uint32_t timeout_ms = 500) const;
+    void updateStats();
+    bool hasNewWeatherData() const;
+    bool hasNewBatteryData() const;
+    WeatherDelta getWeatherData();
+    BatteryDelta getBatteryData();
+    bool hasNewGnssData() const;
+    GnssData getGnssData();
+
+    bool hasNewEngineData() const;
+    HALMETEngineDelta getEngineData();
+    bool hasNewTankData() const;
+    HALMETTankDelta getTankData();
+
+    // Per-source last-receive timestamps (millis). 0 = never received.
+    // Authoritative freshness — lets the UI (and PowerManager) age out a value even
+    // when a stale has-new flag is still pending, upholding the never-show-stale rule.
+    uint32_t lastHeadingRxMillis() const;
+    uint32_t lastWeatherRxMillis() const;
+    uint32_t lastBatteryRxMillis() const;
+    uint32_t lastGnssRxMillis() const;
+    uint32_t lastEngineRxMillis() const;
+    uint32_t lastTankRxMillis() const;
+
+    float getPacketsPerSecond() const { return _packets_per_second; }
+
+    static int16_t getMinPitch_x10();
+    static int16_t getMaxPitch_x10();
+    static int16_t getMinRoll_x10();
+    static int16_t getMaxRoll_x10();
+    static bool    hasMinMaxData();
+    static void    resetMinMax();
+
+    // Sentinel for unset min/max (out of range for pitch ±900 and roll ±1800 ×10)
+    static constexpr int16_t MINMAX_SENTINEL = 0x7FFF;
+
+private:
+
+    // Static callback for ESP-NOW
+    static void onDataRecv(const esp_now_recv_info_t* recv_info, const uint8_t* data, int data_len);
+
+    // Static data storage for ESP-NOW
+    inline static portMUX_TYPE s_spinlock = portMUX_INITIALIZER_UNLOCKED;
+    inline static HeadingData s_latest_data = {};
+    inline static volatile bool s_has_new_data = false;
+    inline static volatile uint32_t s_last_rx_millis = 0;
+    inline static volatile uint32_t s_packet_count = 0;
+
+    // Static variables for weather data handling
+    inline static WeatherDelta s_latest_weather = {};
+    inline static volatile bool s_has_new_weather = false;
+    inline static volatile uint32_t s_last_weather_millis = 0;
+
+    // Static variables for battery data handling
+    inline static BatteryDelta s_latest_battery = {};
+    inline static volatile bool s_has_new_battery = false;
+    inline static volatile uint32_t s_last_battery_millis = 0;
+
+    // Static variables for GNSS data handling
+    inline static GnssData s_latest_gnss = {};
+    inline static volatile bool s_has_new_gnss = false;
+    inline static volatile uint32_t s_last_gnss_millis = 0;
+
+    // Static variables for HALMET engine data handling
+    inline static HALMETEngineDelta s_latest_engine = {};
+    inline static volatile bool     s_has_new_engine = false;
+    inline static volatile uint32_t  s_last_engine_millis = 0;
+
+    // Static variables for HALMET tank data handling
+    inline static HALMETTankDelta s_latest_tank = {};
+    inline static volatile bool   s_has_new_tank = false;
+    inline static volatile uint32_t s_last_tank_millis = 0;
+
+    // Lifetime min/max pitch and roll — updated in onDataRecv() for every packet
+    inline static int16_t s_min_pitch_x10 = MINMAX_SENTINEL;
+    inline static int16_t s_max_pitch_x10 = MINMAX_SENTINEL;
+    inline static int16_t s_min_roll_x10  = MINMAX_SENTINEL;
+    inline static int16_t s_max_roll_x10  = MINMAX_SENTINEL;
+
+    // Instance data
+    uint8_t _channel = 6;
+    float _packets_per_second = 0.0f;
+    uint32_t _last_stats_millis = 0;
+    uint32_t _last_packet_count = 0;
+    bool _initialized = false;
+    
+};
+
