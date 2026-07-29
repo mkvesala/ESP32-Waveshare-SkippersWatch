@@ -7,8 +7,12 @@
 // === S H A R E D  E S P - N O W  P R O T O C O L ===
 //
 // This file is copied by hand into every ESP32 project on the boat. All devices must
-// agree on it, but no single project owns it, so the copies drift. This one is the
-// merged superset as of 2026-07-28 — copy it outward, do not merge inward.
+// agree on it, but no single project owns it. On 2026-07-28 the copies had drifted into
+// four versions; they were merged into this superset and every project now holds it.
+//
+// Keeping it that way: write a change in whichever project needs it, then copy the whole
+// file to every other project — the change is not done until all copies are identical.
+// Never reconcile two versions field by field; that is how the four versions came about.
 //
 // ESPNowMsgType is a single fleet-wide number space. Before allocating a new value,
 // check every copy, not just the sender's and the receiver's:
@@ -24,7 +28,7 @@
 //   7 HALMET_WATER_DELTA   HALMET-ESP32-SignalK-gateway
 //   8 DEPTH_DELTA          SignalK-ESP-NOW-gateway
 //
-// Receivers: ESP32-Crowpanel-SkippersWatch, ESP32-Crowpanel-compass
+// Receivers: ESP32-Crowpanel-SkippersWatch, ESP32-Crowpanel-compass, DFWind-ESP32-SignalK-gateway
 
 namespace ESPNow {
 
