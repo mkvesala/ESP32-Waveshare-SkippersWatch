@@ -1,5 +1,32 @@
 #include "RotaryEncoder.h"
 
+// Full-step quadrature decoder (Ben Buxton's table). Reads both A and B every poll
+// and only emits one CW/CCW event per completed detent, walking a state machine that
+// rejects contact bounce and half-steps. Replaces the old rising-edge-of-A count,
+// which fired on every bounce edge → multiple page jumps + wrong direction per click.
+namespace {
+    constexpr uint8_t R_START     = 0x0;
+    constexpr uint8_t R_CW_FINAL  = 0x1;
+    constexpr uint8_t R_CW_BEGIN  = 0x2;
+    constexpr uint8_t R_CW_NEXT   = 0x3;
+    constexpr uint8_t R_CCW_BEGIN = 0x4;
+    constexpr uint8_t R_CCW_FINAL = 0x5;
+    constexpr uint8_t R_CCW_NEXT  = 0x6;
+    constexpr uint8_t DIR_CW      = 0x10;   // emitted in the state's high bits
+    constexpr uint8_t DIR_CCW     = 0x20;
+
+    // Indexed [current state][pin state = (A<<1)|B]. Low nibble = next state.
+    constexpr uint8_t kTable[7][4] = {
+        {R_START,    R_CW_BEGIN,  R_CCW_BEGIN, R_START},              // R_START
+        {R_CW_NEXT,  R_START,     R_CW_FINAL,  R_START | DIR_CW},     // R_CW_FINAL
+        {R_CW_NEXT,  R_CW_BEGIN,  R_START,     R_START},              // R_CW_BEGIN
+        {R_CW_NEXT,  R_CW_BEGIN,  R_CW_FINAL,  R_START},              // R_CW_NEXT
+        {R_CCW_NEXT, R_START,     R_CCW_BEGIN, R_START},              // R_CCW_BEGIN
+        {R_CCW_NEXT, R_CCW_FINAL, R_START,     R_START | DIR_CCW},    // R_CCW_FINAL
+        {R_CCW_NEXT, R_CCW_FINAL, R_CCW_BEGIN, R_START},              // R_CCW_NEXT
+    };
+}
+
 // === P U B L I C ===
 
 // Constructor
@@ -19,8 +46,8 @@ void RotaryEncoder::begin() {
     pinMode(ENCODER_B_PIN, INPUT);
     pinMode(ENCODER_BTN_PIN, INPUT_PULLUP);
 
-    // Initial states
-    _last_state_clk = digitalRead(ENCODER_A_PIN);
+    // Initial states (quadrature decoder starts in R_START)
+    _enc_state = R_START;
     _last_button_state = digitalRead(ENCODER_BTN_PIN);
 
     // FreeRTOS tasks on core 0 (core 1: main loop)
@@ -87,30 +114,25 @@ void RotaryEncoder::buttonTask(void* param) {
     }
 }
 
-// Process the rotary knob rotation
+// Process the rotary knob rotation via the full-step state table (bounce-immune).
+// One completed detent → exactly one _direction event; partial/bouncing transitions
+// keep walking the table without emitting.
 void RotaryEncoder::processEncoder() {
-    // Read current state of CLK
-    uint8_t current_state_clk = digitalRead(ENCODER_A_PIN);
+    uint8_t pinstate = (digitalRead(ENCODER_A_PIN) << 1) | digitalRead(ENCODER_B_PIN);
+    _enc_state = kTable[_enc_state & 0x0f][pinstate];
+    uint8_t emit = _enc_state & 0x30;
 
-    // Capture rising edge
-    if (current_state_clk != _last_state_clk && current_state_clk == 1) {
-        // Read DT to determine direction
-        uint8_t state_dt = digitalRead(ENCODER_B_PIN);
-
+    if (emit) {
         portENTER_CRITICAL(&_spinlock);
-        if (state_dt != current_state_clk) {
-            // CCW
-            _direction = -1;
-            _counter--;
-        } else {
-            // CW
+        if (emit == DIR_CW) {
             _direction = 1;
             _counter++;
+        } else {
+            _direction = -1;
+            _counter--;
         }
         portEXIT_CRITICAL(&_spinlock);
     }
-
-    _last_state_clk = current_state_clk;
 }
 
 // Process the knob button press

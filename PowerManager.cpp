@@ -11,15 +11,18 @@ PowerManager::PowerManager(uint8_t backlight_pin,
     , _lcd_power_pin(lcd_power_pin)
     , _periph_power_pin(periph_power_pin) {}
 
-void PowerManager::begin(esp_sleep_wakeup_cause_t cause) {
-    _cause = cause;
-
-    // Release any GPIO holds latched before the previous deep sleep, so the pins
-    // are controllable again this session.
+// Release the pin holds latched before the previous deep sleep so the rails/backlight
+// are controllable again. Called FIRST in app.begin(), before initPowerRails()/initDisplay()
+// — if these stayed held, the LCD rail would remain off and the panel would wake black.
+void PowerManager::releaseHolds() {
     gpio_hold_dis((gpio_num_t)_lcd_power_pin);
     gpio_hold_dis((gpio_num_t)_periph_power_pin);
     gpio_hold_dis((gpio_num_t)_backlight_pin);
     gpio_deep_sleep_hold_dis();
+}
+
+void PowerManager::begin(esp_sleep_wakeup_cause_t cause) {
+    _cause = cause;
 
     switch (cause) {
         case ESP_SLEEP_WAKEUP_EXT0:  Serial.println("[power] wake: button");   break;

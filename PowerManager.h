@@ -30,6 +30,11 @@ public:
                           uint8_t lcd_power_pin,
                           uint8_t periph_power_pin);
 
+    // Release GPIO holds latched before the previous deep sleep. MUST be called at the
+    // very START of app.begin(), before the power rails / display are re-initialised —
+    // otherwise those pads stay frozen (LCD rail off) and the panel wakes to black.
+    void releaseHolds();
+
     // Call once at end of app.begin(); records why we woke and starts the idle timer
     void begin(esp_sleep_wakeup_cause_t cause);
 

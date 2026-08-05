@@ -42,6 +42,10 @@ CrowPanelApplication::CrowPanelApplication()
     , _power(PIN_BACKLIGHT, PIN_LCD_POWER, PIN_PERIPH_POWER) {}
 
 void CrowPanelApplication::begin() {
+    // FIRST: release any GPIO holds from the previous deep sleep, so the rail/backlight
+    // writes below actually take effect (otherwise the panel wakes to a black screen).
+    _power.releaseHolds();
+
     this->initPowerRails();
     this->initBacklight();
     this->initDisplay();

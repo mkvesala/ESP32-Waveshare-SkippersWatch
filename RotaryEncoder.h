@@ -53,7 +53,7 @@ private:
     // Rotary state
     volatile int8_t _direction = 0;
     volatile int32_t _counter = 0;
-    volatile uint8_t _last_state_clk = 0;
+    volatile uint8_t _enc_state = 0;   // quadrature decoder state (R_START); see .cpp
 
     // Button state
     volatile bool _button_pressed = false;

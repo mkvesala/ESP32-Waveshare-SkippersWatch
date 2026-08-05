@@ -83,7 +83,21 @@ table, unlike the verrokki's RGB ST7701).
 
 ## Build requirements (Arduino IDE / arduino-cli)
 - **Board:** ESP32-S3 (Arduino-ESP32 core 3.x — needs `ledcAttach`/`ledcWrite`,
-  `ledcRead`, `ledcDetach`). Enable **PSRAM** (OPI), Flash 16 MB, USB-CDC on boot.
+  `ledcRead`, `ledcDetach`). Enable **PSRAM** (OPI), Flash 16 MB, QIO 80 MHz.
+- **USB / serial: this board uses a CH34x USB-UART bridge on UART0, NOT the S3
+  native USB.** The USB-C connector enumerates as WCH VID `0x1a86` →
+  `/dev/cu.wchusbserial*` (macOS needs the WCH CH34x driver installed — without
+  it NO port appears even though the S3 is running). Consequences:
+  - **`USB CDC On Boot` = Disabled** — so `Serial` maps to UART0→CH34x and the
+    Serial Monitor works. (Enabled would route `Serial` to the unused native USB
+    and the monitor stays blank.)
+  - Upload uses the bridge's DTR/RTS auto-reset → **no manual BOOT+RESET needed**;
+    Arduino IDE auto-enters download mode. Fallback on "Failed to connect": hold
+    **BOOT (GPIO0)** → tap **RESET** → release BOOT → Upload.
+  - The CH34x port **persists regardless of firmware deep-sleep** (bridge is
+    independent of the S3), unlike a native-USB-CDC board whose port drops on
+    sleep. The factory firmware sleeps ~3 s after boot (LED+screen off) — that is
+    normal, not a fault.
 - **Arduino_GFX_Library** ("GFX Library for Arduino") with the **`Arduino_GC9309`**
   driver class. Mainline releases (e.g. 1.6.7) do NOT include GC9309 — Elecrow
   added it. This install was patched by dropping Elecrow's
