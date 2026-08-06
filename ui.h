@@ -34,8 +34,8 @@ extern "C" {
 extern lv_obj_t *ui____initial_actions0;
 
 // FONTS
-LV_FONT_DECLARE( ui_font_FontLabel16);
-LV_FONT_DECLARE( ui_font_FontLabel36);
+LV_FONT_DECLARE( ui_font_FontLabel14);
+LV_FONT_DECLARE( ui_font_FontLabel32);
 
 // UI INIT
 void ui_init(void);

@@ -43,7 +43,7 @@
                 "strtype": "OBJECT/Position",
                 "intarray": [
                   0,
-                  5
+                  10
                 ],
                 "InheritedType": 7
               },
@@ -378,7 +378,7 @@
                           {
                             "nid": 10450,
                             "strtype": "_style/Text_Font",
-                            "strval": "FontLabel16",
+                            "strval": "FontLabel14",
                             "InheritedType": 3
                           }
                         ],
@@ -538,7 +538,7 @@
                           {
                             "nid": 10450,
                             "strtype": "_style/Text_Font",
-                            "strval": "FontLabel36",
+                            "strval": "FontLabel32",
                             "InheritedType": 3
                           }
                         ],
@@ -698,7 +698,7 @@
                           {
                             "nid": 10450,
                             "strtype": "_style/Text_Font",
-                            "strval": "FontLabel36",
+                            "strval": "FontLabel32",
                             "InheritedType": 3
                           }
                         ],
@@ -858,7 +858,7 @@
                           {
                             "nid": 10450,
                             "strtype": "_style/Text_Font",
-                            "strval": "FontLabel16",
+                            "strval": "FontLabel14",
                             "InheritedType": 3
                           }
                         ],
@@ -1018,7 +1018,7 @@
                           {
                             "nid": 10450,
                             "strtype": "_style/Text_Font",
-                            "strval": "FontLabel16",
+                            "strval": "FontLabel14",
                             "InheritedType": 3
                           }
                         ],
@@ -1178,7 +1178,7 @@
                           {
                             "nid": 10450,
                             "strtype": "_style/Text_Font",
-                            "strval": "FontLabel36",
+                            "strval": "FontLabel32",
                             "InheritedType": 3
                           }
                         ],
@@ -1338,7 +1338,7 @@
                           {
                             "nid": 10450,
                             "strtype": "_style/Text_Font",
-                            "strval": "FontLabel36",
+                            "strval": "FontLabel32",
                             "InheritedType": 3
                           }
                         ],
@@ -1498,7 +1498,7 @@
                           {
                             "nid": 10450,
                             "strtype": "_style/Text_Font",
-                            "strval": "FontLabel16",
+                            "strval": "FontLabel14",
                             "InheritedType": 3
                           }
                         ],
@@ -1658,7 +1658,7 @@
                           {
                             "nid": 10450,
                             "strtype": "_style/Text_Font",
-                            "strval": "FontLabel36",
+                            "strval": "FontLabel32",
                             "InheritedType": 3
                           }
                         ],
@@ -1818,7 +1818,7 @@
                           {
                             "nid": 10450,
                             "strtype": "_style/Text_Font",
-                            "strval": "FontLabel16",
+                            "strval": "FontLabel14",
                             "InheritedType": 3
                           }
                         ],
@@ -1879,8 +1879,8 @@
                 "flags": 17,
                 "strtype": "OBJECT/Size",
                 "intarray": [
-                  230,
-                  256
+                  210,
+                  240
                 ],
                 "InheritedType": 7
               },
@@ -2122,7 +2122,7 @@
                           {
                             "nid": 10450,
                             "strtype": "_style/Text_Font",
-                            "strval": "FontLabel16",
+                            "strval": "FontLabel14",
                             "InheritedType": 3
                           }
                         ],
@@ -2282,7 +2282,7 @@
                           {
                             "nid": 10450,
                             "strtype": "_style/Text_Font",
-                            "strval": "FontLabel36",
+                            "strval": "FontLabel32",
                             "InheritedType": 3
                           }
                         ],
@@ -2442,7 +2442,7 @@
                           {
                             "nid": 10450,
                             "strtype": "_style/Text_Font",
-                            "strval": "FontLabel36",
+                            "strval": "FontLabel32",
                             "InheritedType": 3
                           }
                         ],
@@ -2602,7 +2602,7 @@
                           {
                             "nid": 10450,
                             "strtype": "_style/Text_Font",
-                            "strval": "FontLabel16",
+                            "strval": "FontLabel14",
                             "InheritedType": 3
                           }
                         ],
@@ -2762,7 +2762,7 @@
                           {
                             "nid": 10450,
                             "strtype": "_style/Text_Font",
-                            "strval": "FontLabel16",
+                            "strval": "FontLabel14",
                             "InheritedType": 3
                           }
                         ],
@@ -2922,7 +2922,7 @@
                           {
                             "nid": 10450,
                             "strtype": "_style/Text_Font",
-                            "strval": "FontLabel36",
+                            "strval": "FontLabel32",
                             "InheritedType": 3
                           }
                         ],
@@ -3082,7 +3082,7 @@
                           {
                             "nid": 10450,
                             "strtype": "_style/Text_Font",
-                            "strval": "FontLabel16",
+                            "strval": "FontLabel14",
                             "InheritedType": 3
                           }
                         ],
@@ -3242,7 +3242,7 @@
                           {
                             "nid": 10450,
                             "strtype": "_style/Text_Font",
-                            "strval": "FontLabel36",
+                            "strval": "FontLabel32",
                             "InheritedType": 3
                           }
                         ],
@@ -3402,7 +3402,7 @@
                           {
                             "nid": 10450,
                             "strtype": "_style/Text_Font",
-                            "strval": "FontLabel16",
+                            "strval": "FontLabel14",
                             "InheritedType": 3
                           }
                         ],
@@ -3463,8 +3463,8 @@
                 "flags": 17,
                 "strtype": "OBJECT/Size",
                 "intarray": [
-                  230,
-                  256
+                  210,
+                  240
                 ],
                 "InheritedType": 7
               },
@@ -3706,7 +3706,7 @@
                           {
                             "nid": 10450,
                             "strtype": "_style/Text_Font",
-                            "strval": "FontLabel16",
+                            "strval": "FontLabel14",
                             "InheritedType": 3
                           }
                         ],
@@ -3866,7 +3866,7 @@
                           {
                             "nid": 10450,
                             "strtype": "_style/Text_Font",
-                            "strval": "FontLabel36",
+                            "strval": "FontLabel32",
                             "InheritedType": 3
                           }
                         ],
@@ -4026,7 +4026,7 @@
                           {
                             "nid": 10450,
                             "strtype": "_style/Text_Font",
-                            "strval": "FontLabel36",
+                            "strval": "FontLabel32",
                             "InheritedType": 3
                           }
                         ],
@@ -4186,7 +4186,7 @@
                           {
                             "nid": 10450,
                             "strtype": "_style/Text_Font",
-                            "strval": "FontLabel16",
+                            "strval": "FontLabel14",
                             "InheritedType": 3
                           }
                         ],
@@ -4346,7 +4346,7 @@
                           {
                             "nid": 10450,
                             "strtype": "_style/Text_Font",
-                            "strval": "FontLabel16",
+                            "strval": "FontLabel14",
                             "InheritedType": 3
                           }
                         ],
@@ -4506,7 +4506,7 @@
                           {
                             "nid": 10450,
                             "strtype": "_style/Text_Font",
-                            "strval": "FontLabel36",
+                            "strval": "FontLabel32",
                             "InheritedType": 3
                           }
                         ],
@@ -4666,7 +4666,7 @@
                           {
                             "nid": 10450,
                             "strtype": "_style/Text_Font",
-                            "strval": "FontLabel16",
+                            "strval": "FontLabel14",
                             "InheritedType": 3
                           }
                         ],
@@ -4727,8 +4727,8 @@
                 "flags": 17,
                 "strtype": "OBJECT/Size",
                 "intarray": [
-                  230,
-                  256
+                  210,
+                  240
                 ],
                 "InheritedType": 7
               },
@@ -4970,7 +4970,7 @@
                           {
                             "nid": 10450,
                             "strtype": "_style/Text_Font",
-                            "strval": "FontLabel16",
+                            "strval": "FontLabel14",
                             "InheritedType": 3
                           }
                         ],
@@ -5130,7 +5130,7 @@
                           {
                             "nid": 10450,
                             "strtype": "_style/Text_Font",
-                            "strval": "FontLabel36",
+                            "strval": "FontLabel32",
                             "InheritedType": 3
                           }
                         ],
@@ -5290,7 +5290,7 @@
                           {
                             "nid": 10450,
                             "strtype": "_style/Text_Font",
-                            "strval": "FontLabel36",
+                            "strval": "FontLabel32",
                             "InheritedType": 3
                           }
                         ],
@@ -5450,7 +5450,7 @@
                           {
                             "nid": 10450,
                             "strtype": "_style/Text_Font",
-                            "strval": "FontLabel16",
+                            "strval": "FontLabel14",
                             "InheritedType": 3
                           }
                         ],
@@ -5610,7 +5610,7 @@
                           {
                             "nid": 10450,
                             "strtype": "_style/Text_Font",
-                            "strval": "FontLabel16",
+                            "strval": "FontLabel14",
                             "InheritedType": 3
                           }
                         ],
@@ -5770,7 +5770,7 @@
                           {
                             "nid": 10450,
                             "strtype": "_style/Text_Font",
-                            "strval": "FontLabel36",
+                            "strval": "FontLabel32",
                             "InheritedType": 3
                           }
                         ],
@@ -5930,7 +5930,7 @@
                           {
                             "nid": 10450,
                             "strtype": "_style/Text_Font",
-                            "strval": "FontLabel16",
+                            "strval": "FontLabel14",
                             "InheritedType": 3
                           }
                         ],
@@ -5991,8 +5991,8 @@
                 "flags": 17,
                 "strtype": "OBJECT/Size",
                 "intarray": [
-                  230,
-                  256
+                  210,
+                  240
                 ],
                 "InheritedType": 7
               },
@@ -6240,7 +6240,7 @@
                           {
                             "nid": 10450,
                             "strtype": "_style/Text_Font",
-                            "strval": "FontLabel16",
+                            "strval": "FontLabel14",
                             "InheritedType": 3
                           }
                         ],
@@ -6406,7 +6406,7 @@
                           {
                             "nid": 10450,
                             "strtype": "_style/Text_Font",
-                            "strval": "FontLabel36",
+                            "strval": "FontLabel32",
                             "InheritedType": 3
                           }
                         ],
@@ -6566,7 +6566,7 @@
                           {
                             "nid": 10450,
                             "strtype": "_style/Text_Font",
-                            "strval": "FontLabel36",
+                            "strval": "FontLabel32",
                             "InheritedType": 3
                           }
                         ],
@@ -6732,7 +6732,7 @@
                           {
                             "nid": 10450,
                             "strtype": "_style/Text_Font",
-                            "strval": "FontLabel16",
+                            "strval": "FontLabel14",
                             "InheritedType": 3
                           }
                         ],
@@ -6898,7 +6898,7 @@
                           {
                             "nid": 10450,
                             "strtype": "_style/Text_Font",
-                            "strval": "FontLabel16",
+                            "strval": "FontLabel14",
                             "InheritedType": 3
                           }
                         ],
@@ -7064,7 +7064,7 @@
                           {
                             "nid": 10450,
                             "strtype": "_style/Text_Font",
-                            "strval": "FontLabel36",
+                            "strval": "FontLabel32",
                             "InheritedType": 3
                           }
                         ],
@@ -7230,7 +7230,7 @@
                           {
                             "nid": 10450,
                             "strtype": "_style/Text_Font",
-                            "strval": "FontLabel16",
+                            "strval": "FontLabel14",
                             "InheritedType": 3
                           }
                         ],
@@ -7396,7 +7396,7 @@
                           {
                             "nid": 10450,
                             "strtype": "_style/Text_Font",
-                            "strval": "FontLabel16",
+                            "strval": "FontLabel14",
                             "InheritedType": 3
                           }
                         ],
@@ -7556,7 +7556,7 @@
                           {
                             "nid": 10450,
                             "strtype": "_style/Text_Font",
-                            "strval": "FontLabel36",
+                            "strval": "FontLabel32",
                             "InheritedType": 3
                           }
                         ],
@@ -7722,7 +7722,7 @@
                           {
                             "nid": 10450,
                             "strtype": "_style/Text_Font",
-                            "strval": "FontLabel16",
+                            "strval": "FontLabel14",
                             "InheritedType": 3
                           }
                         ],
@@ -7888,7 +7888,7 @@
                           {
                             "nid": 10450,
                             "strtype": "_style/Text_Font",
-                            "strval": "FontLabel16",
+                            "strval": "FontLabel14",
                             "InheritedType": 3
                           }
                         ],
@@ -8054,7 +8054,7 @@
                           {
                             "nid": 10450,
                             "strtype": "_style/Text_Font",
-                            "strval": "FontLabel16",
+                            "strval": "FontLabel14",
                             "InheritedType": 3
                           }
                         ],
@@ -8220,7 +8220,7 @@
                           {
                             "nid": 10450,
                             "strtype": "_style/Text_Font",
-                            "strval": "FontLabel16",
+                            "strval": "FontLabel14",
                             "InheritedType": 3
                           }
                         ],
@@ -8281,8 +8281,8 @@
                 "flags": 17,
                 "strtype": "OBJECT/Size",
                 "intarray": [
-                  230,
-                  256
+                  210,
+                  240
                 ],
                 "InheritedType": 7
               },
@@ -8524,7 +8524,7 @@
                           {
                             "nid": 10450,
                             "strtype": "_style/Text_Font",
-                            "strval": "FontLabel16",
+                            "strval": "FontLabel14",
                             "InheritedType": 3
                           }
                         ],
@@ -8684,7 +8684,7 @@
                           {
                             "nid": 10450,
                             "strtype": "_style/Text_Font",
-                            "strval": "FontLabel36",
+                            "strval": "FontLabel32",
                             "InheritedType": 3
                           }
                         ],
@@ -8844,7 +8844,7 @@
                           {
                             "nid": 10450,
                             "strtype": "_style/Text_Font",
-                            "strval": "FontLabel16",
+                            "strval": "FontLabel14",
                             "InheritedType": 3
                           }
                         ],
@@ -9138,8 +9138,8 @@
                 "flags": 17,
                 "strtype": "OBJECT/Size",
                 "intarray": [
-                  230,
-                  256
+                  210,
+                  240
                 ],
                 "InheritedType": 7
               },
@@ -9403,7 +9403,7 @@
     "custom_variable_prefix": "uic",
     "separate_screen_save": false,
     "hierarchy_state_save": false,
-    "backup_cnt": 16,
+    "backup_cnt": 23,
     "autosave_cnt": 0,
     "group_color_cnt": 0,
     "imagebytearrayprefix": "",
