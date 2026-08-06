@@ -8,14 +8,17 @@ void ScreenManager::addScreen(IScreenUI* screen) {
     _screens[_screen_count++] = screen;
 }
 
-// Initialize: hide every page container, show page 0, mark ready
-void ScreenManager::begin() {
+// Initialize: hide every page container, show start_index, mark ready.
+// start_index defaults to 0 (Navigation); a button-wake passes the restored
+// last-active page. Clamped so a corrupted RTC value falls back to page 0.
+void ScreenManager::begin(uint8_t start_index) {
     if (_initialized || _screen_count == 0) return;
     _initialized = true;
-    _current = 0;
+    if (start_index >= _screen_count) start_index = 0;
+    _current = start_index;
     this->hideAll();
-    lv_obj_remove_flag(_screens[0]->getLvglScreen(), LV_OBJ_FLAG_HIDDEN);
-    _screens[0]->onEnter();
+    lv_obj_remove_flag(_screens[_current]->getLvglScreen(), LV_OBJ_FLAG_HIDDEN);
+    _screens[_current]->onEnter();
 }
 
 // CW carousel step

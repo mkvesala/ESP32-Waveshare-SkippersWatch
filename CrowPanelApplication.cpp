@@ -8,6 +8,12 @@ static Arduino_DataBus*   s_bus = nullptr;
 static Arduino_GFX*       s_gfx = nullptr;
 static SemaphoreHandle_t  s_te_sem = nullptr;
 
+// Last-active page index, kept in RTC slow memory so it survives deep sleep (which
+// is a full reboot). Updated on every page switch; read on a button-wake to restore
+// the page the user was on. Zero-inits on a true power-on → cold boot starts on
+// Navigation (index 0), which the EXT0 wake-cause guard in begin() also enforces.
+RTC_DATA_ATTR uint8_t s_last_page_index = 0;
+
 // Tearing-effect interrupt (LCD_TE, GPIO21, FALLING) — signals a safe refresh moment
 static void IRAM_ATTR onTearingEffect() {
     BaseType_t hp_task_woken = pdFALSE;
@@ -42,6 +48,10 @@ CrowPanelApplication::CrowPanelApplication()
     , _power(PIN_BACKLIGHT, PIN_LCD_POWER, PIN_PERIPH_POWER) {}
 
 void CrowPanelApplication::begin() {
+    // Read the wake cause once, up front: it decides both the start page (restore the
+    // last-active page only on a real button-wake) and, at the end, _power.begin().
+    const esp_sleep_wakeup_cause_t cause = esp_sleep_get_wakeup_cause();
+
     // FIRST: release any GPIO holds from the previous deep sleep, so the rail/backlight
     // writes below actually take effect (otherwise the panel wakes to a black screen).
     _power.releaseHolds();
@@ -69,7 +79,9 @@ void CrowPanelApplication::begin() {
     _screenMgr.addScreen(&_engineUI);
     _screenMgr.addScreen(&_attitudeUI);
     _screenMgr.addScreen(&_setupUI);
-    _screenMgr.begin();
+    // Restore the last-active page on a button-wake; cold boot / any other cause → 0 (Nav)
+    const uint8_t start_page = (cause == ESP_SLEEP_WAKEUP_EXT0) ? s_last_page_index : 0;
+    _screenMgr.begin(start_page);
 
     // --- Staggered wake sequence (runs on every wake, cold boot included) ---
     // Panel is initialised DARK above; render the first frame (all sources "---"),
@@ -82,7 +94,7 @@ void CrowPanelApplication::begin() {
     _receiver.begin(ESP_NOW_CHANNEL); // radio LAST
 
     // Model B power owner — records wake cause, starts the display-on timer
-    _power.begin(esp_sleep_get_wakeup_cause());
+    _power.begin(cause);
 }
 
 void CrowPanelApplication::loop() {
@@ -171,10 +183,14 @@ void CrowPanelApplication::handleKnobRotation() {
     IScreenUI* screen = _screenMgr.getCurrentScreen();
     if (screen && screen->interceptsRotation()) {
         screen->onRotation(dir);
-    } else if (dir > 0) {
-        _screenMgr.switchNext();
     } else {
-        _screenMgr.switchPrevious();
+        if (dir > 0) {
+            _screenMgr.switchNext();
+        } else {
+            _screenMgr.switchPrevious();
+        }
+        // Persist the new page so a button-wake restores it (RTC survives deep sleep)
+        s_last_page_index = _screenMgr.currentIndex();
     }
 }
 

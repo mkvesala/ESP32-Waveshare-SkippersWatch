@@ -12,7 +12,9 @@
 //   A "page" here is a container; switching = show target container, hide the rest
 //   via LV_OBJ_FLAG_HIDDEN. Each IScreenUI::getLvglScreen() returns its container.
 // - Pages are registered via addScreen() before begin()
-// - Init: addScreen() for each page, then screenMgr.begin()
+// - Init: addScreen() for each page, then screenMgr.begin(start_index) — the start
+//   page defaults to 0 (Navigation) but a button-wake restores the last-active page
+//   (see CrowPanelApplication / RTC_DATA_ATTR s_last_page_index)
 // - Carousel order matches registration order (modulo index arithmetic)
 // - Owned by: CrowPanelApplication
 
@@ -25,10 +27,14 @@ public:
     explicit ScreenManager() = default;
 
     void addScreen(IScreenUI* screen);
-    void begin();
+    void begin(uint8_t start_index = 0);
     void switchNext();
     void switchPrevious();
     IScreenUI* getCurrentScreen() const;
+
+    // Zero-based index of the active page — persisted to RTC memory so a wake can
+    // restore the last-active page instead of always starting on Navigation
+    uint8_t currentIndex() const { return _current; }
 
     // Re-assert the current page's visibility (used after a wake re-render)
     void showCurrent();
