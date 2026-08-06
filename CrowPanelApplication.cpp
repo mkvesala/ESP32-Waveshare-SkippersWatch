@@ -79,19 +79,36 @@ void CrowPanelApplication::begin() {
     _screenMgr.addScreen(&_engineUI);
     _screenMgr.addScreen(&_attitudeUI);
     _screenMgr.addScreen(&_setupUI);
-    // Restore the last-active page on a button-wake; cold boot / any other cause → 0 (Nav)
+    // Restore the last-active page on a button-wake; cold boot / any other cause → 0 (Nav).
+    // The actual _screenMgr.begin(start_page) is deferred to after the dark listen window
+    // below, so the page is revealed only once data has had a chance to arrive.
     const uint8_t start_page = (cause == ESP_SLEEP_WAKEUP_EXT0) ? s_last_page_index : 0;
-    _screenMgr.begin(start_page);
 
     // --- Staggered wake sequence (runs on every wake, cold boot included) ---
-    // Panel is initialised DARK above; render the first frame (all sources "---"),
-    // THEN ramp the backlight up as its own load step, THEN bring the radio up last
-    // so no single instant sees panel + backlight + radio inrush together.
-    lv_refr_now(_lvgl_disp);          // render the first frame into the dark panel
-    _setupUI.rampBacklightUp();       // backlight PWM soft-start (own step)
-
+    // Panel is initialised DARK above and stays dark through the listen window
+    // below. Bring the radio up FIRST — into that dark, low-load moment — then
+    // hold black while it catches a broadcast, THEN reveal the page with data
+    // already in hand, THEN ramp the backlight. The radio inrush and the
+    // backlight step are separated in time, so no single instant sees them
+    // stacked (better peak separation than the old radio-last order).
     _encoder.begin();
-    _receiver.begin(ESP_NOW_CHANNEL); // radio LAST
+    _receiver.begin(ESP_NOW_CHANNEL); // radio up first, panel still dark
+
+    // Dark ESP-NOW listen window: delay() yields to FreeRTOS so the receiver's
+    // RX callbacks can land a fresh packet before anything is shown. No LVGL
+    // render happens here — the panel stays black until lv_refr_now() below.
+    delay(ESPNOW_WAKE_LISTEN_MS);
+
+    // Reveal the last-active page (onEnter() sets "---"), then immediately
+    // update() so any packet caught during the window repaints real values
+    // BEFORE the first lit frame — the placeholder is only seen if nothing
+    // arrived (correct: never fabricate data).
+    _screenMgr.begin(start_page);
+    IScreenUI* screen = _screenMgr.getCurrentScreen();
+    if (screen) screen->update();
+
+    lv_refr_now(_lvgl_disp);          // render the first frame into the dark panel
+    _setupUI.rampBacklightUp();       // backlight PWM soft-start — user sees real data
 
     // Model B power owner — records wake cause, starts the display-on timer
     _power.begin(cause);

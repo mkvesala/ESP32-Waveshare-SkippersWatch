@@ -39,6 +39,12 @@ private:
     // ESP-NOW channel — must match the fleet AP channel (verrokki = 6)
     static constexpr uint8_t ESP_NOW_CHANNEL = 6;
 
+    // Dark listen window on wake: hold the panel black while the radio (just
+    // brought up) catches a fresh broadcast, so the first LIT frame shows real
+    // values instead of a "---" placeholder flash. Senders broadcast faster
+    // than this, so a fresh packet typically lands within it.
+    static constexpr uint32_t ESPNOW_WAKE_LISTEN_MS = 200;
+
     // --- Pin map (see hardware_notes.md) ---
     static constexpr uint8_t PIN_LCD_CS        = 9;
     static constexpr uint8_t PIN_LCD_DC        = 10;
