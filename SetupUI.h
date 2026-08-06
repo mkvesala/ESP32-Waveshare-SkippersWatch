@@ -51,6 +51,18 @@ private:
     int8_t loadBrightness();
     uint8_t percentToPwm(int8_t percent) const;
 
+    // Single point of state change: flips _state AND drives the adjust-mode visual,
+    // so the two can never disagree (mirrors the verrokki BrightnessUI::setState)
+    void setState(SetupState new_state);
+    // ADJUSTING → recolor slider indicator + knob; IDLE → restore the export's theme
+    void setAdjustVisual(bool active);
+
+    // Slider indicator + knob colors, code-owned (these override the SquareLine theme):
+    //  - SLIDER_BASE  : resting / IDLE look
+    //  - ADJUST_ACCENT: ADJUSTING, so it is unmistakable the knob now edits brightness
+    static constexpr uint32_t SLIDER_BASE   = 0xCCCCCC;  // almost white grey (resting)
+    static constexpr uint32_t ADJUST_ACCENT = 0xFF9800;  // amber (adjusting)
+
     static constexpr uint32_t AUTOSAVE_TIMEOUT_MS = 3000;
     static constexpr int8_t BRIGHTNESS_STEP = 2;
     static constexpr int8_t MIN_BRIGHTNESS_PERCENT = 2;

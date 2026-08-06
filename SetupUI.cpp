@@ -16,7 +16,7 @@ void SetupUI::begin() {
     // Do NOT light the backlight here — the panel stays dark through init/first
     // render; the app calls rampBacklightUp() afterwards (staggered wake).
     this->updateUI();
-    _state = SetupState::IDLE;
+    this->setState(SetupState::IDLE);
     _initialized = true;
 }
 
@@ -37,18 +37,18 @@ void SetupUI::update() {
     // Autosave + return to IDLE after inactivity (batches the NVS write off the hot path)
     if ((long)(millis() - _last_rotation_time) >= (long)AUTOSAVE_TIMEOUT_MS) {
         this->saveBrightness();
-        _state = SetupState::IDLE;
+        this->setState(SetupState::IDLE);
     }
 }
 
 void SetupUI::onButtonPress() {
     if (!_initialized) return;
     if (_state == SetupState::IDLE) {
-        _state = SetupState::ADJUSTING;
+        this->setState(SetupState::ADJUSTING);
         _last_rotation_time = millis();
     } else {
         this->saveBrightness();
-        _state = SetupState::IDLE;
+        this->setState(SetupState::IDLE);
     }
 }
 
@@ -70,11 +70,25 @@ bool SetupUI::interceptsRotation() const {
 void SetupUI::onLeave() {
     if (_state == SetupState::ADJUSTING) {
         this->saveBrightness();
-        _state = SetupState::IDLE;
+        this->setState(SetupState::IDLE);
     }
 }
 
 // === P R I V A T E ===
+
+// Only place _state is written — keeps the adjust-mode visual in lockstep with state
+void SetupUI::setState(SetupState new_state) {
+    _state = new_state;
+    this->setAdjustVisual(new_state == SetupState::ADJUSTING);
+}
+
+// Paint the slider indicator + knob: ADJUST_ACCENT while ADJUSTING (mode is obvious),
+// SLIDER_BASE at rest. Both colors are code-owned, so the resting look is tunable too.
+void SetupUI::setAdjustVisual(bool active) {
+    lv_color_t c = lv_color_hex(active ? ADJUST_ACCENT : SLIDER_BASE);
+    lv_obj_set_style_bg_color(ui_SliderBrightness, c, LV_PART_INDICATOR);
+    lv_obj_set_style_bg_color(ui_SliderBrightness, c, LV_PART_KNOB);
+}
 
 void SetupUI::applyBrightness() {
     ledcWrite(_backlight_pin, this->percentToPwm(_brightness_percent));
