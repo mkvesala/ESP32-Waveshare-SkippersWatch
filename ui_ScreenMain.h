@@ -71,6 +71,12 @@ extern lv_obj_t *ui_LabelBrightness;
 extern lv_obj_t *ui_LabelBrightnessValue;
 extern lv_obj_t *ui_LabelSetup;
 extern lv_obj_t *ui_SliderBrightness;
+extern lv_obj_t *ui_ContainerClock;
+extern lv_obj_t *ui_LabelTimeLocal;
+extern lv_obj_t *ui_LabelDay;
+extern lv_obj_t *ui_LabelDate;
+extern lv_obj_t *ui_LabelTimeUTC;
+extern lv_obj_t *ui_LabelDateUTC;
 // CUSTOM VARIABLES
 
 #ifdef __cplusplus

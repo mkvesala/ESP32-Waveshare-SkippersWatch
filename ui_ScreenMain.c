@@ -5,7 +5,7 @@
 
 #include "ui.h"
 
-lv_obj_t *ui_ScreenMain = NULL;lv_obj_t *ui_BarBatteryIndicator = NULL;lv_obj_t *ui_ContainerNavigation = NULL;lv_obj_t *ui_LabelCOGTitle = NULL;lv_obj_t *ui_LabelCOGValue = NULL;lv_obj_t *ui_LabelHDGValue = NULL;lv_obj_t *ui_LabelHDGTitle = NULL;lv_obj_t *ui_LabelSOGTitle = NULL;lv_obj_t *ui_LabelSOGValue = NULL;lv_obj_t *ui_LabelDPTValue = NULL;lv_obj_t *ui_LabelDPTTitle = NULL;lv_obj_t *ui_LabelPOSValue = NULL;lv_obj_t *ui_LabelPOSTitle = NULL;lv_obj_t *ui_ContainerBatteries = NULL;lv_obj_t *ui_LabelHouseVTitle = NULL;lv_obj_t *ui_LabelHouseVValue = NULL;lv_obj_t *ui_LabelStartVValue = NULL;lv_obj_t *ui_LabelStartVTitle = NULL;lv_obj_t *ui_LabelHouseSOCTitle = NULL;lv_obj_t *ui_LabelHouseSOCValue = NULL;lv_obj_t *ui_LabelHouseATitle = NULL;lv_obj_t *ui_LabelHouseAValue = NULL;lv_obj_t *ui_LabelBatteries = NULL;lv_obj_t *ui_ContainerWeather = NULL;lv_obj_t *ui_LabelTemperatureTitle = NULL;lv_obj_t *ui_LabelTemperatureValue = NULL;lv_obj_t *ui_LabelHumidityValue = NULL;lv_obj_t *ui_LabelHumidityTitle = NULL;lv_obj_t *ui_LabelPressureTitle = NULL;lv_obj_t *ui_LabelPressureValue = NULL;lv_obj_t *ui_LabelWeather = NULL;lv_obj_t *ui_ContainerEngineroom = NULL;lv_obj_t *ui_LabelExhaustCTitle = NULL;lv_obj_t *ui_LabelExhaustCValue = NULL;lv_obj_t *ui_LabelFuelLValue = NULL;lv_obj_t *ui_LabelFuelLTitle = NULL;lv_obj_t *ui_LabelFreshwaterLTitle = NULL;lv_obj_t *ui_LabelFreshwaterLValue = NULL;lv_obj_t *ui_LabelEngineroom = NULL;lv_obj_t *ui_ContainerAttitude = NULL;lv_obj_t *ui_LabelBowUpTitle = NULL;lv_obj_t *ui_LabelBowUpValue = NULL;lv_obj_t *ui_LabelStbdValue = NULL;lv_obj_t *ui_LabelStbdTitle = NULL;lv_obj_t *ui_LabelBowDownTitle = NULL;lv_obj_t *ui_LabelBowDownValue = NULL;lv_obj_t *ui_LabelAttitude = NULL;lv_obj_t *ui_LabelPortTitle = NULL;lv_obj_t *ui_LabelPortValue = NULL;lv_obj_t *ui_LabelBowUpMaxValue = NULL;lv_obj_t *ui_LabelBowDownMinValue = NULL;lv_obj_t *ui_LabelPortMinValue = NULL;lv_obj_t *ui_LabelStbdMaxValue = NULL;lv_obj_t *ui_ContainerSetup = NULL;lv_obj_t *ui_LabelBrightness = NULL;lv_obj_t *ui_LabelBrightnessValue = NULL;lv_obj_t *ui_LabelSetup = NULL;lv_obj_t *ui_SliderBrightness = NULL;
+lv_obj_t *ui_ScreenMain = NULL;lv_obj_t *ui_BarBatteryIndicator = NULL;lv_obj_t *ui_ContainerNavigation = NULL;lv_obj_t *ui_LabelCOGTitle = NULL;lv_obj_t *ui_LabelCOGValue = NULL;lv_obj_t *ui_LabelHDGValue = NULL;lv_obj_t *ui_LabelHDGTitle = NULL;lv_obj_t *ui_LabelSOGTitle = NULL;lv_obj_t *ui_LabelSOGValue = NULL;lv_obj_t *ui_LabelDPTValue = NULL;lv_obj_t *ui_LabelDPTTitle = NULL;lv_obj_t *ui_LabelPOSValue = NULL;lv_obj_t *ui_LabelPOSTitle = NULL;lv_obj_t *ui_ContainerBatteries = NULL;lv_obj_t *ui_LabelHouseVTitle = NULL;lv_obj_t *ui_LabelHouseVValue = NULL;lv_obj_t *ui_LabelStartVValue = NULL;lv_obj_t *ui_LabelStartVTitle = NULL;lv_obj_t *ui_LabelHouseSOCTitle = NULL;lv_obj_t *ui_LabelHouseSOCValue = NULL;lv_obj_t *ui_LabelHouseATitle = NULL;lv_obj_t *ui_LabelHouseAValue = NULL;lv_obj_t *ui_LabelBatteries = NULL;lv_obj_t *ui_ContainerWeather = NULL;lv_obj_t *ui_LabelTemperatureTitle = NULL;lv_obj_t *ui_LabelTemperatureValue = NULL;lv_obj_t *ui_LabelHumidityValue = NULL;lv_obj_t *ui_LabelHumidityTitle = NULL;lv_obj_t *ui_LabelPressureTitle = NULL;lv_obj_t *ui_LabelPressureValue = NULL;lv_obj_t *ui_LabelWeather = NULL;lv_obj_t *ui_ContainerEngineroom = NULL;lv_obj_t *ui_LabelExhaustCTitle = NULL;lv_obj_t *ui_LabelExhaustCValue = NULL;lv_obj_t *ui_LabelFuelLValue = NULL;lv_obj_t *ui_LabelFuelLTitle = NULL;lv_obj_t *ui_LabelFreshwaterLTitle = NULL;lv_obj_t *ui_LabelFreshwaterLValue = NULL;lv_obj_t *ui_LabelEngineroom = NULL;lv_obj_t *ui_ContainerAttitude = NULL;lv_obj_t *ui_LabelBowUpTitle = NULL;lv_obj_t *ui_LabelBowUpValue = NULL;lv_obj_t *ui_LabelStbdValue = NULL;lv_obj_t *ui_LabelStbdTitle = NULL;lv_obj_t *ui_LabelBowDownTitle = NULL;lv_obj_t *ui_LabelBowDownValue = NULL;lv_obj_t *ui_LabelAttitude = NULL;lv_obj_t *ui_LabelPortTitle = NULL;lv_obj_t *ui_LabelPortValue = NULL;lv_obj_t *ui_LabelBowUpMaxValue = NULL;lv_obj_t *ui_LabelBowDownMinValue = NULL;lv_obj_t *ui_LabelPortMinValue = NULL;lv_obj_t *ui_LabelStbdMaxValue = NULL;lv_obj_t *ui_ContainerSetup = NULL;lv_obj_t *ui_LabelBrightness = NULL;lv_obj_t *ui_LabelBrightnessValue = NULL;lv_obj_t *ui_LabelSetup = NULL;lv_obj_t *ui_SliderBrightness = NULL;lv_obj_t *ui_ContainerClock = NULL;lv_obj_t *ui_LabelTimeLocal = NULL;lv_obj_t *ui_LabelDay = NULL;lv_obj_t *ui_LabelDate = NULL;lv_obj_t *ui_LabelTimeUTC = NULL;lv_obj_t *ui_LabelDateUTC = NULL;
 // event funtions
 
 // build funtions
@@ -42,6 +42,7 @@ lv_obj_set_height( ui_ContainerNavigation, 240);
 lv_obj_set_x( ui_ContainerNavigation, 0 );
 lv_obj_set_y( ui_ContainerNavigation, 5 );
 lv_obj_set_align( ui_ContainerNavigation, LV_ALIGN_CENTER );
+lv_obj_add_flag( ui_ContainerNavigation, LV_OBJ_FLAG_HIDDEN );   /// Flags
 lv_obj_remove_flag( ui_ContainerNavigation, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_SCROLLABLE );    /// Flags
 
 ui_LabelCOGTitle = lv_label_create(ui_ContainerNavigation);
@@ -509,6 +510,57 @@ lv_obj_set_style_bg_opa(ui_SliderBrightness, 255, LV_PART_KNOB| LV_STATE_DEFAULT
 
 //Compensating for LVGL9.1 draw crash with bar/slider max value when top-padding is nonzero and right-padding is 0
 if (lv_obj_get_style_pad_top(ui_SliderBrightness,LV_PART_MAIN) > 0) lv_obj_set_style_pad_right( ui_SliderBrightness, lv_obj_get_style_pad_right(ui_SliderBrightness,LV_PART_MAIN) + 1, LV_PART_MAIN );
+ui_ContainerClock = lv_obj_create(ui_ScreenMain);
+lv_obj_remove_style_all(ui_ContainerClock);
+lv_obj_set_width( ui_ContainerClock, 210);
+lv_obj_set_height( ui_ContainerClock, 240);
+lv_obj_set_x( ui_ContainerClock, 0 );
+lv_obj_set_y( ui_ContainerClock, 5 );
+lv_obj_set_align( ui_ContainerClock, LV_ALIGN_CENTER );
+lv_obj_remove_flag( ui_ContainerClock, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_SCROLLABLE );    /// Flags
+
+ui_LabelTimeLocal = lv_label_create(ui_ContainerClock);
+lv_obj_set_width( ui_LabelTimeLocal, LV_SIZE_CONTENT);  /// 1
+lv_obj_set_height( ui_LabelTimeLocal, LV_SIZE_CONTENT);   /// 1
+lv_obj_set_align( ui_LabelTimeLocal, LV_ALIGN_CENTER );
+lv_label_set_text(ui_LabelTimeLocal,"13:13.13");
+lv_obj_set_style_text_font(ui_LabelTimeLocal, &ui_font_FontLabel32, LV_PART_MAIN| LV_STATE_DEFAULT);
+
+ui_LabelDay = lv_label_create(ui_ContainerClock);
+lv_obj_set_width( ui_LabelDay, LV_SIZE_CONTENT);  /// 1
+lv_obj_set_height( ui_LabelDay, LV_SIZE_CONTENT);   /// 1
+lv_obj_set_x( ui_LabelDay, 0 );
+lv_obj_set_y( ui_LabelDay, -50 );
+lv_obj_set_align( ui_LabelDay, LV_ALIGN_CENTER );
+lv_label_set_text(ui_LabelDay,"WED");
+lv_obj_set_style_text_font(ui_LabelDay, &ui_font_FontLabel14, LV_PART_MAIN| LV_STATE_DEFAULT);
+
+ui_LabelDate = lv_label_create(ui_ContainerClock);
+lv_obj_set_width( ui_LabelDate, LV_SIZE_CONTENT);  /// 1
+lv_obj_set_height( ui_LabelDate, LV_SIZE_CONTENT);   /// 1
+lv_obj_set_x( ui_LabelDate, 0 );
+lv_obj_set_y( ui_LabelDate, -75 );
+lv_obj_set_align( ui_LabelDate, LV_ALIGN_CENTER );
+lv_label_set_text(ui_LabelDate,"20.09.2026");
+lv_obj_set_style_text_font(ui_LabelDate, &ui_font_FontLabel14, LV_PART_MAIN| LV_STATE_DEFAULT);
+
+ui_LabelTimeUTC = lv_label_create(ui_ContainerClock);
+lv_obj_set_width( ui_LabelTimeUTC, LV_SIZE_CONTENT);  /// 1
+lv_obj_set_height( ui_LabelTimeUTC, LV_SIZE_CONTENT);   /// 1
+lv_obj_set_x( ui_LabelTimeUTC, 0 );
+lv_obj_set_y( ui_LabelTimeUTC, 50 );
+lv_obj_set_align( ui_LabelTimeUTC, LV_ALIGN_CENTER );
+lv_label_set_text(ui_LabelTimeUTC,"10:13.13");
+lv_obj_set_style_text_font(ui_LabelTimeUTC, &ui_font_FontLabel14, LV_PART_MAIN| LV_STATE_DEFAULT);
+
+ui_LabelDateUTC = lv_label_create(ui_ContainerClock);
+lv_obj_set_width( ui_LabelDateUTC, LV_SIZE_CONTENT);  /// 1
+lv_obj_set_height( ui_LabelDateUTC, LV_SIZE_CONTENT);   /// 1
+lv_obj_set_x( ui_LabelDateUTC, 0 );
+lv_obj_set_y( ui_LabelDateUTC, 75 );
+lv_obj_set_align( ui_LabelDateUTC, LV_ALIGN_CENTER );
+lv_label_set_text(ui_LabelDateUTC,"PREV.");
+lv_obj_set_style_text_font(ui_LabelDateUTC, &ui_font_FontLabel14, LV_PART_MAIN| LV_STATE_DEFAULT);
 
 }
 
@@ -575,5 +627,11 @@ ui_LabelBrightness= NULL;
 ui_LabelBrightnessValue= NULL;
 ui_LabelSetup= NULL;
 ui_SliderBrightness= NULL;
+ui_ContainerClock= NULL;
+ui_LabelTimeLocal= NULL;
+ui_LabelDay= NULL;
+ui_LabelDate= NULL;
+ui_LabelTimeUTC= NULL;
+ui_LabelDateUTC= NULL;
 
 }
