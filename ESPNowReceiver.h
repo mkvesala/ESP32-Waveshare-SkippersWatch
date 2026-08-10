@@ -44,6 +44,8 @@ public:
     HALMETWaterDelta getWaterData();
     bool hasNewDepthData() const;
     DepthDelta getDepthData();
+    bool hasNewDatetimeData() const;
+    DateTimeDelta getDatetimeData();
 
     // Per-source last-receive timestamps (millis). 0 = never received.
     // Authoritative freshness — lets the UI (and PowerManager) age out a value even
@@ -56,6 +58,7 @@ public:
     uint32_t lastTankRxMillis() const;
     uint32_t lastWaterRxMillis() const;
     uint32_t lastDepthRxMillis() const;
+    uint32_t lastDatetimeRxMillis() const;
 
     float getPacketsPerSecond() const { return _packets_per_second; }
 
@@ -117,6 +120,11 @@ private:
     inline static DepthDelta s_latest_depth = {};
     inline static volatile bool     s_has_new_depth = false;
     inline static volatile uint32_t  s_last_depth_millis = 0;
+
+    // Static variables for GNSS UTC date/time handling (drives the system clock)
+    inline static DateTimeDelta s_latest_datetime = {};
+    inline static volatile bool     s_has_new_datetime = false;
+    inline static volatile uint32_t  s_last_datetime_millis = 0;
 
     // Lifetime min/max pitch and roll — updated in onDataRecv() for every packet
     inline static int16_t s_min_pitch_x10 = MINMAX_SENTINEL;

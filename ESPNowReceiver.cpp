@@ -204,6 +204,18 @@ void ESPNowReceiver::onDataRecv(const esp_now_recv_info_t* recv_info, const uint
             break;
         }
 
+        case ESPNowMsgType::DATETIME_DELTA: {
+            if (hdr.payload_len != sizeof(DateTimeDelta)) return;
+            DateTimeDelta dt;
+            memcpy(&dt, payload, sizeof(DateTimeDelta));
+            portENTER_CRITICAL(&s_spinlock);
+            s_latest_datetime  = dt;
+            s_has_new_datetime = true;
+            s_last_datetime_millis = millis();
+            portEXIT_CRITICAL(&s_spinlock);
+            break;
+        }
+
         default:
             // Unknown msg_type — ignore
             break;
@@ -343,6 +355,25 @@ DepthDelta ESPNowReceiver::getDepthData() {
     return data;
 }
 
+// Returns true if new GNSS datetime packet available, otherwise false
+bool ESPNowReceiver::hasNewDatetimeData() const {
+    bool result;
+    portENTER_CRITICAL(&s_spinlock);
+    result = s_has_new_datetime;
+    portEXIT_CRITICAL(&s_spinlock);
+    return result;
+}
+
+// Returns the latest GNSS datetime packet received via ESP-NOW
+DateTimeDelta ESPNowReceiver::getDatetimeData() {
+    DateTimeDelta data;
+    portENTER_CRITICAL(&s_spinlock);
+    data = s_latest_datetime;
+    s_has_new_datetime = false;
+    portEXIT_CRITICAL(&s_spinlock);
+    return data;
+}
+
 // Per-source last-receive timestamps (millis, 0 = never). Read under spinlock.
 uint32_t ESPNowReceiver::lastHeadingRxMillis() const {
     uint32_t v; portENTER_CRITICAL(&s_spinlock); v = s_last_rx_millis;      portEXIT_CRITICAL(&s_spinlock); return v;
@@ -367,6 +398,9 @@ uint32_t ESPNowReceiver::lastWaterRxMillis() const {
 }
 uint32_t ESPNowReceiver::lastDepthRxMillis() const {
     uint32_t v; portENTER_CRITICAL(&s_spinlock); v = s_last_depth_millis;   portEXIT_CRITICAL(&s_spinlock); return v;
+}
+uint32_t ESPNowReceiver::lastDatetimeRxMillis() const {
+    uint32_t v; portENTER_CRITICAL(&s_spinlock); v = s_last_datetime_millis; portEXIT_CRITICAL(&s_spinlock); return v;
 }
 
 // Lifetime min/max pitch/roll getters — tracked across all screens since boot

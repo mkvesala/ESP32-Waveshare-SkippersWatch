@@ -1,5 +1,7 @@
 #include "CrowPanelApplication.h"
 #include <esp_heap_caps.h>
+#include <time.h>
+#include <sys/time.h>
 
 // File-scope display state — shared with the static LVGL flush callback and the
 // tearing-effect ISR (both run outside the class instance). Mirrors the Elecrow
@@ -56,6 +58,12 @@ void CrowPanelApplication::begin() {
     // writes below actually take effect (otherwise the panel wakes to a black screen).
     _power.releaseHolds();
 
+    // Timezone for the Clock page: Finland (EET=UTC+2, EEST=UTC+3, DST last-Sun-Mar
+    // 03:00 → last-Sun-Oct 04:00). Set once so localtime_r renders local time with DST;
+    // the system clock itself is UTC, disciplined by GNSS DATETIME_DELTA (handleTimeSync).
+    setenv("TZ", "EET-2EEST,M3.5.0/3,M10.5.0/4", 1);
+    tzset();
+
     this->initPowerRails();
     this->initBacklight();
     this->initDisplay();
@@ -70,6 +78,7 @@ void CrowPanelApplication::begin() {
     _weatherUI.begin();
     _engineUI.begin();
     _attitudeUI.begin();
+    _clockUI.begin();
     _setupUI.begin();
 
     // Register the carousel of container-backed pages, in order
@@ -78,6 +87,7 @@ void CrowPanelApplication::begin() {
     _screenMgr.addScreen(&_weatherUI);
     _screenMgr.addScreen(&_engineUI);
     _screenMgr.addScreen(&_attitudeUI);
+    _screenMgr.addScreen(&_clockUI);
     _screenMgr.addScreen(&_setupUI);
     // Restore the last-active page on a button-wake; cold boot / any other cause → 0 (Nav).
     // The actual _screenMgr.begin(start_page) is deferred to after the dark listen window
@@ -99,6 +109,10 @@ void CrowPanelApplication::begin() {
     // render happens here — the panel stays black until lv_refr_now() below.
     delay(ESPNOW_WAKE_LISTEN_MS);
 
+    // Apply any GNSS datetime caught during the listen window BEFORE the first lit
+    // frame, so the Clock page (if restored) shows the synced time immediately.
+    this->handleTimeSync();
+
     // Reveal the last-active page (onEnter() sets "---"), then immediately
     // update() so any packet caught during the window repaints real values
     // BEFORE the first lit frame — the placeholder is only seen if nothing
@@ -119,6 +133,7 @@ void CrowPanelApplication::loop() {
     this->handleLvglTick(now);
     this->handleKnobRotation();
     this->handleKnobButtonPress();
+    this->handleTimeSync();
     this->handleUIUpdate(now);
     _power.loop(now);   // may enter deep sleep after the display-on timeout (no return)
 }
@@ -217,6 +232,17 @@ void CrowPanelApplication::handleKnobButtonPress() {
     _power.notifyActivity();   // button press keeps the display awake
     IScreenUI* screen = _screenMgr.getCurrentScreen();
     if (screen) screen->onButtonPress();
+}
+
+// Discipline the system clock from GNSS: apply a freshly received UTC datetime.
+// Runs regardless of the active page so the Clock is correct whenever it is shown.
+// Cheap when idle (one spinlock-guarded flag read); settimeofday only on a new packet.
+void CrowPanelApplication::handleTimeSync() {
+    if (!_receiver.hasNewDatetimeData()) return;
+    DateTimeDelta dt = _receiver.getDatetimeData();
+    if (!dt.time_valid) return;
+    struct timeval tv = { (time_t)dt.unix_utc, 0 };
+    settimeofday(&tv, nullptr);
 }
 
 // Periodic update of the active page only (~17 Hz)

@@ -10,6 +10,7 @@
 #include "WeatherUI.h"
 #include "EngineUI.h"
 #include "AttitudeUI.h"
+#include "ClockUI.h"
 #include "SetupUI.h"
 #include "RotaryEncoder.h"
 #include "ScreenManager.h"
@@ -21,7 +22,7 @@
 // - Init: app.begin();  Loop: app.loop()
 // - Owns: Arduino_GFX SPI display stack, ESPNowReceiver, the six page adapters,
 //         RotaryEncoder, ScreenManager
-// - Page carousel: NAVIGATION(0) → BATTERIES(1) → WEATHER(2) → ENGINE(3) → ATTITUDE(4) → SETUP(5)
+// - Page carousel: NAVIGATION(0) → BATTERIES(1) → WEATHER(2) → ENGINE(3) → ATTITUDE(4) → CLOCK(5) → SETUP(6)
 // - Pins/parts confirmed from Elecrow example — see hardware_notes.md
 // - M0 baseline: runs flat-out (no sleep). PowerManager (Model B) is layered on in M1.
 
@@ -88,6 +89,7 @@ private:
     WeatherUI      _weatherUI;
     EngineUI       _engineUI;
     AttitudeUI     _attitudeUI;
+    ClockUI        _clockUI;
     SetupUI        _setupUI;
     RotaryEncoder  _encoder;
     ScreenManager  _screenMgr;
@@ -101,5 +103,6 @@ private:
     void handleKnobRotation();
     void handleKnobButtonPress();
     void handleUIUpdate(const uint32_t now);
+    void handleTimeSync();
 
 };
