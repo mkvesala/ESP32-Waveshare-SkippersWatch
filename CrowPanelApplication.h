@@ -13,6 +13,7 @@
 #include "ClockUI.h"
 #include "SetupUI.h"
 #include "RotaryEncoder.h"
+#include "TouchInput.h"
 #include "ScreenManager.h"
 #include "PowerManager.h"
 
@@ -20,8 +21,12 @@
 //
 // - "The app": orchestrates the CrowPanel 2.01" Watch (GC9309 SPI, 240x296)
 // - Init: app.begin();  Loop: app.loop()
-// - Owns: Arduino_GFX SPI display stack, ESPNowReceiver, the six page adapters,
-//         RotaryEncoder, ScreenManager
+// - Owns: Arduino_GFX SPI display stack, ESPNowReceiver, the seven page adapters,
+//         RotaryEncoder, TouchInput, ScreenManager
+// - Input: knob AND touch feed the same IScreenUI seam (handleKnobRotation/
+//   handleKnobButtonPress/handleTouch). Touch is additive; the encoder can later be
+//   deleted (its rotation is fully covered by swipe/tap/drag) leaving only its
+//   push-button as the deep-sleep wake source — see PowerManager WAKE_BUTTON_PIN.
 // - Page carousel: NAVIGATION(0) → BATTERIES(1) → WEATHER(2) → ENGINE(3) → ATTITUDE(4) → CLOCK(5) → SETUP(6)
 // - Pins/parts confirmed from Elecrow example — see hardware_notes.md
 // - M0 baseline: runs flat-out (no sleep). PowerManager (Model B) is layered on in M1.
@@ -92,8 +97,13 @@ private:
     ClockUI        _clockUI;
     SetupUI        _setupUI;
     RotaryEncoder  _encoder;
+    TouchInput     _touch;
     ScreenManager  _screenMgr;
     PowerManager   _power;
+
+    // True while a touch claimed at touch-down is being handled as a page drag
+    // (e.g. the Setup brightness slider) rather than a swipe/tap.
+    bool _touch_dragging = false;
 
     void initPowerRails();
     void initBacklight();
@@ -102,6 +112,7 @@ private:
     void handleLvglTick(const uint32_t now);
     void handleKnobRotation();
     void handleKnobButtonPress();
+    void handleTouch(const uint32_t now);
     void handleUIUpdate(const uint32_t now);
     void handleTimeSync();
 

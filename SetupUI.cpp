@@ -74,6 +74,49 @@ void SetupUI::onLeave() {
     }
 }
 
+// Claim a touch-down that lands on the brightness slider (with a little vertical
+// padding so it is finger-friendly), so the app routes it here as a drag instead of
+// treating it as a swipe. Coordinates are panel pixels; the slider's on-screen box
+// comes from LVGL so this tracks the SquareLine layout automatically.
+bool SetupUI::interceptsTouchAt(int16_t x, int16_t y) const {
+    if (!_initialized) return false;
+    lv_area_t a;
+    lv_obj_get_coords(ui_SliderBrightness, &a);
+    return x >= a.x1 && x <= a.x2 &&
+           y >= (a.y1 - TOUCH_SLIDER_PAD_PX) && y <= (a.y2 + TOUCH_SLIDER_PAD_PX);
+}
+
+// Live slider drag: map the touch x across the slider's width to a percentage and
+// apply immediately (LEDC + label), reusing the same helpers as the knob path. The
+// amber accent shows while dragging so the interaction reads the same as the knob's
+// ADJUSTING mode — without entering it (touch is absolute, no capture needed).
+void SetupUI::onTouchDrag(int16_t x, int16_t y) {
+    if (!_initialized) return;
+    lv_area_t a;
+    lv_obj_get_coords(ui_SliderBrightness, &a);
+    const int32_t span = (int32_t)a.x2 - (int32_t)a.x1;
+    if (span <= 0) return;
+    int32_t clamped_x = x;
+    if (clamped_x < a.x1) clamped_x = a.x1;
+    if (clamped_x > a.x2) clamped_x = a.x2;
+    // Slider uses LVGL's default 0..100 range, which maps 1:1 to brightness percent.
+    int32_t pct = ((clamped_x - a.x1) * 100 + span / 2) / span;
+    if (pct < MIN_BRIGHTNESS_PERCENT) pct = MIN_BRIGHTNESS_PERCENT;
+    if (pct > MAX_BRIGHTNESS_PERCENT) pct = MAX_BRIGHTNESS_PERCENT;
+    _brightness_percent = (int8_t)pct;
+    this->setAdjustVisual(true);   // visual feedback during the drag (state unchanged)
+    this->applyBrightness();
+    this->updateUI();
+}
+
+// Drag released: persist once (off the hot path, like the knob autosave) and restore
+// the slider visual to match the encoder state so the two input paths can't disagree.
+void SetupUI::onTouchEnd() {
+    if (!_initialized) return;
+    this->saveBrightness();
+    this->setAdjustVisual(_state == SetupState::ADJUSTING);
+}
+
 // === P R I V A T E ===
 
 // Only place _state is written — keeps the adjust-mode visual in lockstep with state

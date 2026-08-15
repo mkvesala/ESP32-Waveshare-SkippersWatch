@@ -102,6 +102,7 @@ void CrowPanelApplication::begin() {
     // backlight step are separated in time, so no single instant sees them
     // stacked (better peak separation than the old radio-last order).
     _encoder.begin();
+    _touch.begin();                   // capacitive touch (shared I2C) — polled while awake
     _receiver.begin(ESP_NOW_CHANNEL); // radio up first, panel still dark
 
     // Dark ESP-NOW listen window: delay() yields to FreeRTOS so the receiver's
@@ -133,6 +134,7 @@ void CrowPanelApplication::loop() {
     this->handleLvglTick(now);
     this->handleKnobRotation();
     this->handleKnobButtonPress();
+    this->handleTouch(now);
     this->handleTimeSync();
     this->handleUIUpdate(now);
     _power.loop(now);   // may enter deep sleep after the display-on timeout (no return)
@@ -232,6 +234,64 @@ void CrowPanelApplication::handleKnobButtonPress() {
     _power.notifyActivity();   // button press keeps the display awake
     IScreenUI* screen = _screenMgr.getCurrentScreen();
     if (screen) screen->onButtonPress();
+}
+
+// Touch: a second input device feeding the SAME IScreenUI seam as the knob, plus an
+// absolute-position drag the knob can't do (the Setup brightness slider). On touch-
+// down the active page may CLAIM the touch as a drag (interceptsTouchAt); if so we
+// stream onTouchDrag/onTouchEnd to it. Otherwise the release is classified into a
+// discrete gesture: TAP → onButtonPress (tap == button press), vertical swipe →
+// page switch (up = next, mirroring knob CW), persisted like the knob path.
+void CrowPanelApplication::handleTouch(const uint32_t now) {
+    _touch.poll(now);
+
+    // Touch-down: decide whether the active page wants this touch as a drag.
+    if (_touch.justPressed()) {
+        _power.notifyActivity();
+        int16_t x, y;
+        _touch.point(x, y);
+        IScreenUI* screen = _screenMgr.getCurrentScreen();
+        _touch_dragging = (screen && screen->interceptsTouchAt(x, y));
+        if (_touch_dragging) screen->onTouchDrag(x, y);
+        return;
+    }
+
+    // Stream a claimed drag while the finger is held.
+    if (_touch_dragging && _touch.isDown()) {
+        _power.notifyActivity();
+        int16_t x, y;
+        _touch.point(x, y);
+        IScreenUI* screen = _screenMgr.getCurrentScreen();
+        if (screen) screen->onTouchDrag(x, y);
+        return;
+    }
+
+    // Release: finish a drag, or act on the classified gesture.
+    if (_touch.justReleased()) {
+        _power.notifyActivity();
+        IScreenUI* screen = _screenMgr.getCurrentScreen();
+        if (_touch_dragging) {
+            if (screen) screen->onTouchEnd();
+            _touch_dragging = false;
+            _touch.getGesture();   // discard any classification for a claimed drag
+            return;
+        }
+        switch (_touch.getGesture()) {
+            case TouchGesture::TAP:
+                if (screen) screen->onButtonPress();
+                break;
+            case TouchGesture::SWIPE_UP:
+                _screenMgr.switchNext();
+                s_last_page_index = _screenMgr.currentIndex();
+                break;
+            case TouchGesture::SWIPE_DOWN:
+                _screenMgr.switchPrevious();
+                s_last_page_index = _screenMgr.currentIndex();
+                break;
+            default:
+                break;   // LONG_PRESS reserved; NONE ignored
+        }
+    }
 }
 
 // Discipline the system clock from GNSS: apply a freshly received UTC datetime.

@@ -34,6 +34,14 @@ public:
     bool interceptsRotation() const override;
     void onLeave() override;
 
+    // Touch: drag the brightness slider directly. Touch is absolute, so this needs
+    // no ADJUSTING mode — it bypasses the encoder's state machine (which stays intact
+    // for the knob). interceptsTouchAt() claims a touch-down that lands on the slider;
+    // the app then streams onTouchDrag() and finally onTouchEnd() (which persists).
+    bool interceptsTouchAt(int16_t x, int16_t y) const override;
+    void onTouchDrag(int16_t x, int16_t y) override;
+    void onTouchEnd() override;
+
 private:
 
     enum class SetupState { IDLE, ADJUSTING };
@@ -62,6 +70,10 @@ private:
     //  - ADJUST_ACCENT: ADJUSTING, so it is unmistakable the knob now edits brightness
     static constexpr uint32_t SLIDER_BASE   = 0xCCCCCC;  // almost white grey (resting)
     static constexpr uint32_t ADJUST_ACCENT = 0xFF9800;  // amber (adjusting)
+
+    // Vertical finger padding around the slider's box for touch hit-testing (the
+    // slider is only ~20 px tall — this makes it comfortably tappable/draggable).
+    static constexpr int16_t TOUCH_SLIDER_PAD_PX = 18;
 
     static constexpr uint32_t AUTOSAVE_TIMEOUT_MS = 3000;
     static constexpr int8_t BRIGHTNESS_STEP = 2;
