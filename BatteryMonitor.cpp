@@ -22,12 +22,25 @@ void BatteryMonitor::begin() {
     // per-chip eFuse calibration, so no manual reference math is needed.
     analogSetPinAttenuation(BATTERY_ADC_PIN, ADC_11db);
 
-    // Seed immediately so the bar shows a real value within the short awake window on
-    // every wake — no 75 % dummy flash, no ramp-up from zero.
-    _ema_mv = (float)sampleCellMillivolts();
-    _seeded = true;
-    _soc = estimateSoc((uint16_t)(_ema_mv + 0.5f));
+    // USB-present (GPIO17, HIGH) + charge-status (GPIO15) — match Lesson11 (plain INPUT,
+    // no assumed pull). GPIO15 is only logged; its polarity is undocumented.
+    pinMode(USB_DETECT_PIN, INPUT);
+    pinMode(CHARGE_STATUS_PIN, INPUT);
+
     _last_sample_ms = millis();
+
+    // On USB power the cell voltage is charger-elevated and meaningless for SoC, so
+    // show the charging visual straight away and skip seeding (unplug re-seeds fresh).
+    if (usbPresent()) {
+        _charging = true;
+        _seeded = false;
+    } else {
+        // Seed immediately so the bar shows a real value within the short awake window
+        // on every wake — no 75 % dummy flash, no ramp-up from zero.
+        _ema_mv = (float)sampleCellMillivolts();
+        _seeded = true;
+        _soc = estimateSoc((uint16_t)(_ema_mv + 0.5f));
+    }
     this->render();
 }
 
@@ -35,11 +48,24 @@ void BatteryMonitor::update(uint32_t now) {
     if (now - _last_sample_ms < SAMPLE_INTERVAL_MS) return;
     _last_sample_ms = now;
 
+    // On external power: force the charging visual (blue/100), don't trust the elevated
+    // cell voltage for SoC. Keep _seeded=false so the EMA re-seeds from a fresh resting
+    // sample on unplug instead of lingering at the charge voltage.
+    if (usbPresent()) {
+        _charging = true;
+        _seeded = false;
+        Serial.printf("[battery] USB present (charge-pin=%d) -> charging\n",
+                      digitalRead(CHARGE_STATUS_PIN));
+        this->render();
+        return;
+    }
+    _charging = false;
+
     const uint16_t cell_mv = sampleCellMillivolts();
     if (_seeded) {
         _ema_mv += EMA_ALPHA * ((float)cell_mv - _ema_mv);
     } else {
-        _ema_mv = (float)cell_mv;   // defensive: begin() normally seeds first
+        _ema_mv = (float)cell_mv;   // fresh seed after unplug (or if begin() was on USB)
         _seeded = true;
     }
 
@@ -79,19 +105,24 @@ uint8_t BatteryMonitor::estimateSoc(uint16_t cell_mv) const {
     return 0;  // unreachable (guarded above)
 }
 
-// Push the current SoC to the bar, and recolor the indicator only when the charge
-// bucket changes (green > 40 %, amber > 20 %, red <= 20 %) — avoids redundant style
-// invalidations every sample.
+// Push the current state to the bar, and recolor the indicator only when the bucket
+// changes — avoids redundant style invalidations every sample. Buckets:
+//   3 = charging (blue, forced 100 %), 2 = green > 40 %, 1 = amber > 20 %, 0 = red.
 void BatteryMonitor::render() {
     if (ui_BarBatteryIndicator == nullptr) return;
 
-    lv_bar_set_value(ui_BarBatteryIndicator, _soc, LV_ANIM_OFF);
+    const int8_t bucket = _charging ? 3
+                        : (_soc > GREEN_ABOVE) ? 2
+                        : (_soc > AMBER_ABOVE) ? 1
+                                               : 0;
+    const int32_t value = _charging ? 100 : _soc;
+    lv_bar_set_value(ui_BarBatteryIndicator, value, LV_ANIM_OFF);
 
-    const int8_t bucket = (_soc > GREEN_ABOVE) ? 2 : (_soc > AMBER_ABOVE) ? 1 : 0;
     if (bucket == _last_bucket) return;
     _last_bucket = bucket;
 
-    const uint32_t color = (bucket == 2) ? COLOR_GREEN
+    const uint32_t color = (bucket == 3) ? COLOR_BLUE
+                         : (bucket == 2) ? COLOR_GREEN
                          : (bucket == 1) ? COLOR_AMBER
                                          : COLOR_RED;
     lv_obj_set_style_bg_color(ui_BarBatteryIndicator, lv_color_hex(color),
