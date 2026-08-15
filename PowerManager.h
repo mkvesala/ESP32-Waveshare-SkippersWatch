@@ -66,11 +66,11 @@ private:
     PowerState _state = PowerState::WAKING;
     uint32_t _last_activity = 0;
 
-    // Deep-sleep wake source — RTC-capable, zero standing draw (a mechanical switch).
-    // Currently the encoder push-button (GPIO18); this is the SINGLE repoint if the
-    // encoder is ever removed: change it to a dedicated wake button, or move to a
-    // touch-wake path (M2, once the sleep-floor measurement + schematic confirm the
-    // AXS5106L can wake without wrecking the Model B floor). See hardware_notes.md.
+    // Encoder push-button — RTC-capable, zero standing draw (a mechanical switch),
+    // the deep-sleep wake source (ext0, active-low). Deep-sleep touch-wake was tried
+    // and found infeasible: the AXS5106L INT rests low and deep-sleep ext1 is
+    // single-mode level-triggered, so it can't be mixed with the active-low button
+    // (it would need a light-sleep conversion — see [[build-status]]). Parked.
     static constexpr uint8_t WAKE_BUTTON_PIN = 18;
 
     // Backlight soft ramp-down: steps × delay spreads the load-shed (no hard step)

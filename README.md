@@ -1,0 +1,400 @@
+<!-- TODO(images): add project logo here, e.g. ![Logo](docs/projectlogo.svg) -->
+
+# ESP32 CrowPanel SkippersWatch
+
+[![Platform: ESP32-S3](https://img.shields.io/badge/Platform-ESP32--S3-blue)](https://www.espressif.com/en/sdks/esp-arduino)
+[![Display: CrowPanel 2.01" Watch](https://img.shields.io/badge/Display-CrowPanel%202.01%22%20Watch-lightgrey)](https://github.com/Elecrow-RD/CrowPanel_2.01_inch-HMI_ESP32_Watch_Display_240_296)
+[![Protocol: ESP-NOW](https://img.shields.io/badge/Protocol-ESP--NOW-orange)](https://www.espressif.com/en/solutions/low-power-solutions/esp-now)
+[![Power: Deep-sleep (Model B)](https://img.shields.io/badge/Power-Deep--sleep-brightgreen)](#power-management)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+[![UI: LVGL9](https://img.shields.io/badge/UI-LVGL9-black)](https://lvgl.io)
+
+A wrist-worn marine instrument for the [Elecrow CrowPanel 2.01" HMI ESP32 Watch Display](https://github.com/Elecrow-RD/CrowPanel_2.01_inch-HMI_ESP32_Watch_Display_240_296) (ESP32-S3, 240×296 IPS SPI touchscreen, rotary knob, ~250 mAh LiPo). It is the battery-powered sibling of my always-on [ESP32-Crowpanel-compass](https://github.com/mkvesala/ESP32-Crowpanel-compass) helm display — same receive-only ESP-NOW architecture, but rationed to run for days on a coin-cell-class battery and charged nightly.
+
+Receives via ESP-NOW broadcast:
+- GNSS position, speed over ground (SOG), course over ground (COG) and **UTC date/time** from [UBLOX-ESP32-SignalK-gateway](https://github.com/mkvesala/UBLOX-ESP32-SignalK-gateway)
+- Water depth (below surface / transducer / keel), relayed from SignalK by [SignalK-ESP-NOW-gateway](https://github.com/mkvesala/SignalK-ESP-NOW-gateway)
+- Pitch and roll from [CMPS14-ESP32-SignalK-gateway](https://github.com/mkvesala/CMPS14-ESP32-SignalK-gateway)
+- House and starter battery from [VEDirect-ESP32-SignalK-gateway](https://github.com/mkvesala/VEDirect-ESP32-SignalK-gateway)
+- Temperature, air pressure and relative humidity from [BME280-ESP32-SignalK-gateway](https://github.com/mkvesala/BME280-ESP32-SignalK-gateway)
+- Engine exhaust temperature, fuel tank and fresh-water tank levels from [HALMET-ESP32-SignalK-gateway](https://github.com/mkvesala/HALMET-ESP32-SignalK-gateway)
+
+Values are shown on an LVGL UI. Interaction is by **capacitive touch** (swipe / tap / slider drag) and, in parallel, by the **rotary knob** (rotate / press). The knob is retained mainly as the deep-sleep wake button; the touch layer is designed so the encoder can be removed later with no UI rewrite (see [Input](#input)).
+
+Screens (carousel):
+- **Navigation** — POS (lat/lon), COG, SOG, depth below surface (DPT)
+- **Batteries** — house voltage / current / SoC and starter voltage
+- **Weather** — temperature, air pressure, relative humidity
+- **Engine** — exhaust temperature, fuel and fresh-water tank litres
+- **Attitude** — artificial horizon with pitch and roll
+- **Clock** — local date + weekday, local and UTC time (GNSS-disciplined, no RTC chip, no NTP)
+- **Setup** — backlight brightness with NVS persistence
+
+Developed and tested on:
+- [Elecrow CrowPanel 2.01" HMI ESP32 Watch Display 240×296](https://github.com/Elecrow-RD/CrowPanel_2.01_inch-HMI_ESP32_Watch_Display_240_296)
+- [ESP32 board package](https://github.com/espressif/arduino-esp32) (3.x — requires the `ledcAttach`/`ledcWrite` API)
+- [Arduino IDE](https://www.arduino.cc/en/software/) (2.3.x)
+- [LVGL](https://lvgl.io/) (9.x)
+- [Arduino GFX Library](https://github.com/moononournation/Arduino_GFX) (1.6.7, patched with Elecrow's `Arduino_GC9309` driver — see [Software](#software))
+- [SquareLine Studio](https://squareline.io/) for UI design
+
+Integrated via ESP-NOW with:
+- [UBLOX-ESP32-SignalK-gateway](https://github.com/mkvesala/UBLOX-ESP32-SignalK-gateway) — GNSS + UTC date/time sender
+- [SignalK-ESP-NOW-gateway](https://github.com/mkvesala/SignalK-ESP-NOW-gateway) — depth relay
+- [CMPS14-ESP32-SignalK-gateway](https://github.com/mkvesala/CMPS14-ESP32-SignalK-gateway) — attitude sender
+- [VEDirect-ESP32-SignalK-gateway](https://github.com/mkvesala/VEDirect-ESP32-SignalK-gateway) — battery sender
+- [BME280-ESP32-SignalK-gateway](https://github.com/mkvesala/BME280-ESP32-SignalK-gateway) — weather sender
+- [HALMET-ESP32-SignalK-gateway](https://github.com/mkvesala/HALMET-ESP32-SignalK-gateway) — engine, fuel and fresh-water sender
+
+## Purpose of the project
+
+This is one of my individual digital boat projects. Use at your own risk. Not for safety-critical navigation.
+
+1. I wanted a glanceable, wrist-worn repeater of the boat's key instruments, independent of WiFi and SignalK, that survives days on a tiny battery
+2. I wanted to solve the core tension of a battery ESP-NOW device: **you cannot deep-sleep and listen at the same time** — the radio is off in deep sleep, so no packet can arrive
+3. I continued learning ESP32 C++ patterns, LVGL and low-power design, reusing the architecture of the companion compass project
+
+## Project status
+
+Pre-release. Feature-complete for the season and running on hardware: all seven screens live, GNSS-disciplined clock live end-to-end, touch UI live, and the power budget measured and closed (see [Power management](#power-management)). Not yet versioned/tagged.
+
+## Classes
+
+<!-- TODO(diagram): add class / UML diagram here, e.g. <img src="docs/full_uml_diagram.jpeg" width="480"> -->
+
+**`CrowPanelApplication`:**
+- Owns: `Arduino_ESP32SPIDMA`, `Arduino_GC9309`, `ESPNowReceiver`, `NavigationUI`, `BatteryUI`, `WeatherUI`, `EngineUI`, `AttitudeUI`, `ClockUI`, `SetupUI`, `RotaryEncoder`, `TouchInput`, `ScreenManager`, `PowerManager`
+- Responsible for: orchestrating everything within the main program, including the staggered wake sequence and GNSS time discipline
+
+**`PowerManager`:**
+- Responsible for: Model B deep-sleep power ownership — display-on timeout, peripheral gating + GPIO holds on sleep entry, ext0 button wake arming
+- Owned by: `CrowPanelApplication`
+
+**`ESPNowReceiver`:**
+- Responsible for: receiving `GnssDelta`, `DateTimeDelta`, `HeadingDelta`, `BatteryDelta`, `WeatherDelta`, `HALMETEngineDelta`, `HALMETTankDelta`, `HALMETWaterDelta` and `DepthDelta` broadcasts (receive-only), with per-source RX timestamps for freshness
+- Owned by: `CrowPanelApplication`
+
+**`RotaryEncoder`:**
+- Responsible for: reading knob rotation (Buxton quadrature decoder) and button press via FreeRTOS tasks; button (GPIO18) doubles as the deep-sleep wake source
+- Owned by: `CrowPanelApplication`
+
+**`TouchInput`:**
+- Uses: `Axs5106lTouch` (local AXS5106L driver)
+- Responsible for: polling the capacitive touch panel and recognizing gestures in software (tap / swipe up / swipe down; long-press reserved), feeding the same `IScreenUI` seam as the knob
+- Owned by: `CrowPanelApplication`
+
+**`IScreenUI`:**
+- Abstract base class for all UI adapter class implementations. Input-source-agnostic: `onButtonPress()` / `onRotation()` (knob) plus `interceptsTouchAt()` / `onTouchDrag()` / `onTouchEnd()` (touch drag)
+
+**`NavigationUI` / `BatteryUI` / `WeatherUI` / `EngineUI` / `AttitudeUI` / `ClockUI` / `SetupUI`:**
+- Realize: `IScreenUI`
+- Use: `ESPNowReceiver` (all data screens); `ClockUI` reads the ESP32 system clock; `SetupUI` uses `Preferences` (NVS)
+- Responsible for: updating the LVGL objects of their container from the relevant data source, showing placeholders until a fresh packet arrives
+- Owned by: `CrowPanelApplication`
+
+**`ScreenManager`:**
+- Depends on: `IScreenUI*`
+- Responsible for: screen carousel management (containers on one LVGL screen, toggled via `LV_OBJ_FLAG_HIDDEN`)
+- Owned by: `CrowPanelApplication`
+
+## Features
+
+Each screen is a container on a single LVGL screen. On wake, all cached values start as placeholders (`---` / `--.-`) and fill in only when a fresh ESP-NOW broadcast arrives — **stale data is never shown as if current** (see [Freshness](#freshness)).
+
+### Navigation screen
+
+<!-- TODO(images): add Navigation screen screenshot(s) here -->
+
+- **POS** — latitude / longitude, shown only with a valid GNSS fix (blank until fix)
+- **COG** — course over ground, true. `hasCog()`-gated: shown only when moving; blank at anchor (a stationary boat has a valid fix but undefined course)
+- **SOG** — speed over ground in knots
+- **DPT** — depth below surface (`below_surface_m`), the chosen single reference. Uses two-fold freshness: the ESP-NOW RX timestamp AND the depth payload's own `age_ms` (feed liveness) — either stale or NaN → `--.-`
+
+### Batteries screen
+
+<!-- TODO(images): add Batteries screen screenshot(s) here -->
+
+- House bank voltage, current (negative = charging) and state-of-charge
+- Starter battery voltage
+- Source: `BatteryDelta` from a VE.Direct-based sender
+
+### Weather screen
+
+<!-- TODO(images): add Weather screen screenshot(s) here -->
+
+- Temperature (°C), air pressure (hPa), relative humidity (%)
+- Source: `WeatherDelta` from a BME280-based sender
+
+### Engine screen
+
+<!-- TODO(images): add Engine screen screenshot(s) here -->
+
+- Exhaust temperature (°C, converted from Kelvin)
+- Fuel tank litres and fresh-water tank litres (ratio × capacity; **M/V Frida: fuel 400 L, water 100 L**)
+- Sources: `HALMETEngineDelta`, `HALMETTankDelta`, `HALMETWaterDelta`
+
+### Attitude screen
+
+<!-- TODO(images): add Attitude screen screenshot(s) here -->
+
+- Artificial horizon plus pitch and roll value labels
+- Source: `HeadingDelta` (pitch/roll) from the CMPS14 compass sender
+
+### Clock screen
+
+<!-- TODO(images): add Clock screen screenshot(s) here -->
+
+- Local date `DD.MM.YYYY`, English 3-letter weekday
+- Local and UTC time `HH:MM:SS` (24 h); a `PREV.`/`NEXT.` indicator appears under UTC when its calendar day differs from local
+- **Timekeeping is ESP32-internal POSIX time** (`time.h`), Finland timezone `EET-2EEST,M3.5.0/3,M10.5.0/4`, disciplined by GNSS UTC over ESP-NOW (`DateTimeDelta` → `settimeofday()`). Survives deep sleep for free via the RTC timer
+- Shows placeholders until synced (system year ≥ 2020) — a fabricated time is never displayed. No external RTC chip (PCF8563 deferred), no NTP (deliberately — no internet at anchor)
+
+### Setup screen
+
+<!-- TODO(images): add Setup screen screenshot(s) here -->
+
+- Backlight brightness slider (`ui_SliderBrightness`)
+- **Touch:** drag the slider directly (absolute, no mode) — applies instantly, saves to NVS on release
+- **Knob:** press to enter ADJUSTING mode (slider indicator turns amber), rotate ±2 %, 3 s idle or leaving the page saves to NVS
+- Range 2 %–100 % (2 % minimum keeps the screen from going fully dark); default 20 % (readable in daylight, low continuous draw). NVS-stored value always wins
+- Persistence: Preferences (NVS), namespace `"display"`, key `"brightness"`. PWM: GPIO13, 5 kHz, 8-bit
+
+## Input
+
+Touch and the rotary knob feed the **same** `IScreenUI` dispatch, so both drive the whole UI. Touch is additive; the encoder rotation is fully redundant and removable, leaving only the encoder's push-button as the (zero-standing-draw) wake source.
+
+| Gesture / action | Touch | Knob |
+|---|---|---|
+| Next screen | Swipe up | Rotate CW |
+| Previous screen | Swipe down | Rotate CCW |
+| Screen action (e.g. Setup enter ADJUSTING) | Tap | Button press |
+| Adjust brightness | Drag the slider (absolute) | Rotate in ADJUSTING mode (±2 %) |
+| Wake from deep sleep | — (see note) | Button press (GPIO18, ext0) |
+
+Screen carousel order:
+- **Swipe up / knob CW:** Navigation → Batteries → Weather → Engine → Attitude → Clock → Setup → Navigation
+- **Swipe down / knob CCW:** the reverse
+
+The last-active screen is stored in RTC memory and restored on a button-wake (cold boot / reset starts on Navigation).
+
+**Touch driver:** the AXS5106L is interrupt-based (`readPoint()` returns a point only on a fresh INT). `TouchInput` debounces this event stream into a stable "held" state (80 ms release grace) so swipes and slider drags don't break up. Gestures are recognized in software — no dependence on any chip gesture register.
+
+**Note on touch-wake:** waking from deep sleep by touch is *not* used — deep-sleep `ext1` is single-mode level-triggered and the AXS5106L INT rests low, so it can't be combined with the active-low button; it would work only via a light-sleep conversion (Elecrow's Lesson15 does exactly that), which isn't worth the refactor on a device that already meets its budget on the zero-draw encoder-button wake. The encoder button is the wake source.
+
+## Power management
+
+The whole architecture resolves one contradiction: **in deep sleep the radio is off, so no ESP-NOW packet can be received.** You cannot both deep-sleep and listen.
+
+**Model B (deep-sleep, wake-to-fetch).** Deep sleep is the resting default. A button press wakes the watch; only *then* does it bring the radio up, catch a broadcast, render, and — after a short display-on timeout (`DISPLAY_TIMEOUT_MS = 8 s`) of no interaction — soft-ramp the backlight down and return to deep sleep. On sleep entry the LCD rail (GPIO40), backlight (GPIO13) and shared peripheral rail (GPIO47) are driven off and GPIO-held through sleep; the encoder button (GPIO18, RTC-capable) is armed as the ext0 wake source.
+
+**Staggered wake (spike discipline).** A wake from deep sleep is the worst-timed current spike — several loads want to turn on at once on a small, possibly-aged cell. The bring-up spreads the inrush in time: release GPIO holds → power rails + panel init (panel stays dark) → radio up first into the dark, low-load moment → ~200 ms dark ESP-NOW listen window so the first *lit* frame shows real data, not a placeholder flash → render → **then** the backlight ramps up (PWM soft-start, never a hard step). The brownout detector is kept enabled — a trip means the sequence is too aggressive, not a reason to disable protection.
+
+### Freshness
+
+A marine instrument that silently shows a minutes-old heading or depth is worse than one that shows nothing. On wake, all cached readings are treated as stale until a fresh broadcast lands; each source has its own RX timestamp, and depth additionally honours the payload's own `age_ms`. Placeholders (`---` / `--.-`) persist until real data arrives — the wake latency never entitles the UI to show a stale number.
+
+### Consumption measurements
+
+Measured on the actual board with the battery as the only supply (**USB unplugged** — otherwise the USB-UART bridge and charger IC, both USB-powered, contaminate the reading). A plain handheld DMM (Velleman DVM850BL) can't measure the in-series milliamps directly — its burden voltage on the mA ranges browns the board out — so two indirect methods were used:
+
+- **Deep-sleep floor — series shunt + voltmeter.** A known resistor in series on battery `+`; the board is booted with a jumper across it (so boot inrush bypasses the resistor), allowed to deep-sleep, then the jumper is removed and the voltage across the resistor is read. `I = U / R`. A 100 Ω shunt read **216 mV → 2.16 mA**.
+- **Active current — DMM 10 A jack, in series.** The 10 A range's internal shunt is ~0.01 Ω, so its burden is negligible and the board runs normally (coarse ~10 mA resolution). Measured while continuously swiping (worst-case active).
+
+| State | Current | Notes |
+|---|---|---|
+| Deep sleep (floor) | **2.16 mA** | Board-level standing draw (regulators / charger quiescent / touch + accel), ~50–200× the S3's intrinsic ~10–50 µA — the dev-board reality |
+| Active, 9 % / 20 % backlight | ~0.14–0.15 A | Baseline: radio + S3 + SPI panel + touch + continuous render |
+| Active, 50 % backlight | ~0.16–0.18 A | Backlight adds ~+25 mA |
+| Active, 75 % backlight | ~0.18–0.19 A | Backlight adds ~+40 mA |
+| Active, 95 % backlight | ~0.19–0.21 A | Backlight adds ~+55 mA |
+
+Notable: during active use the panel + radio + render **baseline (~145 mA) dominates**, not the backlight (~55 mA max adder). But active time is tiny (glances), so the daily budget is dominated by the deep-sleep floor instead.
+
+### Endurance
+
+On the physical **250 mAh** cell (the largest that fits the case without modification), with a 24 h target and nightly charging. Daily sleep energy = 2.16 mA × 24 h = 51.8 mAh/day; each ~8.5 s glance ≈ 0.34 mAh at ~145 mA active.
+
+| Glances / day | mAh / day | Endurance | vs. 24 h target |
+|---|---|---|---|
+| 0 (pure sleep) | 51.8 | ~4.8 days | 4.8× |
+| 30 | ~62 | ~4.0 days | 4.0× |
+| 60 | ~72 | ~3.5 days | 3.5× |
+| 100 | ~86 | ~2.9 days | 2.9× |
+
+Sleep is ~70–90 % of the budget; even heavy glancing barely moves it. **Conclusion: Model B alone comfortably meets the 24 h + nightly-charge requirement with 3–5× margin.** A hybrid light-sleep "watch mode" (Model C) was considered but is not needed here and was dropped, and the 2.16 mA floor is not worth chasing lower for a 1-day requirement.
+
+**The one remaining endurance risk** is a bug that leaves the board *active* instead of sleeping: at ~145 mA the 250 mAh cell drains in ~1.5 h. Reliable deep-sleep entry (the 8 s timeout) is therefore the thing to keep healthy in the field.
+
+## ESP-NOW communication
+
+All messages are wrapped in `ESPNowPacket`. The header carries a magic value identifying the fleet's own packets on the shared channel.
+
+```cpp
+template <typename TPayload>
+struct ESPNowPacket {
+    ESPNowHeader hdr;
+    TPayload payload;
+} __attribute__((packed));
+
+struct ESPNowHeader {
+    uint32_t magic;           // ESPNOW_MAGIC ('E''S''N''W' = 0x45534E57)
+    uint8_t  msg_type;        // ESPNowMsgType
+    uint8_t  payload_len;     // payload length in bytes (max 250)
+    uint8_t  reserved[2];     // padding, set to zero
+} __attribute__((packed));
+```
+
+`espnow_protocol.h` is a single fleet-wide file, copied verbatim into every project (senders and receivers). `ESPNowMsgType` is one shared number space — the watch **receives** these types:
+
+```cpp
+enum class ESPNowMsgType : uint8_t {
+    HEADING_DELTA        = 1,  // CMPS14-ESP32-SignalK-gateway   (attitude)
+    BATTERY_DELTA        = 2,  // VEDirect-ESP32-SignalK-gateway
+    WEATHER_DELTA        = 3,  // BME280-ESP32-SignalK-gateway
+    GNSS_DELTA           = 4,  // UBLOX-ESP32-SignalK-gateway
+    HALMET_ENGINE_DELTA  = 5,  // HALMET-ESP32-SignalK-gateway
+    HALMET_TANK_DELTA    = 6,  // HALMET-ESP32-SignalK-gateway   (fuel)
+    HALMET_WATER_DELTA   = 7,  // HALMET-ESP32-SignalK-gateway   (fresh water)
+    DEPTH_DELTA          = 8,  // SignalK-ESP-NOW-gateway        (relayed depth)
+    DATETIME_DELTA       = 9,  // UBLOX-ESP32-SignalK-gateway    (UTC → system clock)
+};
+```
+
+Key payloads used by the watch:
+
+```cpp
+struct GnssDelta {
+    float lat_deg;        // Latitude, decimal degrees
+    float lon_deg;        // Longitude, decimal degrees
+    float sog_ms;         // Speed over ground, m/s
+    float cog_true_rad;   // Course over ground (true), radians — NaN when stationary
+    float mag_var_rad;    // Magnetic variation (WMM), radians — NaN until first fix
+    uint8_t satellites;   // SIV
+    uint8_t fix_type;     // 0=no fix, 3=3D, 4=GNSS+DR
+    uint8_t fix_ok;       // getGnssFixOk() ? 1 : 0
+    uint8_t reserved;
+};  // 24 bytes
+
+struct DateTimeDelta {
+    uint32_t unix_utc;    // seconds since 1970-01-01 UTC (leap-corrected by GNSS)
+    uint8_t  time_valid;  // 1 = u-blox reports confirmed valid UTC date+time
+    uint8_t  reserved[3]; // padding → 8 bytes
+};  // 8 bytes
+
+struct DepthDelta {
+    float    below_surface_m;     // environment.depth.belowSurface [m]
+    float    below_transducer_m;  // environment.depth.belowTransducer [m]
+    float    below_keel_m;        // environment.depth.belowKeel [m]
+    uint32_t age_ms;              // ms since the freshest of the three; UINT32_MAX = never received
+};  // 16 bytes
+```
+
+(`HeadingDelta`, `BatteryDelta`, `WeatherDelta`, `HALMETEngineDelta`, `HALMETTankDelta`, `HALMETWaterDelta` are shared with the compass project — see `espnow_protocol.h`.) On the receiver side, `GnssDelta`/`HeadingDelta` are converted once into integer-scaled internal structs (`GnssData`/`HeadingData`); note that position-fix validity (`hasFix()`) and course validity (`hasCog()`) are kept **distinct**, so position and SOG remain visible at anchor even though COG is undefined.
+
+**Channel:** all devices must share one WiFi channel. Configured to channel 6 (`static constexpr uint8_t ESP_NOW_CHANNEL = 6` in `CrowPanelApplication.h`). Fix your router to channel 6 so senders can use WiFi and ESP-NOW simultaneously without channel-hopping.
+
+## Project structure
+
+| File(s) | Description |
+|---------|-------------|
+| `ESP32-Crowpanel-SkippersWatch.ino` | Owns `CrowPanelApplication app`, contains `setup()` and `loop()` |
+| `CrowPanelApplication.h/.cpp` | Class `CrowPanelApplication`, the "app" — owns all instances, staggered wake, GNSS time sync |
+| `PowerManager.h/.cpp` | Class `PowerManager` — Model B deep-sleep, display timeout, peripheral gating, ext0 wake |
+| `espnow_protocol.h` | Shared fleet wire protocol (namespace `ESPNow`): header, packet, `ESPNowMsgType`, all deltas + receiver-side `GnssData`/`HeadingData` |
+| `IScreenUI.h` | Abstract base class for all UI adapter implementations (knob + touch seam) |
+| `ESPNowReceiver.h/.cpp` | Class `ESPNowReceiver` — ESP-NOW receive (receive-only), per-source freshness |
+| `NavigationUI.h/.cpp` | Class `NavigationUI` — POS / COG / SOG / DPT, realizes `IScreenUI` |
+| `BatteryUI.h/.cpp` | Class `BatteryUI` — battery screen adapter, realizes `IScreenUI` |
+| `WeatherUI.h/.cpp` | Class `WeatherUI` — weather screen adapter, realizes `IScreenUI` |
+| `EngineUI.h/.cpp` | Class `EngineUI` — exhaust + fuel/water tanks, realizes `IScreenUI` |
+| `AttitudeUI.h/.cpp` | Class `AttitudeUI` — artificial horizon, realizes `IScreenUI` |
+| `ClockUI.h/.cpp` | Class `ClockUI` — system-clock reader + formatting, realizes `IScreenUI` |
+| `SetupUI.h/.cpp` | Class `SetupUI` — brightness slider + adjust state machine (knob) + touch drag, realizes `IScreenUI` |
+| `RotaryEncoder.h/.cpp` | Class `RotaryEncoder` — knob rotation (quadrature) + button, FreeRTOS tasks |
+| `TouchInput.h/.cpp` | Class `TouchInput` — touch polling + software gesture recognition |
+| `axs5106l_touch.h/.cpp` | Local AXS5106L capacitive-touch driver (ported from Elecrow's Lesson03 example) |
+| `ScreenManager.h/.cpp` | Class `ScreenManager` — scalable screen carousel (container visibility) |
+| `lv_conf.h` | LVGL configuration (project-local, `LV_COLOR_DEPTH 16`) |
+| `ui.h/.c`, `ui_ScreenMain.h/.c`, `ui_helpers.h/.c`, `ui_font_*.c` | SquareLine Studio generated — UI + fonts |
+| `hardware_notes.md` | Authoritative pin map + build/toolchain notes |
+| `SLS_project/`, `SLS_export/` | SquareLine Studio project and export |
+| `docs/` | Screenshots, diagrams, other documents |
+
+## Hardware
+
+### Bill of materials
+
+1. [Elecrow CrowPanel 2.01" HMI ESP32 Watch Display 240×296](https://github.com/Elecrow-RD/CrowPanel_2.01_inch-HMI_ESP32_Watch_Display_240_296), having:
+   - ESP32-S3R8 module (dual LX7, 8 MB PSRAM, 16 MB flash)
+   - 240×296 IPS SPI display (GC9309)
+   - AXS5106L capacitive touch (I2C, INT=GPIO2, RST=GPIO5)
+   - ALPS EC11 rotary encoder with push button (A=GPIO20, B=GPIO19, button=GPIO18)
+   - SC7A20H 3-axis accelerometer (I2C 0x19) — not used yet
+   - Vibration motor (GPIO45) — not used yet
+   - ~250 mAh LiPo cell, USB-C charging via a CH34x USB-UART bridge
+2. WiFi router set to a fixed channel 6
+3. The ESP-NOW senders listed under [Integrated via ESP-NOW with](#esp32-crowpanel-skipperswatch)
+
+**No paid partnerships.**
+
+## Software
+
+1. Arduino IDE 2.3.x
+2. Espressif Systems esp32 board package 3.x
+3. Additional libraries:
+   - LVGL 9.x (with a project-local `lv_conf.h`, `LV_COLOR_DEPTH 16`)
+   - Arduino GFX Library 1.6.7 — **patched** with Elecrow's `Arduino_GC9309.{h,cpp}` (mainline GFX has no GC9309; drop the driver into `src/display/` and add its include to `src/Arduino_GFX_Library.h`; re-apply if the library is reinstalled)
+4. SquareLine Studio for UI design and code generation
+5. The ESP-NOW sender projects (see above)
+
+## Installation
+
+1. Clone the repo
+   ```
+   git clone https://github.com/mkvesala/ESP32-Crowpanel-SkippersWatch.git
+   ```
+2. Install the required libraries in Arduino IDE (LVGL, Arduino_GFX_Library) and apply the `Arduino_GC9309` patch to the GFX library (see [Software](#software))
+3. Set the ESP-NOW channel in `CrowPanelApplication.h` to match your router:
+   ```cpp
+   static constexpr uint8_t ESP_NOW_CHANNEL = 6;
+   ```
+4. Configure the board (see [Flashing](#flashing)), connect USB-C
+5. Compile and upload with Arduino IDE (board: ESP32S3 Dev Module, PSRAM: OPI, Flash: 16 MB / QIO 80 MHz)
+6. Point the ESP-NOW senders to the same WiFi channel
+
+**Note** that `lv_conf.h` is project-local. If you use LVGL elsewhere, a second `lv_conf.h` may live under `Arduino/libraries/` next to the `lvgl` folder — check both to avoid conflicts.
+
+**SquareLine Studio note:** SquareLine clears the export directory completely on export. Always git commit before exporting, and set a temporary export directory in project settings.
+
+## Flashing
+
+This board's USB-C connector is a **CH34x USB-UART bridge** on UART0 — **not** the S3's native USB. Consequences:
+
+- macOS/Windows need the **WCH CH34x driver** installed; without it no serial port appears even though the S3 is running. The port enumerates as WCH VID `0x1a86` (e.g. `/dev/cu.wchusbserial*`).
+- Set **`USB CDC On Boot` = Disabled**, so `Serial` maps to UART0 → CH34x and the Serial Monitor works.
+- Upload uses the bridge's DTR/RTS auto-reset (no manual BOOT+RESET normally needed). Fallback on "Failed to connect": hold **BOOT (GPIO0)** → tap **RESET** → release BOOT → Upload.
+- The CH34x port persists across firmware deep-sleep (the bridge is independent of the S3).
+
+## Security
+
+**Use at your own risk — not for safety-critical navigation!**
+
+This device receives data only via ESP-NOW broadcast on a local WiFi channel. There is no network server, no authentication and no sensitive data. Keep the device on a private boat WiFi network.
+
+## Credits
+
+Software and libraries used are documented in the sections above.
+
+Companion project to my always-on helm display [ESP32-Crowpanel-compass](https://github.com/mkvesala/ESP32-Crowpanel-compass), and to the ESP-NOW sender projects [UBLOX-ESP32-SignalK-gateway](https://github.com/mkvesala/UBLOX-ESP32-SignalK-gateway), [SignalK-ESP-NOW-gateway](https://github.com/mkvesala/SignalK-ESP-NOW-gateway), [CMPS14-ESP32-SignalK-gateway](https://github.com/mkvesala/CMPS14-ESP32-SignalK-gateway), [VEDirect-ESP32-SignalK-gateway](https://github.com/mkvesala/VEDirect-ESP32-SignalK-gateway), [BME280-ESP32-SignalK-gateway](https://github.com/mkvesala/BME280-ESP32-SignalK-gateway) and [HALMET-ESP32-SignalK-gateway](https://github.com/mkvesala/HALMET-ESP32-SignalK-gateway).
+
+Inspired by [example source code by Elecrow](https://github.com/Elecrow-RD/CrowPanel_2.01_inch-HMI_ESP32_Watch_Display_240_296). The local `axs5106l_touch` driver is adapted from Elecrow's Lesson03 example.
+
+<!-- TODO(credits): add icon/font attributions here if used in the UI -->
+
+**No paid partnerships.**
+
+Developed by Matti Vesala in collaboration with Claude.
+
+## Gallery
+
+<!-- TODO(images): add screenshot gallery here (Navigation / Batteries / Weather / Engine / Attitude / Clock / Setup, plus the UML diagram and the watch on the wrist) -->
