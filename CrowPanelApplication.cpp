@@ -81,6 +81,11 @@ void CrowPanelApplication::begin() {
     _clockUI.begin();
     _setupUI.begin();
 
+    // Watch's own battery gauge on the always-visible top bar. Safe here: the
+    // peripheral rail (GPIO47) powering the divider is up (initPowerRails) and
+    // ui_BarBatteryIndicator exists (ui_init). Seeds the bar with a real value now.
+    _battery.begin();
+
     // Register the carousel of container-backed pages, in order
     _screenMgr.addScreen(&_navUI);
     _screenMgr.addScreen(&_batteryUI);
@@ -137,6 +142,7 @@ void CrowPanelApplication::loop() {
     this->handleTouch(now);
     this->handleTimeSync();
     this->handleUIUpdate(now);
+    _battery.update(now);   // refresh the top battery bar (self-gated, ~3 s cadence)
     _power.loop(now);   // may enter deep sleep after the display-on timeout (no return)
 }
 

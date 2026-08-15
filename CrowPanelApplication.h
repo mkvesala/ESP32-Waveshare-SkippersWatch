@@ -16,6 +16,7 @@
 #include "TouchInput.h"
 #include "ScreenManager.h"
 #include "PowerManager.h"
+#include "BatteryMonitor.h"
 
 // === C L A S S  C R O W P A N E L A P P L I C A T I O N ===
 //
@@ -100,6 +101,7 @@ private:
     TouchInput     _touch;
     ScreenManager  _screenMgr;
     PowerManager   _power;
+    BatteryMonitor _battery;   // drives the top bar from the watch's own LiPo (GPIO1 ADC)
 
     // True while a touch claimed at touch-down is being handled as a page drag
     // (e.g. the Setup brightness slider) rather than a swipe/tap.
