@@ -36,8 +36,8 @@ private:
     static constexpr uint32_t TANK_TIMEOUT_MS   = 6000;
     static constexpr uint32_t WATER_TIMEOUT_MS  = 6000;
 
-    // M/V Frida tank capacities in liters (confirmed 2026-07-28).
+    // M/V Frida tank capacities in liters (fuel confirmed 2026-07-28; fresh water measured 2026-08-21).
     static constexpr float FUEL_TANK_CAPACITY_L  = 400.0f;
-    static constexpr float WATER_TANK_CAPACITY_L = 100.0f;
+    static constexpr float WATER_TANK_CAPACITY_L = 80.0f;
 
 };
