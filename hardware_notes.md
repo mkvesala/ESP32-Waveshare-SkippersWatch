@@ -61,8 +61,11 @@ table, unlike the verrokki's RGB ST7701).
   `analogReadMilliVolts()`, 12-bit, `ADC_11db`. Sample away from spikes; needs
   GPIO47 HIGH.
 - **Charge status: GPIO15** (digital input).
-- **USB power detect: GPIO17** (HIGH = USB present) — use to suspend endurance
-  logic while charging.
+- **USB power detect: GPIO17** (HIGH = USB present) — suspends the endurance logic
+  while charging. Read by `BatteryMonitor::usbPresent()`; `PowerManager` uses it to
+  keep the watch awake on the charger (`STAY_AWAKE_ON_USB`) and to disable both the
+  display timeout and the awake ceiling. GPIO15 (charge status) is logged only —
+  its polarity is undocumented in Lesson11.
 - **Vibration motor: GPIO45** (needs GPIO47 rail HIGH). Optional haptic.
 
 ## Audio (deferred — default off)
@@ -76,6 +79,12 @@ table, unlike the verrokki's RGB ST7701).
   light-listen path, but Model B uses deep sleep + button.
 - On sleep entry: LCD power (40) OFF = drive HIGH (active-low), backlight (13) 0,
   peripheral rail (47) LOW, then GPIO-hold the output levels.
+- **ext0 is LEVEL-triggered.** If GPIO18 is already LOW at `esp_deep_sleep_start()`
+  (a button held down in a pocket), the SoC wakes immediately and loops at ~145 mA —
+  the 250 mAh cell would be flat in under two hours. `PowerManager::armWakeSource()`
+  therefore reads the pin first and, when it is held, arms a **30 s timer** instead;
+  `handleTimerRecheck()` then re-reads it at the very top of `app.begin()` and sleeps
+  straight back with no rail/panel/UI/radio bring-up (~0.003 mAh per check).
 
 ## Libraries (from example/V1.0)
 `Arduino_GFX_Library` (GC9309), `EncoderTool`, `OneButton`, `Bounce2`, local
@@ -121,6 +130,40 @@ table, unlike the verrokki's RGB ST7701).
 - **Press the encoder button (GPIO18) to wake.** Rotating the knob switches
   pages; on the Setup page, press to grab the knob for brightness, press again
   (or wait 3 s) to save.
+
+### Power guards (M1 hardening)
+The measured budget is comfortable (2.16 mA sleep floor, ~145 mA active, 250 mAh cell,
+24 h + nightly charge), so what remains is failure modes rather than averages. All four
+guards live in `PowerManager`; the numbers come from the M1 meter session.
+
+| Guard | Constant | Value | Protects against |
+|---|---|---|---|
+| Awake ceiling | `MAX_AWAKE_MS` | 120 s | A stuck input source calling `notifyActivity()` forever (~145 mA until flat) |
+| Task watchdog | `WDT_TIMEOUT_MS` | 30 s | A hung `loop()`, which the ceiling cannot catch; a trip resets → cold boot |
+| Stuck wake button | `STUCK_BUTTON_RECHECK_US` | 30 s | Level-triggered `ext0` re-waking instantly on a held button |
+| Low-charge ladder | see below | — | Running the cell down to its own protection cutoff |
+
+Low-charge ladder — `BatteryMonitor::Level` classifies (one-way escalation within an
+awake session; forced to `OK` on USB), `PowerManager` acts:
+
+| Level | Trigger | Display timeout | Backlight ceiling |
+|---|---|---|---|
+| `OK` | SoC > 20 % | 8 s | 100 % |
+| `WARN` | SoC ≤ 20 % | 5 s | 100 % (bar is already red) |
+| `CRITICAL` | SoC ≤ 10 % | 3 s | 10 % |
+| `CUTOFF` | SoC ≤ 5 % **or** cell ≤ 3400 mV | — | 5 %, `BATTERY EMPTY / CHARGE NOW` for 2 s → protective sleep |
+
+The **timeout** is the lever, not the clamp: active baseline is ~145 mA and the backlight
+adder at 20 % is only ~10 mA, so 8 s → 3 s saves far more than any brightness cap. The
+cutoff path deliberately runs *before* the radio is brought up (RF bring-up is the
+sharpest current edge on the board) and keeps the button wake armed, so a press only
+repeats the short prompt cycle and plugging in USB restores a normal boot.
+
+On USB (GPIO17 HIGH) the watch **does not sleep**: it stays up as a docked display and
+dims the panel to `USB_DIM_PERCENT` (5 %) after `USB_DIM_IDLE_MS` (60 s) of no input.
+Unplugging grants a fresh 8 s window and restarts the awake ceiling. The clamp is applied
+through `SetupUI::setBrightnessCeiling()`, which never overwrites the user's stored
+brightness — only what reaches the LEDC pin.
 
 ## Sources
 Elecrow official repo `CrowPanel_2.01_inch-HMI_ESP32_Watch_Display_240_296`:

@@ -52,6 +52,11 @@ private:
     // than this, so a fresh packet typically lands within it.
     static constexpr uint32_t ESPNOW_WAKE_LISTEN_MS = 200;
 
+    // How long the "BATTERY EMPTY / CHARGE NOW" prompt is held before the protective
+    // sleep. Long enough to read, short enough that a repeated press of the wake button
+    // on a dead cell costs ~0.1 mAh instead of a full 8 s glance.
+    static constexpr uint32_t CUTOFF_MESSAGE_MS = 2000;
+
     // --- Pin map (see hardware_notes.md) ---
     static constexpr uint8_t PIN_LCD_CS        = 9;
     static constexpr uint8_t PIN_LCD_DC        = 10;
@@ -117,5 +122,15 @@ private:
     void handleTouch(const uint32_t now);
     void handleUIUpdate(const uint32_t now);
     void handleTimeSync();
+
+    // Full-screen "charge now" overlay shown just before a protective sleep on a
+    // near-empty cell. Built in code (no SquareLine round-trip) — it must be available
+    // on the wake path before the page adapters are even revealed.
+    void showBatteryCutoffScreen();
+
+    // Enter the protective-sleep path if the cell is at CUTOFF and not on USB. Called
+    // both during the wake sequence (before the radio is brought up on a dying cell)
+    // and every loop. Returns only when there is nothing to do — otherwise it sleeps.
+    void checkBatteryCutoff();
 
 };

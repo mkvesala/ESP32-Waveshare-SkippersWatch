@@ -34,12 +34,17 @@ void BatteryMonitor::begin() {
     if (usbPresent()) {
         _charging = true;
         _seeded = false;
+        _level = Level::OK;      // charger-elevated voltage says nothing about SoC
     } else {
         // Seed immediately so the bar shows a real value within the short awake window
         // on every wake — no 75 % dummy flash, no ramp-up from zero.
         _ema_mv = (float)sampleCellMillivolts();
         _seeded = true;
         _soc = estimateSoc((uint16_t)(_ema_mv + 0.5f));
+        // Classify from that very first sample: the wake path needs a level BEFORE it
+        // ramps the backlight or brings the radio up on a possibly dying cell.
+        _level = Level::OK;
+        this->escalateLevel();
     }
     this->render();
 }
@@ -54,10 +59,20 @@ void BatteryMonitor::update(uint32_t now) {
     if (usbPresent()) {
         _charging = true;
         _seeded = false;
-        Serial.printf("[battery] USB present (charge-pin=%d) -> charging\n",
-                      digitalRead(CHARGE_STATUS_PIN));
+        _level = Level::OK;   // nothing to protect on external power
+        // Log on CHANGE only: the watch now stays awake indefinitely on USB
+        // (PowerManager STAY_AWAKE_ON_USB), so a per-sample line would never stop.
+        if (!_charge_logged) {
+            Serial.printf("[battery] USB present (charge-pin=%d) -> charging\n",
+                          digitalRead(CHARGE_STATUS_PIN));
+            _charge_logged = true;
+        }
         this->render();
         return;
+    }
+    if (_charge_logged) {
+        Serial.println("[battery] USB removed -> on battery");
+        _charge_logged = false;
     }
     _charging = false;
 
@@ -70,6 +85,7 @@ void BatteryMonitor::update(uint32_t now) {
     }
 
     _soc = estimateSoc((uint16_t)(_ema_mv + 0.5f));
+    this->escalateLevel();
     Serial.printf("[battery] cell %u mV (ema %u) -> SoC %u%%\n",
                   cell_mv, (uint16_t)(_ema_mv + 0.5f), _soc);
     this->render();
@@ -103,6 +119,33 @@ uint8_t BatteryMonitor::estimateSoc(uint16_t cell_mv) const {
         }
     }
     return 0;  // unreachable (guarded above)
+}
+
+// Classify the current (smoothed) reading into a ladder level. No hysteresis here —
+// escalateLevel() provides that by refusing to go back down within an awake session.
+// CUTOFF trips on either a near-empty SoC or the hard voltage floor, whichever first.
+BatteryMonitor::Level BatteryMonitor::classify() const {
+    if (_charging || !_seeded) return Level::OK;
+
+    const uint16_t mv = this->cellMillivolts();
+    if (_soc <= CUTOFF_AT_OR_BELOW   || mv <= CUTOFF_CELL_MV) return Level::CUTOFF;
+    if (_soc <= CRITICAL_AT_OR_BELOW)                         return Level::CRITICAL;
+    if (_soc <= WARN_AT_OR_BELOW)                             return Level::WARN;
+    return Level::OK;
+}
+
+// One-way escalation: the level can only get worse while awake. The ~145 mA active load
+// sags the cell enough that a reading can hop back over a threshold; a ladder that
+// flapped would flip the display timeout and backlight ceiling back and forth.
+void BatteryMonitor::escalateLevel() {
+    const Level now_level = this->classify();
+    if ((uint8_t)now_level <= (uint8_t)_level) return;
+    _level = now_level;
+    Serial.printf("[battery] level -> %s\n",
+                  _level == Level::CUTOFF   ? "CUTOFF"
+                : _level == Level::CRITICAL ? "CRITICAL"
+                : _level == Level::WARN     ? "WARN"
+                                            : "OK");
 }
 
 // Push the current state to the bar, and recolor the indicator only when the bucket

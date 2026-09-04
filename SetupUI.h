@@ -29,6 +29,13 @@ public:
     // AFTER the first frame is rendered into the dark panel (staggered wake). Keeps
     // the backlight rise as its own load step, never simultaneous with radio bring-up.
     void rampBacklightUp();
+
+    // Cap the APPLIED backlight without touching the user's stored setting. Used by the
+    // power layer for the low-charge ladder (CRITICAL/CUTOFF) and the USB idle-dim.
+    // The slider and NVS keep showing/holding what the user chose — only what reaches
+    // the LEDC pin is clamped, so lifting the ceiling restores their brightness exactly.
+    void setBrightnessCeiling(int8_t percent);
+
     void onButtonPress() override;
     void onRotation(int8_t dir) override;
     bool interceptsRotation() const override;
@@ -50,10 +57,13 @@ private:
     bool _initialized = false;
 
     int8_t _brightness_percent = DEFAULT_BRIGHTNESS_PERCENT;
+    int8_t _ceiling_percent = MAX_BRIGHTNESS_PERCENT;   // power-layer clamp (100 = none)
     uint8_t _backlight_pin;
     uint32_t _last_rotation_time = 0;
 
     void applyBrightness();
+    // What actually reaches the panel: the user's brightness, clamped by the ceiling
+    int8_t effectivePercent() const;
     void updateUI();
     void saveBrightness();
     int8_t loadBrightness();

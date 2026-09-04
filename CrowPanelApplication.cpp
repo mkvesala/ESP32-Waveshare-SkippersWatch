@@ -58,6 +58,11 @@ void CrowPanelApplication::begin() {
     // writes below actually take effect (otherwise the panel wakes to a black screen).
     _power.releaseHolds();
 
+    // Stuck wake-button guard: a timer wake is never a user request, only the guard
+    // rechecking a held button. Sleep straight back without touching rails, panel, UI
+    // or radio. Does not actually return — the return is for the compiler's benefit.
+    if (_power.handleTimerRecheck(cause)) return;
+
     // Timezone for the Clock page: Finland (EET=UTC+2, EEST=UTC+3, DST last-Sun-Mar
     // 03:00 → last-Sun-Oct 04:00). Set once so localtime_r renders local time with DST;
     // the system clock itself is UTC, disciplined by GNSS DATETIME_DELTA (handleTimeSync).
@@ -85,6 +90,11 @@ void CrowPanelApplication::begin() {
     // peripheral rail (GPIO47) powering the divider is up (initPowerRails) and
     // ui_BarBatteryIndicator exists (ui_init). Seeds the bar with a real value now.
     _battery.begin();
+
+    // Low-charge cutoff BEFORE the radio comes up: RF bring-up is the sharpest current
+    // edge on the board and the last thing a near-empty cell should be asked for. Shows
+    // the charge prompt and sleeps; never returns when it triggers.
+    this->checkBatteryCutoff();
 
     // Register the carousel of container-backed pages, in order
     _screenMgr.addScreen(&_navUI);
@@ -128,9 +138,15 @@ void CrowPanelApplication::begin() {
     if (screen) screen->update();
 
     lv_refr_now(_lvgl_disp);          // render the first frame into the dark panel
+    // Clamp the backlight for the current charge level BEFORE the ramp, so a low cell
+    // never flashes bright and then dims. 100 % (no clamp) in the normal case.
+    _setupUI.setBrightnessCeiling(PowerManager::backlightCeilingFor(_battery.level()));
     _setupUI.rampBacklightUp();       // backlight PWM soft-start — user sees real data
 
-    // Model B power owner — records wake cause, starts the display-on timer
+    // Model B power owner — records wake cause, starts the display-on timer + the
+    // absolute awake ceiling, and arms the task watchdog. The battery is attached first:
+    // the low-charge ladder and the USB stay-awake rule both read it.
+    _power.attachBattery(&_battery);
     _power.begin(cause);
 }
 
@@ -143,6 +159,12 @@ void CrowPanelApplication::loop() {
     this->handleTimeSync();
     this->handleUIUpdate(now);
     _battery.update(now);   // refresh the top battery bar (self-gated, ~3 s cadence)
+    this->checkBatteryCutoff();   // near-empty cell → charge prompt + protective sleep
+
+    // Backlight clamp for the current power state: low-charge ladder on battery, idle
+    // dim while docked on USB. No-ops unless the ceiling actually moved.
+    _setupUI.setBrightnessCeiling(_power.brightnessCeiling());
+
     _power.loop(now);   // may enter deep sleep after the display-on timeout (no return)
 }
 
@@ -318,4 +340,47 @@ void CrowPanelApplication::handleUIUpdate(const uint32_t now) {
 
     IScreenUI* screen = _screenMgr.getCurrentScreen();
     if (screen) screen->update();
+}
+
+// Near-empty cell: show an unmistakable prompt, then power down before the cell's own
+// protection circuit does it for us. The button wake stays armed, so a press just
+// repeats this short cycle (~0.1 mAh) and plugging in USB restores a normal boot.
+void CrowPanelApplication::checkBatteryCutoff() {
+    if (_battery.charging()) return;
+    if (_battery.level() != BatteryMonitor::Level::CUTOFF) return;
+
+    this->showBatteryCutoffScreen();
+    _power.enterProtectiveSleep();   // does not return
+}
+
+// Code-built overlay (no SquareLine export involved): an opaque full-screen panel on top
+// of whatever page is loaded, so it works during the wake sequence too — before the page
+// adapters have been revealed. Lit at the CUTOFF backlight ceiling only.
+void CrowPanelApplication::showBatteryCutoffScreen() {
+    lv_obj_t* screen = lv_screen_active();
+    if (screen != nullptr) {
+        lv_obj_t* overlay = lv_obj_create(screen);
+        lv_obj_remove_style_all(overlay);
+        lv_obj_set_size(overlay, LV_PCT(100), LV_PCT(100));
+        lv_obj_center(overlay);
+        lv_obj_set_style_bg_color(overlay, lv_color_hex(0x000000), LV_PART_MAIN);
+        lv_obj_set_style_bg_opa(overlay, LV_OPA_COVER, LV_PART_MAIN);
+        lv_obj_remove_flag(overlay, LV_OBJ_FLAG_SCROLLABLE);
+
+        lv_obj_t* label = lv_label_create(overlay);
+        lv_label_set_text(label, "BATTERY EMPTY\n\nCHARGE NOW");
+        lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
+        lv_obj_set_style_text_color(label, lv_color_hex(0xF44336), LV_PART_MAIN);
+        lv_obj_set_style_text_font(label, &ui_font_FontLabel14, LV_PART_MAIN);
+        lv_obj_center(label);
+
+        lv_refr_now(_lvgl_disp);
+    }
+
+    // Clamp to the CUTOFF ceiling (applied immediately by SetupUI). If the panel is
+    // still dark — the cutoff was caught during the wake sequence, before the normal
+    // ramp — soft-start it so the prompt is actually visible.
+    _setupUI.setBrightnessCeiling(PowerManager::backlightCeilingFor(BatteryMonitor::Level::CUTOFF));
+    if (ledcRead(PIN_BACKLIGHT) == 0) _setupUI.rampBacklightUp();
+    delay(CUTOFF_MESSAGE_MS);
 }

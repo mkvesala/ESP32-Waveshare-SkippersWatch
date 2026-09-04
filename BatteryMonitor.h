@@ -14,21 +14,34 @@
 //   and recolors it green/amber/red by charge level.
 // - Owned by: CrowPanelApplication. begin() once after the rails + UI exist;
 //   update(now) each loop (self time-gates to SAMPLE_INTERVAL_MS).
-// - Display only: no low-charge protection ladder here (future PowerManager work;
-//   it can query soc()).
+// - Also classifies the charge state into a coarse Level (OK/WARN/CRITICAL/CUTOFF).
+//   That is DATA, not policy: what to do about each level (shorter display timeout,
+//   backlight ceiling, protective sleep) lives in PowerManager.
 
 class BatteryMonitor {
 
 public:
 
+    // Coarse charge state driving PowerManager's low-charge ladder. Deliberately
+    // aligned with the color buckets below, so the red bar IS the WARN indicator.
+    enum class Level : uint8_t { OK = 0, WARN = 1, CRITICAL = 2, CUTOFF = 3 };
+
     void begin();
     void update(uint32_t now);
 
-    // Last estimated State-of-Charge, 0..100 (for a future low-charge ladder)
+    // Last estimated State-of-Charge, 0..100
     uint8_t soc() const { return _soc; }
+
+    // Smoothed cell voltage in millivolts (the cutoff wants a real voltage floor,
+    // not only a curve extrapolation at the steep bottom end)
+    uint16_t cellMillivolts() const { return (uint16_t)(_ema_mv + 0.5f); }
 
     // True while the watch is on external USB power (GPIO17 HIGH)
     bool charging() const { return _charging; }
+
+    // Current charge level. Escalates only within one awake session (see _level) and
+    // is forced back to OK whenever the watch is on USB power.
+    Level level() const { return _level; }
 
 private:
 
@@ -60,16 +73,33 @@ private:
     static constexpr uint8_t GREEN_ABOVE = 40;
     static constexpr uint8_t AMBER_ABOVE = 20;
 
+    // --- Low-charge ladder thresholds (percent, and a hard voltage floor) ---
+    // WARN coincides with the red bar (AMBER_ABOVE), so the visual warning already
+    // exists. CUTOFF triggers on EITHER a very low SoC or a low measured cell
+    // voltage, whichever comes first — the LiPo curve is steep and coarse down there.
+    static constexpr uint8_t  WARN_AT_OR_BELOW     = 20;
+    static constexpr uint8_t  CRITICAL_AT_OR_BELOW = 10;
+    static constexpr uint8_t  CUTOFF_AT_OR_BELOW   = 5;
+    static constexpr uint16_t CUTOFF_CELL_MV       = 3400;  // well above the cell's own PCM cutoff
+
     float   _ema_mv      = 0.0f;   // smoothed cell millivolts
     bool    _seeded      = false;  // false until the first sample seeds the EMA
     bool    _charging    = false;  // true while on USB power (bar forced blue/100)
+    bool    _charge_logged = false; // USB state already logged (log on change, not every 3 s)
     uint32_t _last_sample_ms = 0;
     uint8_t _soc         = 0;      // last SoC 0..100
     int8_t  _last_bucket = -1;     // last applied color bucket (-1 = none yet)
 
+    // Ladder level. Only ever ESCALATES while awake, so EMA jitter under the ~145 mA
+    // active load cannot make the ladder flap across a threshold. A deep-sleep wake is
+    // a full reboot, so every wake re-evaluates from scratch.
+    Level _level = Level::OK;
+
     bool     usbPresent() const { return digitalRead(USB_DETECT_PIN) == HIGH; }
     uint16_t sampleCellMillivolts() const;   // averaged, divider-corrected cell mV
     uint8_t  estimateSoc(uint16_t cell_mv) const;  // LiPo resting-curve lookup
+    Level    classify() const;                // current reading → Level (no hysteresis)
+    void     escalateLevel();                 // apply classify() one-way (never de-escalates)
     void     render();                        // push state to the bar (value + color)
 
 };

@@ -20,15 +20,27 @@ void SetupUI::begin() {
     _initialized = true;
 }
 
-// Soft-ramp backlight 0 → stored brightness (PWM soft-start, never a hard step)
+// Soft-ramp backlight 0 → stored brightness (PWM soft-start, never a hard step).
+// Ramps to the CLAMPED target, so a low-battery wake never flashes bright then dims.
 void SetupUI::rampBacklightUp() {
-    uint8_t target = this->percentToPwm(_brightness_percent);
+    uint8_t target = this->percentToPwm(this->effectivePercent());
     uint8_t step = (target / 16) > 0 ? (target / 16) : 1;
     for (uint16_t d = 0; d < target; d += step) {
         ledcWrite(_backlight_pin, d);
         delay(8);
     }
     ledcWrite(_backlight_pin, target);
+}
+
+// Apply a new clamp. Called every loop by the app, so it must be cheap: no-op unless the
+// ceiling actually moved. A ceiling change is a load DECREASE (or a few-mA increase back
+// to the user's setting), so a direct write is fine — same as the knob-driven path.
+void SetupUI::setBrightnessCeiling(int8_t percent) {
+    if (percent < MIN_BRIGHTNESS_PERCENT) percent = MIN_BRIGHTNESS_PERCENT;
+    if (percent > MAX_BRIGHTNESS_PERCENT) percent = MAX_BRIGHTNESS_PERCENT;
+    if (percent == _ceiling_percent) return;
+    _ceiling_percent = percent;
+    if (_initialized) this->applyBrightness();
 }
 
 void SetupUI::update() {
@@ -134,7 +146,11 @@ void SetupUI::setAdjustVisual(bool active) {
 }
 
 void SetupUI::applyBrightness() {
-    ledcWrite(_backlight_pin, this->percentToPwm(_brightness_percent));
+    ledcWrite(_backlight_pin, this->percentToPwm(this->effectivePercent()));
+}
+
+int8_t SetupUI::effectivePercent() const {
+    return (_brightness_percent < _ceiling_percent) ? _brightness_percent : _ceiling_percent;
 }
 
 void SetupUI::updateUI() {
