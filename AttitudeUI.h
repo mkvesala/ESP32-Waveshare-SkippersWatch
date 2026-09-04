@@ -7,10 +7,9 @@
 
 // === C L A S S  A T T I T U D E U I ===
 //
-// - Attitude page adapter: Bow up/down (pitch) and Port/Stbd (roll) + session max/min
+// - Attitude page adapter: Bow up/down (pitch) and Port/Stbd (roll)
 // - Source: HEADING_DELTA (pitch_rad, roll_rad → x10 integer degrees)
 // - Sign convention: pitch > 0 = bow up; roll > 0 = starboard heel
-// - Session extremes come from ESPNowReceiver's lifetime min/max pitch/roll API
 // - Realizes IScreenUI over container ui_ContainerAttitude
 // - Owned by: CrowPanelApplication
 
@@ -31,7 +30,6 @@ private:
     bool _initialized = false;
 
     void showWaiting();
-    void updateMarkers();
 
     // Show |value| on the side it belongs to (positive → positive_label,
     // negative → negative_label), blank the opposite side. Exactly 0 → "0" on both.

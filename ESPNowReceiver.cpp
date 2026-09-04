@@ -111,10 +111,6 @@ void ESPNowReceiver::onDataRecv(const esp_now_recv_info_t* recv_info, const uint
             s_has_new_data   = true;
             s_last_rx_millis = millis();
             s_packet_count++;
-            if (s_min_pitch_x10 == MINMAX_SENTINEL || converted.pitch_x10 < s_min_pitch_x10) s_min_pitch_x10 = converted.pitch_x10;
-            if (s_max_pitch_x10 == MINMAX_SENTINEL || converted.pitch_x10 > s_max_pitch_x10) s_max_pitch_x10 = converted.pitch_x10;
-            if (s_min_roll_x10  == MINMAX_SENTINEL || converted.roll_x10  < s_min_roll_x10)  s_min_roll_x10  = converted.roll_x10;
-            if (s_max_roll_x10  == MINMAX_SENTINEL || converted.roll_x10  > s_max_roll_x10)  s_max_roll_x10  = converted.roll_x10;
             portEXIT_CRITICAL(&s_spinlock);
             break;
         }
@@ -403,27 +399,3 @@ uint32_t ESPNowReceiver::lastDatetimeRxMillis() const {
     uint32_t v; portENTER_CRITICAL(&s_spinlock); v = s_last_datetime_millis; portEXIT_CRITICAL(&s_spinlock); return v;
 }
 
-// Lifetime min/max pitch/roll getters — tracked across all screens since boot
-int16_t ESPNowReceiver::getMinPitch_x10() {
-    int16_t v; portENTER_CRITICAL(&s_spinlock); v = s_min_pitch_x10; portEXIT_CRITICAL(&s_spinlock); return v;
-}
-int16_t ESPNowReceiver::getMaxPitch_x10() {
-    int16_t v; portENTER_CRITICAL(&s_spinlock); v = s_max_pitch_x10; portEXIT_CRITICAL(&s_spinlock); return v;
-}
-int16_t ESPNowReceiver::getMinRoll_x10() {
-    int16_t v; portENTER_CRITICAL(&s_spinlock); v = s_min_roll_x10; portEXIT_CRITICAL(&s_spinlock); return v;
-}
-int16_t ESPNowReceiver::getMaxRoll_x10() {
-    int16_t v; portENTER_CRITICAL(&s_spinlock); v = s_max_roll_x10; portEXIT_CRITICAL(&s_spinlock); return v;
-}
-bool ESPNowReceiver::hasMinMaxData() {
-    bool v; portENTER_CRITICAL(&s_spinlock); v = (s_min_pitch_x10 != MINMAX_SENTINEL); portEXIT_CRITICAL(&s_spinlock); return v;
-}
-void ESPNowReceiver::resetMinMax() {
-    portENTER_CRITICAL(&s_spinlock);
-    s_min_pitch_x10 = MINMAX_SENTINEL;
-    s_max_pitch_x10 = MINMAX_SENTINEL;
-    s_min_roll_x10  = MINMAX_SENTINEL;
-    s_max_roll_x10  = MINMAX_SENTINEL;
-    portEXIT_CRITICAL(&s_spinlock);
-}

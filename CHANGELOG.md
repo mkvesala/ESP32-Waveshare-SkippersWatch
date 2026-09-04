@@ -23,7 +23,7 @@ First release. Running on hardware on M/V Frida, with the power budget measured 
 - **Batteries** — house bank voltage, current and state-of-charge, plus starter battery voltage.
 - **Weather** — temperature, air pressure, relative humidity.
 - **Engine** — exhaust temperature, fuel and fresh-water tank litres (M/V Frida: fuel 400 L, water 80 L).
-- **Attitude** — artificial horizon with pitch and roll, plus bow-up/down and port/starboard extremes (which reset on each wake, since a wake is a full reboot).
+- **Attitude** — artificial horizon with pitch and roll.
 - **Clock** — local date and weekday, local and UTC time, with a previous/next-day indicator when the UTC calendar day differs.
 - **Setup** — backlight brightness with NVS persistence.
 - Always-visible top status bar showing the watch's own LiPo charge.

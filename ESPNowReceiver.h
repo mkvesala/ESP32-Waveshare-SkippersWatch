@@ -62,16 +62,6 @@ public:
 
     float getPacketsPerSecond() const { return _packets_per_second; }
 
-    static int16_t getMinPitch_x10();
-    static int16_t getMaxPitch_x10();
-    static int16_t getMinRoll_x10();
-    static int16_t getMaxRoll_x10();
-    static bool    hasMinMaxData();
-    static void    resetMinMax();
-
-    // Sentinel for unset min/max (out of range for pitch ±900 and roll ±1800 ×10)
-    static constexpr int16_t MINMAX_SENTINEL = 0x7FFF;
-
 private:
 
     // Static callback for ESP-NOW
@@ -125,12 +115,6 @@ private:
     inline static DateTimeDelta s_latest_datetime = {};
     inline static volatile bool     s_has_new_datetime = false;
     inline static volatile uint32_t  s_last_datetime_millis = 0;
-
-    // Lifetime min/max pitch and roll — updated in onDataRecv() for every packet
-    inline static int16_t s_min_pitch_x10 = MINMAX_SENTINEL;
-    inline static int16_t s_max_pitch_x10 = MINMAX_SENTINEL;
-    inline static int16_t s_min_roll_x10  = MINMAX_SENTINEL;
-    inline static int16_t s_max_roll_x10  = MINMAX_SENTINEL;
 
     // Instance data
     uint8_t _channel = 6;

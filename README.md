@@ -156,9 +156,8 @@ Always visible above the screens: a bar showing the **watch's own LiPo** (distin
 <img src="docs/attitudeview.png" width="240">
 
 - Artificial horizon plus pitch and roll value labels
-- Bow-up / bow-down and port / starboard **extremes** since boot
 - Source: `HeadingDelta` (pitch/roll) from the CMPS14 compass sender
-- **Caveat inherited from deep sleep:** the extremes live in plain RAM, and a wake from deep sleep is a full reboot — so they cover only the current awake window (seconds), not the voyage. On the always-on [compass](https://github.com/mkvesala/ESP32-Crowpanel-compass) they accumulate as intended; making them meaningful here would mean carrying them in RTC memory the way the last-active screen already is
+- Session min/max markers were removed: the watch only receives packets during its short awake windows, so an extreme reached while it slept could never be observed. A meaningful "worst heel this trip" belongs in the always-powered CMPS14 gateway, not here
 
 ### Clock screen
 
