@@ -56,18 +56,25 @@ This is one of my individual digital boat projects. Use at your own risk. Not fo
 
 ## Project status
 
-Pre-release. Feature-complete for the season and running on hardware: all seven screens live, GNSS-disciplined clock live end-to-end, touch UI live, and the power budget measured and closed (see [Power management](#power-management)). Not yet versioned/tagged.
+**Version 1.0.0** (2026-09-04) — see [CHANGELOG.md](CHANGELOG.md).
+
+Running on hardware on M/V Frida: all seven screens live, GNSS-disciplined clock live end-to-end, touch UI live, the power budget measured and closed, and the power guards in place (see [Power management](#power-management)).
 
 ## Classes
 
 <!-- TODO(diagram): add class / UML diagram here, e.g. <img src="docs/full_uml_diagram.jpeg" width="480"> -->
 
 **`CrowPanelApplication`:**
-- Owns: `Arduino_ESP32SPIDMA`, `Arduino_GC9309`, `ESPNowReceiver`, `NavigationUI`, `BatteryUI`, `WeatherUI`, `EngineUI`, `AttitudeUI`, `ClockUI`, `SetupUI`, `RotaryEncoder`, `TouchInput`, `ScreenManager`, `PowerManager`
+- Owns: `Arduino_ESP32SPIDMA`, `Arduino_GC9309`, `ESPNowReceiver`, `NavigationUI`, `BatteryUI`, `WeatherUI`, `EngineUI`, `AttitudeUI`, `ClockUI`, `SetupUI`, `RotaryEncoder`, `TouchInput`, `ScreenManager`, `PowerManager`, `BatteryMonitor`
 - Responsible for: orchestrating everything within the main program, including the staggered wake sequence and GNSS time discipline
 
 **`PowerManager`:**
-- Responsible for: Model B deep-sleep power ownership — display-on timeout, peripheral gating + GPIO holds on sleep entry, ext0 button wake arming
+- Uses: `BatteryMonitor` (read-only, for the low-charge ladder and the USB stay-awake rule)
+- Responsible for: Model B deep-sleep power ownership — display-on timeout, peripheral gating + GPIO holds on sleep entry, wake-source arming — and for all policy that can force a sleep decision: the absolute awake ceiling, the task watchdog, the low-charge ladder and the stuck-wake-button guard (see [Power guards](#power-guards))
+- Owned by: `CrowPanelApplication`
+
+**`BatteryMonitor`:**
+- Responsible for: sampling the watch's own LiPo via the GPIO1 ADC, EMA smoothing, state-of-charge estimation from a LiPo resting curve, USB-power detection, driving the status-bar indicator, and classifying the charge into the `OK` / `WARN` / `CRITICAL` / `CUTOFF` level the power ladder acts on. Data only — the policy lives in `PowerManager`
 - Owned by: `CrowPanelApplication`
 
 **`ESPNowReceiver`:**
@@ -101,9 +108,20 @@ Pre-release. Feature-complete for the season and running on hardware: all seven 
 
 Each screen is a container on a single LVGL screen. On wake, all cached values start as placeholders (`---` / `--.-`) and fill in only when a fresh ESP-NOW broadcast arrives — **stale data is never shown as if current** (see [Freshness](#freshness)).
 
+### Status bar
+
+Always visible above the screens: a bar showing the **watch's own LiPo** (distinct from the Batteries screen, which shows the boat's banks). Sampled from the GPIO1 ADC every ~3 s, EMA-smoothed and mapped to a state-of-charge through a LiPo resting curve.
+
+| Indicator | Meaning |
+|---|---|
+| Green | above 40 % |
+| Amber | above 20 %, up to 40 % |
+| Red | 20 % or below — the low-charge ladder is active (see [Power guards](#power-guards)) |
+| Blue, full | on USB power; the charger-elevated cell voltage is meaningless for SoC, so it is not estimated while charging |
+
 ### Navigation screen
 
-<!-- TODO(images): add Navigation screen screenshot(s) here -->
+<img src="docs/navigationview.png" width="240">
 
 - **POS** — latitude / longitude, shown only with a valid GNSS fix (blank until fix)
 - **COG** — course over ground, true. `hasCog()`-gated: shown only when moving; blank at anchor (a stationary boat has a valid fix but undefined course)
@@ -112,7 +130,7 @@ Each screen is a container on a single LVGL screen. On wake, all cached values s
 
 ### Batteries screen
 
-<!-- TODO(images): add Batteries screen screenshot(s) here -->
+<img src="docs/batteryview.png" width="240">
 
 - House bank voltage, current (negative = charging) and state-of-charge
 - Starter battery voltage
@@ -120,29 +138,31 @@ Each screen is a container on a single LVGL screen. On wake, all cached values s
 
 ### Weather screen
 
-<!-- TODO(images): add Weather screen screenshot(s) here -->
+<img src="docs/weatherview.png" width="240">
 
 - Temperature (°C), air pressure (hPa), relative humidity (%)
 - Source: `WeatherDelta` from a BME280-based sender
 
 ### Engine screen
 
-<!-- TODO(images): add Engine screen screenshot(s) here -->
+<img src="docs/engineview.png" width="240">
 
 - Exhaust temperature (°C, converted from Kelvin)
-- Fuel tank litres and fresh-water tank litres (ratio × capacity; **M/V Frida: fuel 400 L, water 100 L**)
+- Fuel tank litres and fresh-water tank litres (ratio × capacity; **M/V Frida: fuel 400 L, water 80 L**)
 - Sources: `HALMETEngineDelta`, `HALMETTankDelta`, `HALMETWaterDelta`
 
 ### Attitude screen
 
-<!-- TODO(images): add Attitude screen screenshot(s) here -->
+<img src="docs/attitudeview.png" width="240">
 
 - Artificial horizon plus pitch and roll value labels
+- Bow-up / bow-down and port / starboard **extremes** since boot
 - Source: `HeadingDelta` (pitch/roll) from the CMPS14 compass sender
+- **Caveat inherited from deep sleep:** the extremes live in plain RAM, and a wake from deep sleep is a full reboot — so they cover only the current awake window (seconds), not the voyage. On the always-on [compass](https://github.com/mkvesala/ESP32-Crowpanel-compass) they accumulate as intended; making them meaningful here would mean carrying them in RTC memory the way the last-active screen already is
 
 ### Clock screen
 
-<!-- TODO(images): add Clock screen screenshot(s) here -->
+<img src="docs/clockview.png" width="240">
 
 - Local date `DD.MM.YYYY`, English 3-letter weekday
 - Local and UTC time `HH:MM:SS` (24 h); a `PREV.`/`NEXT.` indicator appears under UTC when its calendar day differs from local
@@ -151,13 +171,14 @@ Each screen is a container on a single LVGL screen. On wake, all cached values s
 
 ### Setup screen
 
-<!-- TODO(images): add Setup screen screenshot(s) here -->
+<img src="docs/setupview.png" width="240">
 
 - Backlight brightness slider (`ui_SliderBrightness`)
 - **Touch:** drag the slider directly (absolute, no mode) — applies instantly, saves to NVS on release
 - **Knob:** press to enter ADJUSTING mode (slider indicator turns amber), rotate ±2 %, 3 s idle or leaving the page saves to NVS
 - Range 2 %–100 % (2 % minimum keeps the screen from going fully dark); default 20 % (readable in daylight, low continuous draw). NVS-stored value always wins
 - Persistence: Preferences (NVS), namespace `"display"`, key `"brightness"`. PWM: GPIO13, 5 kHz, 8-bit
+- The power layer may apply a **ceiling** on top of this (low battery, or the USB idle dim) — it clamps only what reaches the backlight pin, never the stored setting, so the slider keeps showing your choice and it is restored the moment the ceiling lifts
 
 ## Input
 
@@ -185,9 +206,33 @@ The last-active screen is stored in RTC memory and restored on a button-wake (co
 
 The whole architecture resolves one contradiction: **in deep sleep the radio is off, so no ESP-NOW packet can be received.** You cannot both deep-sleep and listen.
 
-**Model B (deep-sleep, wake-to-fetch).** Deep sleep is the resting default. A button press wakes the watch; only *then* does it bring the radio up, catch a broadcast, render, and — after a short display-on timeout (`DISPLAY_TIMEOUT_MS = 8 s`) of no interaction — soft-ramp the backlight down and return to deep sleep. On sleep entry the LCD rail (GPIO40), backlight (GPIO13) and shared peripheral rail (GPIO47) are driven off and GPIO-held through sleep; the encoder button (GPIO18, RTC-capable) is armed as the ext0 wake source.
+**Model B (deep-sleep, wake-to-fetch).** Deep sleep is the resting default. A button press wakes the watch; only *then* does it bring the radio up, catch a broadcast, render, and — after a short display-on timeout (`DISPLAY_TIMEOUT_MS = 8 s`, shortened automatically as the cell empties) of no interaction — soft-ramp the backlight down and return to deep sleep. On sleep entry the LCD rail (GPIO40), backlight (GPIO13) and shared peripheral rail (GPIO47) are driven off and GPIO-held through sleep; the encoder button (GPIO18, RTC-capable) is armed as the ext0 wake source.
 
 **Staggered wake (spike discipline).** A wake from deep sleep is the worst-timed current spike — several loads want to turn on at once on a small, possibly-aged cell. The bring-up spreads the inrush in time: release GPIO holds → power rails + panel init (panel stays dark) → radio up first into the dark, low-load moment → ~200 ms dark ESP-NOW listen window so the first *lit* frame shows real data, not a placeholder flash → render → **then** the backlight ramps up (PWM soft-start, never a hard step). The brownout detector is kept enabled — a trip means the sequence is too aggressive, not a reason to disable protection.
+
+### Power guards
+
+The measured budget below is comfortable, so what actually threatens endurance is not the average draw but **failure modes** — a firmware bug or a stuck button that keeps the board awake at ~145 mA empties the 250 mAh cell in under two hours. Four guards, all owned by `PowerManager`:
+
+| Guard | Value | Protects against |
+|---|---|---|
+| Absolute awake ceiling | 120 s | A stuck input source (bouncing button, latched touch INT, a UI path signalling activity every frame) holding the watch awake indefinitely. User activity **cannot** extend this ceiling — that is the whole point. Suspended on USB power |
+| Task watchdog | 30 s | A *hung* loop, which the ceiling cannot catch because the ceiling itself needs the loop to run. A trip resets the SoC, i.e. a recoverable cold boot rather than a flat cell |
+| Stuck wake-button guard | 30 s recheck | Deep-sleep `ext0` is **level-triggered**: arming it while the encoder button is already held (pocket pressure) makes the SoC wake immediately, over and over. The pin is read before arming and, when held, a timer is armed instead; the recheck runs before any rail, panel, UI or radio bring-up and costs ~0.003 mAh |
+| Low-charge ladder | see below | Running the cell down to its own protection cutoff |
+
+**Low-charge ladder.** `BatteryMonitor` classifies the charge and `PowerManager` acts on it. The level only ever escalates within one awake session, so a reading that jitters across a threshold under load cannot make the behaviour flap; a wake is a full reboot, so every wake re-evaluates from scratch. On USB power the ladder is suppressed entirely.
+
+| Level | Trigger | Display timeout | Backlight ceiling |
+|---|---|---|---|
+| `OK` | SoC above 20 % | 8 s | 100 % |
+| `WARN` | SoC 20 % or below | 5 s | 100 % (the status bar is already red) |
+| `CRITICAL` | SoC 10 % or below | 3 s | 10 % |
+| `CUTOFF` | SoC 5 % or below, **or** cell at/below 3400 mV | — | 5 %, then a `BATTERY EMPTY / CHARGE NOW` prompt for 2 s and a protective deep sleep |
+
+Shortening the **timeout** is the real lever, not the brightness clamp: active baseline is ~145 mA while the backlight adds only ~10 mA at 20 %, so 8 s → 3 s saves roughly 60 % per glance where the clamp saves about 5 %. The cutoff check deliberately runs *before* the radio is brought up — RF bring-up is the sharpest current edge on the board and the last thing a near-empty cell should be asked for. Button wake stays armed at cutoff on purpose: a press just repeats the short prompt cycle, and plugging in USB restores a normal boot, whereas refusing to wake would read as a bricked watch.
+
+**On USB power the watch does not sleep.** With external power present (GPIO17) there is no endurance to protect, so the display timeout and the awake ceiling are both suspended and the watch works as a docked display; after 60 s without input the panel dims to 5 % instead of sleeping. Unplugging grants a fresh display window and restarts the awake ceiling. The clamp is applied as a *ceiling* on what reaches the backlight pin — the user's stored brightness and the Setup slider are never overwritten.
 
 ### Freshness
 
@@ -223,7 +268,7 @@ On the physical **250 mAh** cell (the largest that fits the case without modific
 
 Sleep is ~70–90 % of the budget; even heavy glancing barely moves it. **Conclusion: Model B alone comfortably meets the 24 h + nightly-charge requirement with 3–5× margin.** A hybrid light-sleep "watch mode" (Model C) was considered but is not needed here and was dropped, and the 2.16 mA floor is not worth chasing lower for a 1-day requirement.
 
-**The one remaining endurance risk** is a bug that leaves the board *active* instead of sleeping: at ~145 mA the 250 mAh cell drains in ~1.5 h. Reliable deep-sleep entry (the 8 s timeout) is therefore the thing to keep healthy in the field.
+**The dominant endurance risk is not the average draw but a failure to sleep**: at ~145 mA the 250 mAh cell drains in under two hours. That is exactly what the awake ceiling, the task watchdog and the stuck-wake-button guard exist for — see [Power guards](#power-guards).
 
 ## ESP-NOW communication
 
@@ -299,7 +344,8 @@ struct DepthDelta {
 |---------|-------------|
 | `ESP32-Crowpanel-SkippersWatch.ino` | Owns `CrowPanelApplication app`, contains `setup()` and `loop()` |
 | `CrowPanelApplication.h/.cpp` | Class `CrowPanelApplication`, the "app" — owns all instances, staggered wake, GNSS time sync |
-| `PowerManager.h/.cpp` | Class `PowerManager` — Model B deep-sleep, display timeout, peripheral gating, ext0 wake |
+| `PowerManager.h/.cpp` | Class `PowerManager` — Model B deep-sleep, display timeout, peripheral gating, wake arming, and the power guards (awake ceiling, watchdog, low-charge ladder, stuck-button guard) |
+| `BatteryMonitor.h/.cpp` | Class `BatteryMonitor` — watch LiPo ADC sampling, SoC estimation, USB detection, status-bar indicator, charge-level classification |
 | `espnow_protocol.h` | Shared fleet wire protocol (namespace `ESPNow`): header, packet, `ESPNowMsgType`, all deltas + receiver-side `GnssData`/`HeadingData` |
 | `IScreenUI.h` | Abstract base class for all UI adapter implementations (knob + touch seam) |
 | `ESPNowReceiver.h/.cpp` | Class `ESPNowReceiver` — ESP-NOW receive (receive-only), per-source freshness |
@@ -316,7 +362,8 @@ struct DepthDelta {
 | `ScreenManager.h/.cpp` | Class `ScreenManager` — scalable screen carousel (container visibility) |
 | `lv_conf.h` | LVGL configuration (project-local, `LV_COLOR_DEPTH 16`) |
 | `ui.h/.c`, `ui_ScreenMain.h/.c`, `ui_helpers.h/.c`, `ui_font_*.c` | SquareLine Studio generated — UI + fonts |
-| `hardware_notes.md` | Authoritative pin map + build/toolchain notes |
+| `hardware_notes.md` | Authoritative pin map + build/toolchain notes + power-guard reference |
+| `CHANGELOG.md` | Release history (Keep a Changelog / Semantic Versioning) |
 | `SLS_project/`, `SLS_export/` | SquareLine Studio project and export |
 | `docs/` | Screenshots, diagrams, other documents |
 
@@ -359,7 +406,9 @@ struct DepthDelta {
    static constexpr uint8_t ESP_NOW_CHANNEL = 6;
    ```
 4. Configure the board (see [Flashing](#flashing)), connect USB-C
-5. Compile and upload with Arduino IDE (board: ESP32S3 Dev Module, PSRAM: OPI, Flash: 16 MB / QIO 80 MHz)
+5. Compile and upload with Arduino IDE (board: ESP32S3 Dev Module, PSRAM: OPI, Flash: 16 MB / QIO 80 MHz, **Partition Scheme: Huge APP (3 MB No OTA/1 MB SPIFFS)**)
+
+   The partition scheme matters: at ~1.30 MB the sketch leaves under 12 kB of headroom in the default 1.2 MB app partition (99 % full — it links, but the next small change overflows it). With Huge APP it uses about 41 %.
 6. Point the ESP-NOW senders to the same WiFi channel
 
 **Note** that `lv_conf.h` is project-local. If you use LVGL elsewhere, a second `lv_conf.h` may live under `Arduino/libraries/` next to the `lvgl` folder — check both to avoid conflicts.
@@ -397,4 +446,16 @@ Developed by Matti Vesala in collaboration with Claude.
 
 ## Gallery
 
-<!-- TODO(images): add screenshot gallery here (Navigation / Batteries / Weather / Engine / Attitude / Clock / Setup, plus the UML diagram and the watch on the wrist) -->
+<!-- TODO(images): add the UML diagram and a photo of the watch on the wrist here -->
+
+| Navigation | Batteries | Weather |
+|---|---|---|
+| <img src="docs/navigationview.png" width="200"> | <img src="docs/batteryview.png" width="200"> | <img src="docs/weatherview.png" width="200"> |
+
+| Engine | Attitude | Clock |
+|---|---|---|
+| <img src="docs/engineview.png" width="200"> | <img src="docs/attitudeview.png" width="200"> | <img src="docs/clockview.png" width="200"> |
+
+| Setup |
+|---|
+| <img src="docs/setupview.png" width="200"> |
