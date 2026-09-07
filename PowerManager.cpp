@@ -235,7 +235,7 @@ void PowerManager::armWakeSource() {
 
 // Subscribe the Arduino loop task to the task watchdog. The awake ceiling only fires
 // while loop() still runs; this covers the case where it does not (a blocking bug in
-// LVGL, I2C or a page adapter). A trip resets the SoC → cold boot → normal 8 s window,
+// LVGL, I2C or a page adapter). A trip resets the SoC → cold boot → normal 10 s window,
 // which is a far better outcome than a flat cell.
 //
 // RECONFIGURE FIRST, init only as a fallback: the Arduino core already initialises the

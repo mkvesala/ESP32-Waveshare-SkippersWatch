@@ -16,6 +16,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### Changed
 
+- **Display-on window lengthened from 8 s to 10 s** (`DISPLAY_TIMEOUT_MS`). Costs ~0.08 mAh
+  per glance; endurance on the 250 mAh cell goes from ~4.0/3.5/2.9 days to ~3.9/3.2/2.7 days
+  at 30/60/100 glances per day, i.e. still 2.7-4.8x the 24 h + nightly-charge requirement.
+  The low-charge ladder's shortened windows (5 s / 3 s) are unchanged.
 - **The last-active screen now survives every reset, not just a deep-sleep wake.** Two
   independent causes were fixed: the restore was gated on the wake cause being
   `ESP_SLEEP_WAKEUP_EXT0` (a reset reports `UNDEFINED`), and the index lived in

@@ -125,7 +125,7 @@ table, unlike the verrokki's RGB ST7701).
 
 ## Runtime behavior (Model B, M1)
 - On boot/wake the UI comes up with every value `---`, fills in as ESP-NOW
-  packets arrive, and after `PowerManager::DISPLAY_TIMEOUT_MS` (8 s) of no knob
+  packets arrive, and after `PowerManager::DISPLAY_TIMEOUT_MS` (10 s) of no knob
   activity the watch soft-ramps the backlight down and enters **deep sleep**.
 - **Press the encoder button (GPIO18) to wake.** Rotating the knob switches
   pages; on the Setup page, press to grab the knob for brightness, press again
@@ -163,20 +163,20 @@ awake session; forced to `OK` on USB), `PowerManager` acts:
 
 | Level | Trigger | Display timeout | Backlight ceiling |
 |---|---|---|---|
-| `OK` | SoC > 20 % | 8 s | 100 % |
+| `OK` | SoC > 20 % | 10 s | 100 % |
 | `WARN` | SoC ≤ 20 % | 5 s | 100 % (bar is already red) |
 | `CRITICAL` | SoC ≤ 10 % | 3 s | 10 % |
 | `CUTOFF` | SoC ≤ 5 % **or** cell ≤ 3400 mV | — | 5 %, `BATTERY EMPTY / CHARGE NOW` for 2 s → protective sleep |
 
 The **timeout** is the lever, not the clamp: active baseline is ~145 mA and the backlight
-adder at 20 % is only ~10 mA, so 8 s → 3 s saves far more than any brightness cap. The
+adder at 20 % is only ~10 mA, so 10 s → 3 s saves far more than any brightness cap. The
 cutoff path deliberately runs *before* the radio is brought up (RF bring-up is the
 sharpest current edge on the board) and keeps the button wake armed, so a press only
 repeats the short prompt cycle and plugging in USB restores a normal boot.
 
 On USB (GPIO17 HIGH) the watch **does not sleep**: it stays up as a docked display and
 dims the panel to `USB_DIM_PERCENT` (5 %) after `USB_DIM_IDLE_MS` (60 s) of no input.
-Unplugging grants a fresh 8 s window and restarts the awake ceiling. The clamp is applied
+Unplugging grants a fresh 10 s window and restarts the awake ceiling. The clamp is applied
 through `SetupUI::setBrightnessCeiling()`, which never overwrites the user's stored
 brightness — only what reaches the LEDC pin.
 

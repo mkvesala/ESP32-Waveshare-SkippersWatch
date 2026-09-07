@@ -114,7 +114,8 @@ public:
 
     // Absolute ceiling on one awake session, battery only. notifyActivity() cannot
     // extend it. Generous enough for brightness adjustment and a long look; a stuck
-    // input source therefore costs ~0.5 mAh per wake instead of the whole cell.
+    // input source therefore costs ~4.8 mAh per wake (120 s x 145 mA, ~2 % of the
+    // 250 mAh cell) instead of the whole cell.
     static constexpr uint32_t MAX_AWAKE_MS = 120000;
 
     // On USB there is no endurance to protect: stay awake so the watch works as a
@@ -170,7 +171,7 @@ private:
 
     // Display-on windows per charge level (ms). Shortening the window is what actually
     // saves charge on this board: active baseline is ~145 mA and the backlight adder at
-    // 20 % is only ~10 mA, so 8 s → 3 s buys far more than any brightness clamp.
+    // 20 % is only ~10 mA, so 10 s → 3 s buys far more than any brightness clamp.
     static constexpr uint32_t TIMEOUT_WARN_MS     = 5000;
     static constexpr uint32_t TIMEOUT_CRITICAL_MS = 3000;
 

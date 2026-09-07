@@ -206,7 +206,7 @@ The last-active screen is restored on **every** boot, not just a deep-sleep wake
 
 The whole architecture resolves one contradiction: **in deep sleep the radio is off, so no ESP-NOW packet can be received.** You cannot both deep-sleep and listen.
 
-**Model B (deep-sleep, wake-to-fetch).** Deep sleep is the resting default. A button press wakes the watch; only *then* does it bring the radio up, catch a broadcast, render, and — after a short display-on timeout (`DISPLAY_TIMEOUT_MS = 8 s`, shortened automatically as the cell empties) of no interaction — soft-ramp the backlight down and return to deep sleep. On sleep entry the LCD rail (GPIO40), backlight (GPIO13) and shared peripheral rail (GPIO47) are driven off and GPIO-held through sleep; the encoder button (GPIO18, RTC-capable) is armed as the ext0 wake source.
+**Model B (deep-sleep, wake-to-fetch).** Deep sleep is the resting default. A button press wakes the watch; only *then* does it bring the radio up, catch a broadcast, render, and — after a short display-on timeout (`DISPLAY_TIMEOUT_MS = 10 s`, shortened automatically as the cell empties) of no interaction — soft-ramp the backlight down and return to deep sleep. On sleep entry the LCD rail (GPIO40), backlight (GPIO13) and shared peripheral rail (GPIO47) are driven off and GPIO-held through sleep; the encoder button (GPIO18, RTC-capable) is armed as the ext0 wake source.
 
 **Staggered wake (spike discipline).** A wake from deep sleep is the worst-timed current spike — several loads want to turn on at once on a small, possibly-aged cell. The bring-up spreads the inrush in time: release GPIO holds → power rails + panel init (panel stays dark) → radio up first into the dark, low-load moment → ~200 ms dark ESP-NOW listen window so the first *lit* frame shows real data, not a placeholder flash → render → **then** the backlight ramps up (PWM soft-start, never a hard step). The brownout detector is kept enabled — a trip means the sequence is too aggressive, not a reason to disable protection.
 
@@ -225,12 +225,12 @@ The measured budget below is comfortable, so what actually threatens endurance i
 
 | Level | Trigger | Display timeout | Backlight ceiling |
 |---|---|---|---|
-| `OK` | SoC above 20 % | 8 s | 100 % |
+| `OK` | SoC above 20 % | 10 s | 100 % |
 | `WARN` | SoC 20 % or below | 5 s | 100 % (the status bar is already red) |
 | `CRITICAL` | SoC 10 % or below | 3 s | 10 % |
 | `CUTOFF` | SoC 5 % or below, **or** cell at/below 3400 mV | — | 5 %, then a `BATTERY EMPTY / CHARGE NOW` prompt for 2 s and a protective deep sleep |
 
-Shortening the **timeout** is the real lever, not the brightness clamp: active baseline is ~145 mA while the backlight adds only ~10 mA at 20 %, so 8 s → 3 s saves roughly 60 % per glance where the clamp saves about 5 %. The cutoff check deliberately runs *before* the radio is brought up — RF bring-up is the sharpest current edge on the board and the last thing a near-empty cell should be asked for. Button wake stays armed at cutoff on purpose: a press just repeats the short prompt cycle, and plugging in USB restores a normal boot, whereas refusing to wake would read as a bricked watch.
+Shortening the **timeout** is the real lever, not the brightness clamp: active baseline is ~145 mA while the backlight adds only ~10 mA at 20 %, so 10 s → 3 s saves roughly two-thirds per glance where the clamp saves about 5 %. The cutoff check deliberately runs *before* the radio is brought up — RF bring-up is the sharpest current edge on the board and the last thing a near-empty cell should be asked for. Button wake stays armed at cutoff on purpose: a press just repeats the short prompt cycle, and plugging in USB restores a normal boot, whereas refusing to wake would read as a bricked watch.
 
 **On USB power the watch does not sleep.** With external power present (GPIO17) there is no endurance to protect, so the display timeout and the awake ceiling are both suspended and the watch works as a docked display; after 60 s without input the panel dims to 5 % instead of sleeping. Unplugging grants a fresh display window and restarts the awake ceiling. The clamp is applied as a *ceiling* on what reaches the backlight pin — the user's stored brightness and the Setup slider are never overwritten.
 
@@ -272,16 +272,16 @@ Notable: during active use the panel + radio + render **baseline (~145 mA) domin
 
 ### Endurance
 
-On the physical **250 mAh** cell (the largest that fits the case without modification), with a 24 h target and nightly charging. Daily sleep energy = 2.16 mA × 24 h = 51.8 mAh/day; each ~8.5 s glance ≈ 0.34 mAh at ~145 mA active.
+On the physical **250 mAh** cell (the largest that fits the case without modification), with a 24 h target and nightly charging. Daily sleep energy = 2.16 mA × 24 h = 51.8 mAh/day; each ~10.5 s glance (10 s window + ~0.5 s wake sequence) ≈ 0.42 mAh at ~145 mA active.
 
 | Glances / day | mAh / day | Endurance | vs. 24 h target |
 |---|---|---|---|
 | 0 (pure sleep) | 51.8 | ~4.8 days | 4.8× |
-| 30 | ~62 | ~4.0 days | 4.0× |
-| 60 | ~72 | ~3.5 days | 3.5× |
-| 100 | ~86 | ~2.9 days | 2.9× |
+| 30 | ~65 | ~3.9 days | 3.9× |
+| 60 | ~77 | ~3.2 days | 3.2× |
+| 100 | ~94 | ~2.7 days | 2.7× |
 
-Sleep is ~70–90 % of the budget; even heavy glancing barely moves it. **Conclusion: Model B alone comfortably meets the 24 h + nightly-charge requirement with 3–5× margin.** A hybrid light-sleep "watch mode" (Model C) was considered but is not needed here and was dropped, and the 2.16 mA floor is not worth chasing lower for a 1-day requirement.
+Sleep is ~55–80 % of the budget; even heavy glancing barely moves it. **Conclusion: Model B alone comfortably meets the 24 h + nightly-charge requirement with 2.7–4.8× margin.** A hybrid light-sleep "watch mode" (Model C) was considered but is not needed here and was dropped, and the 2.16 mA floor is not worth chasing lower for a 1-day requirement.
 
 **The dominant endurance risk is not the average draw but a failure to sleep**: at ~145 mA the 250 mAh cell drains in under two hours. That is exactly what the awake ceiling, the task watchdog and the stuck-wake-button guard exist for — see [Power guards](#power-guards).
 
