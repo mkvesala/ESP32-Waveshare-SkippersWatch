@@ -65,6 +65,17 @@ public:
     // begin(). Null is tolerated: the class then behaves exactly as it did pre-ladder.
     void attachBattery(const BatteryMonitor* battery) { _battery = battery; }
 
+    // Pre-sleep flush hook. Called ONCE at the very top of the deep-sleep entry, before
+    // the backlight ramp — the radio is already idle and no render is in flight there, so
+    // a flash (NVS) write placed here cannot stack onto another current spike. Kept as a
+    // plain function pointer + context rather than std::function: no heap, no exceptions.
+    //
+    // Deliberately registered only at the END of app.begin(), so it is still null on the
+    // stuck-wake-button recheck path (handleTimerRecheck() sleeps before begin() runs).
+    // That path must touch nothing — not even flash.
+    using SleepHook = void (*)(void* ctx);
+    void setPreSleepHook(SleepHook hook, void* ctx) { _sleep_hook = hook; _sleep_ctx = ctx; }
+
     // Call once at end of app.begin(); records why we woke, starts the idle timer and
     // the awake ceiling, and subscribes the Arduino loop task to the task watchdog
     void begin(esp_sleep_wakeup_cause_t cause);
@@ -132,6 +143,9 @@ private:
     uint8_t _periph_power_pin;
 
     const BatteryMonitor* _battery = nullptr;
+
+    SleepHook _sleep_hook = nullptr;
+    void*     _sleep_ctx  = nullptr;
 
     esp_sleep_wakeup_cause_t _cause = ESP_SLEEP_WAKEUP_UNDEFINED;
     PowerState _state = PowerState::WAKING;

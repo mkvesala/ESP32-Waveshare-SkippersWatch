@@ -1,5 +1,7 @@
 #include "CrowPanelApplication.h"
 #include <esp_heap_caps.h>
+#include <esp_system.h>
+#include <Preferences.h>
 #include <time.h>
 #include <sys/time.h>
 
@@ -10,11 +12,20 @@ static Arduino_DataBus*   s_bus = nullptr;
 static Arduino_GFX*       s_gfx = nullptr;
 static SemaphoreHandle_t  s_te_sem = nullptr;
 
-// Last-active page index, kept in RTC slow memory so it survives deep sleep (which
-// is a full reboot). Updated on every page switch; read on a button-wake to restore
-// the page the user was on. Zero-inits on a true power-on → cold boot starts on
-// Navigation (index 0), which the EXT0 wake-cause guard in begin() also enforces.
-RTC_DATA_ATTR uint8_t s_last_page_index = 0;
+// Last-active page index, tier 1 of two (tier 2 is NVS — see resolveStartPage()).
+//
+// .rtc.noinit, NOT .rtc.data: the bootloader reloads .rtc.data from the flash image on
+// every boot EXCEPT a deep-sleep wake, where it deliberately skips the initialisation.
+// A RTC_DATA_ATTR value therefore survives sleep but is wiped by a reset button press,
+// a watchdog trip or a panic — which is exactly the case this tier has to cover.
+// .rtc.noinit is not in the image at all, so nothing ever initialises it.
+//
+// It is genuinely uninitialised after a power-on (and after any reset that power-cycles
+// the RTC domain — an EN-pin reset may or may not, board-dependent), so the value is
+// only trusted when the magic word matches. ScreenManager::begin() clamps regardless.
+RTC_NOINIT_ATTR uint32_t s_page_magic;
+RTC_NOINIT_ATTR uint8_t  s_last_page_index;
+static constexpr uint32_t PAGE_MAGIC = 0x5057A6E1;
 
 // Tearing-effect interrupt (LCD_TE, GPIO21, FALLING) — signals a safe refresh moment
 static void IRAM_ATTR onTearingEffect() {
@@ -104,10 +115,13 @@ void CrowPanelApplication::begin() {
     _screenMgr.addScreen(&_attitudeUI);
     _screenMgr.addScreen(&_clockUI);
     _screenMgr.addScreen(&_setupUI);
-    // Restore the last-active page on a button-wake; cold boot / any other cause → 0 (Nav).
+    // Restore the last-active page from RTC, else NVS, else Navigation. Deliberately NOT
+    // gated on the wake cause any more: the cause answers "how did we boot", while the
+    // real question is "is the stored value trustworthy" — which the magic word answers,
+    // and which a reset button press must also pass.
     // The actual _screenMgr.begin(start_page) is deferred to after the dark listen window
     // below, so the page is revealed only once data has had a chance to arrive.
-    const uint8_t start_page = (cause == ESP_SLEEP_WAKEUP_EXT0) ? s_last_page_index : 0;
+    const uint8_t start_page = this->resolveStartPage();
 
     // --- Staggered wake sequence (runs on every wake, cold boot included) ---
     // Panel is initialised DARK above and stays dark through the listen window
@@ -148,6 +162,11 @@ void CrowPanelApplication::begin() {
     // the low-charge ladder and the USB stay-awake rule both read it.
     _power.attachBattery(&_battery);
     _power.begin(cause);
+
+    // Registered LAST, on purpose: the stuck-wake-button recheck sleeps from the very top
+    // of this function, long before here, so that path still sees a null hook and writes
+    // no flash. Every real sleep (timeout, awake ceiling, protective) goes through it.
+    _power.setPreSleepHook(&CrowPanelApplication::preSleepFlush, this);
 }
 
 void CrowPanelApplication::loop() {
@@ -169,6 +188,76 @@ void CrowPanelApplication::loop() {
 }
 
 // === P R I V A T E ===
+
+// Which page to open on, from the two-tier store. Tier 1 (RTC .rtc.noinit) is free and
+// always current; tier 2 (NVS) is only read when tier 1 is gone, i.e. after a power loss
+// or a reset that power-cycled the RTC domain. On the common deep-sleep wake this touches
+// no flash at all, so the wake sequence is unchanged.
+//
+// The log line is also the measurement: comparing the reset reason against which tier
+// supplied the value is what tells us whether an EN-pin reset wipes RTC on this board.
+uint8_t CrowPanelApplication::resolveStartPage() {
+    const esp_reset_reason_t reason = esp_reset_reason();
+
+    uint8_t page;
+    const char* src;
+    if (s_page_magic == PAGE_MAGIC) {
+        page = s_last_page_index;
+        src  = "rtc";
+    } else {
+        page = this->loadPageFromNvs();
+        src  = "nvs";
+        // Repair tier 1 so the next sleep cycle is back on the free path
+        s_page_magic      = PAGE_MAGIC;
+        s_last_page_index = page;
+    }
+
+    // Seed the write-elision baseline: NVS already holds this on the "nvs" path, and on
+    // the "rtc" path it holds whatever the last pre-sleep flush wrote — which is this
+    // same value, because that flush is the only writer.
+    _nvs_page_written = page;
+
+    // ...except when we did NOT arrive from deep sleep. Then the tiers can legitimately
+    // disagree: switch a page, press RESET before the display times out, and RTC carries
+    // the new page while NVS still holds the one from the last sleep. Force one flush on
+    // the way into the next sleep so they converge — otherwise a later battery pull would
+    // silently fall back a page. Costs one write on a reset/cold boot, never on a wake.
+    if (reason != ESP_RST_DEEPSLEEP) _nvs_page_written = 0xFF;
+
+    Serial.printf("[page] reset=%d src=%s page=%u\n", (int)reason, src, page);
+    return page;
+}
+
+// Tier 2 read. Returns 0 (Navigation) when the key has never been written.
+uint8_t CrowPanelApplication::loadPageFromNvs() {
+    Preferences prefs;
+    prefs.begin(NVS_NAMESPACE_UI, true);
+    uint8_t v = prefs.getUChar(NVS_KEY_LASTPAGE, 0);
+    prefs.end();
+    return v;
+}
+
+// Tier 2 write. Called only from the pre-sleep flush, and only when the page changed —
+// a flash program is a current spike and a wear event, so it happens at most once per
+// awake session instead of once per swipe.
+void CrowPanelApplication::savePageToNvs() {
+    Preferences prefs;
+    prefs.begin(NVS_NAMESPACE_UI, false);
+    prefs.putUChar(NVS_KEY_LASTPAGE, s_last_page_index);
+    prefs.end();
+}
+
+// PowerManager pre-sleep hook: persist the page to flash on the way down. Runs before the
+// backlight ramp, with the radio idle and no render in flight, so this write is the only
+// load moving at that instant.
+void CrowPanelApplication::preSleepFlush(void* ctx) {
+    CrowPanelApplication* self = static_cast<CrowPanelApplication*>(ctx);
+    if (self == nullptr) return;
+    if (self->_nvs_page_written == s_last_page_index) return;   // nothing changed
+    self->savePageToNvs();
+    self->_nvs_page_written = s_last_page_index;
+    Serial.printf("[page] persisted page=%u\n", s_last_page_index);
+}
 
 // Enable the shared peripheral rail and the (active-low) LCD power rail
 void CrowPanelApplication::initPowerRails() {
@@ -251,7 +340,7 @@ void CrowPanelApplication::handleKnobRotation() {
         } else {
             _screenMgr.switchPrevious();
         }
-        // Persist the new page so a button-wake restores it (RTC survives deep sleep)
+        // Tier 1 only — free. Flash (tier 2) is written once on the way into sleep.
         s_last_page_index = _screenMgr.currentIndex();
     }
 }

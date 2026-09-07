@@ -196,7 +196,7 @@ Screen carousel order:
 - **Swipe up / knob CW:** Navigation → Batteries → Weather → Engine → Attitude → Clock → Setup → Navigation
 - **Swipe down / knob CCW:** the reverse
 
-The last-active screen is stored in RTC memory and restored on a button-wake (cold boot / reset starts on Navigation).
+The last-active screen is restored on **every** boot, not just a deep-sleep wake — a reset button press, a watchdog trip, a panic and even a flat cell or a disconnected battery all come back to the page you were on. Two tiers: `RTC_NOINIT_ATTR` (free, always current) with an NVS backstop written once on the way into sleep. See [Last-active screen](#last-active-screen).
 
 **Touch driver:** the AXS5106L is interrupt-based (`readPoint()` returns a point only on a fresh INT). `TouchInput` debounces this event stream into a stable "held" state (80 ms release grace) so swipes and slider drags don't break up. Gestures are recognized in software — no dependence on any chip gesture register.
 
@@ -237,6 +237,21 @@ Shortening the **timeout** is the real lever, not the brightness clamp: active b
 ### Freshness
 
 A marine instrument that silently shows a minutes-old heading or depth is worse than one that shows nothing. On wake, all cached readings are treated as stale until a fresh broadcast lands; each source has its own RX timestamp, and depth additionally honours the payload's own `age_ms`. Placeholders (`---` / `--.-`) persist until real data arrives — the wake latency never entitles the UI to show a stale number.
+
+### Last-active screen
+
+The screen you were last on is restored on **every** boot, not only a deep-sleep wake — a reset button press, a watchdog trip, a panic, a flat cell or a disconnected battery all come back to the same page. Two tiers:
+
+| Tier | Store | Survives | Cost |
+|---|---|---|---|
+| 1 | `RTC_NOINIT_ATTR` + magic word | deep sleep, software reset, watchdog, panic | none |
+| 2 | NVS, written once at sleep entry | all of the above, plus power-on / flat cell / battery removal | ~5·10⁻⁶ mAh per sleep cycle |
+
+`.rtc.noinit` matters here: the bootloader reloads `.rtc.data` (i.e. `RTC_DATA_ATTR`) from the flash image on every boot **except** a deep-sleep wake, where it deliberately skips the initialisation — so an `RTC_DATA_ATTR` value survives sleep but is wiped by a reset. `.rtc.noinit` is not in the image at all, so nothing initialises it; the magic word is what distinguishes a real value from the uninitialised RAM you get after a power-on.
+
+Tier 2 is read **only** when tier 1 is gone, and written **only** when the page actually changed — so the common deep-sleep wake touches no flash and the wake sequence is unchanged. The write is placed at the top of the deep-sleep entry, before the backlight ramp, where the radio is idle and no render is in flight: one load moving at a time, the same spike-staggering rule the wake sequence follows. The restore is not gated on the wake cause (a reset reports `ESP_SLEEP_WAKEUP_UNDEFINED`); the magic word answers the real question, which is whether the stored value is trustworthy, and `ScreenManager::begin()` clamps it regardless.
+
+Boot logs the reset reason and which tier supplied the page (`[page] reset=… src=rtc|nvs page=…`).
 
 ### Consumption measurements
 

@@ -4,6 +4,31 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+
+- **Navigation HDG showed magnetic heading instead of true.** `NavigationUI` read
+  `getHeadingMagDeg()` while COG on the same screen is true, so the two differed by the
+  local variation (~11 deg easterly) and read as a crab angle that was not there. The
+  `HeadingDelta` payload carries both fields; `getHeadingTrueDeg()` existed but was unused
+  anywhere in the tree. The README's Navigation section was also missing HDG entirely.
+
+### Changed
+
+- **The last-active screen now survives every reset, not just a deep-sleep wake.** Two
+  independent causes were fixed: the restore was gated on the wake cause being
+  `ESP_SLEEP_WAKEUP_EXT0` (a reset reports `UNDEFINED`), and the index lived in
+  `RTC_DATA_ATTR` i.e. `.rtc.data`, which the bootloader reloads from the flash image on
+  every boot except a deep-sleep wake. The store is now two-tier: `RTC_NOINIT_ATTR` plus a
+  magic word (free; survives deep sleep, software reset, watchdog and panic) with an NVS
+  backstop (survives a power-on, a flat cell or a disconnected battery). NVS is read only
+  when the RTC tier is gone and written only when the page changed, once per sleep entry —
+  so the common deep-sleep wake path touches no flash and the wake sequence is unchanged.
+  `PowerManager` gained a pre-sleep hook for the flush, placed before the backlight ramp
+  where the radio is idle and no render is in flight. Boot now logs `esp_reset_reason()`
+  and which tier supplied the page.
+
 ## [1.0.0] - 2026-09-04
 
 First release. Running on hardware on M/V Frida, with the power budget measured and closed.

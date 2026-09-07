@@ -131,6 +131,21 @@ table, unlike the verrokki's RGB ST7701).
   pages; on the Setup page, press to grab the knob for brightness, press again
   (or wait 3 s) to save.
 
+### RTC memory across reset causes
+`RTC_DATA_ATTR` (`.rtc.data`) is **not** enough to carry state across a reset: the
+bootloader reloads that section from the flash image on every boot **except** a
+deep-sleep wake, where it deliberately skips the initialisation. Use
+`RTC_NOINIT_ATTR` (`.rtc.noinit`, not in the image, never initialised) plus a magic
+word for anything that must also survive the reset button, a watchdog trip or a panic
+— see `CrowPanelApplication::resolveStartPage()`.
+
+**Open (measure on HW):** the reset button is presumed wired to **EN (CHIP_PU)**, which
+power-cycles the chip internally; whether the RTC domain keeps its contents across that
+is board-specific and not documented by Elecrow. The boot log
+`[page] reset=<esp_reset_reason> src=rtc|nvs` answers it: tap RESET and read the source.
+`src=rtc` → EN reset preserves RTC RAM here; `src=nvs` → it wipes it, and the NVS tier is
+load-bearing. Either way the page is restored — this is diagnostics, not a dependency.
+
 ### Power guards (M1 hardening)
 The measured budget is comfortable (2.16 mA sleep floor, ~145 mA active, 250 mAh cell,
 24 h + nightly charge), so what remains is failure modes rather than averages. All four

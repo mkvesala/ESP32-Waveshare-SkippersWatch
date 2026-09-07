@@ -14,7 +14,7 @@
 // - Pages are registered via addScreen() before begin()
 // - Init: addScreen() for each page, then screenMgr.begin(start_index) — the start
 //   page defaults to 0 (Navigation) but a button-wake restores the last-active page
-//   (see CrowPanelApplication / RTC_DATA_ATTR s_last_page_index)
+//   (see CrowPanelApplication::resolveStartPage / RTC_NOINIT_ATTR s_last_page_index + NVS)
 // - Carousel order matches registration order (modulo index arithmetic)
 // - Owned by: CrowPanelApplication
 

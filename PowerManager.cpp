@@ -151,6 +151,11 @@ void PowerManager::enterDeepSleep(bool ramp_backlight) {
     Serial.println("[power] entering deep sleep");
     Serial.flush();
 
+    // Pre-sleep flush FIRST, while the radio is idle and no render is in flight: a flash
+    // (NVS) write here is the only current spike in that instant. Null on the stuck-button
+    // recheck path, which deliberately touches nothing.
+    if (_sleep_hook != nullptr) _sleep_hook(_sleep_ctx);
+
     // Unsubscribe before the ramp so a shortened WDT timeout could never trip here
     if (_wdt_armed) {
         esp_task_wdt_delete(NULL);

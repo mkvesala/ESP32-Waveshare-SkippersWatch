@@ -112,6 +112,27 @@ private:
     // (e.g. the Setup brightness slider) rather than a swipe/tap.
     bool _touch_dragging = false;
 
+    // --- Last-active page persistence (two tiers, see resolveStartPage) ---
+    // Own namespace rather than SetupUI's "display": that one is its private display-
+    // settings store, and a page index is not a display setting.
+    static constexpr const char* NVS_NAMESPACE_UI = "watch";
+    static constexpr const char* NVS_KEY_LASTPAGE = "lastpage";
+
+    // Last value actually committed to NVS this session, so the pre-sleep flush writes
+    // only when the page really changed. 0xFF = "nothing written yet / unknown".
+    uint8_t _nvs_page_written = 0xFF;
+
+    // Decide the page to open on. Tier 1: RTC .rtc.noinit (free, survives deep sleep,
+    // software reset, watchdog and panic). Tier 2: NVS (survives a true power loss).
+    // Falls back to Navigation. Also logs the reset reason and which tier supplied the
+    // value — that log is what answers whether an EN-pin reset wipes RTC on this board.
+    uint8_t resolveStartPage();
+    uint8_t loadPageFromNvs();
+    void    savePageToNvs();
+
+    // PowerManager pre-sleep hook trampoline (plain function pointer + ctx).
+    static void preSleepFlush(void* ctx);
+
     void initPowerRails();
     void initBacklight();
     void initDisplay();
