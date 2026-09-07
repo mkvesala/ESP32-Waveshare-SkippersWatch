@@ -9,6 +9,8 @@
 //
 // - Navigation page adapter: COG / HDG / SOG / DPT / POS
 // - Sources: GNSS_DELTA (COG, SOG, position) + HEADING_DELTA (HDG) + DEPTH_DELTA (DPT)
+// - HDG shows TRUE heading (heading_true_x10), matching the true COG next to it. Showing
+//   the magnetic field instead would fake a ~11 deg crab angle (easterly variation here).
 // - DPT shows depth below surface (below_surface_m). Two-fold freshness: the ESP-NOW
 //   gateway RX timestamp AND the payload's own age_ms (relayed feed liveness); either
 //   stale, or a NAN value, → "---" (never a frozen depth under the keel)

@@ -27,14 +27,18 @@ void NavigationUI::update() {
 
     const uint32_t now = millis();
 
-    // --- Heading (HDG) ---
+    // --- Heading (HDG, true) ---
+    // TRUE heading, not magnetic: COG on this same page is cog_true_rad, so a magnetic
+    // HDG next to it would read as a ~11 deg crab angle (the Gulf of Finland easterly
+    // variation) that does not exist. HeadingDelta carries both; the compass gateway
+    // applies the variation, so the watch just picks the true field.
     // Freshness gates the display; getData() just returns the latest cached value.
     HeadingData hdg = _receiver.getData();
     uint32_t hdg_rx = _receiver.lastHeadingRxMillis();
     bool hdg_ok = (hdg_rx > 0) && ((now - hdg_rx) < HEADING_TIMEOUT_MS);
     if (hdg_ok) {
         char buf[8];
-        snprintf(buf, sizeof(buf), "%03u", hdg.getHeadingMagDeg());
+        snprintf(buf, sizeof(buf), "%03u", hdg.getHeadingTrueDeg());
         lv_label_set_text(ui_LabelHDGValue, buf);
     } else {
         lv_label_set_text(ui_LabelHDGValue, "---");

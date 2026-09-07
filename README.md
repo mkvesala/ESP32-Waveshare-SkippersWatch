@@ -124,6 +124,7 @@ Always visible above the screens: a bar showing the **watch's own LiPo** (distin
 <img src="docs/navigationview.png" width="240">
 
 - **POS** — latitude / longitude, shown only with a valid GNSS fix (blank until fix)
+- **HDG** — heading, **true** (`heading_true_x10` from the CMPS14 sender, which applies the variation). Deliberately true rather than magnetic so it is directly comparable with the true COG beside it — a magnetic HDG next to a true COG reads as a ~11° crab angle that is not there
 - **COG** — course over ground, true. `hasCog()`-gated: shown only when moving; blank at anchor (a stationary boat has a valid fix but undefined course)
 - **SOG** — speed over ground in knots
 - **DPT** — depth below surface (`below_surface_m`), the chosen single reference. Uses two-fold freshness: the ESP-NOW RX timestamp AND the depth payload's own `age_ms` (feed liveness) — either stale or NaN → `--.-`
