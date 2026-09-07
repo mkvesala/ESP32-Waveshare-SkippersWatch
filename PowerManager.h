@@ -110,7 +110,7 @@ public:
 
     // Display-on window before returning to deep sleep (short for Model B endurance).
     // This is the healthy-cell case; the ladder shortens it further — see displayTimeoutMs().
-    static constexpr uint32_t DISPLAY_TIMEOUT_MS = 8000;
+    static constexpr uint32_t DISPLAY_TIMEOUT_MS = 10000;
 
     // Absolute ceiling on one awake session, battery only. notifyActivity() cannot
     // extend it. Generous enough for brightness adjustment and a long look; a stuck
