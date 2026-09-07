@@ -104,9 +104,10 @@ Feature requests are welcome! Please:
   * [ ] Clock — local date/weekday, local + UTC time (GNSS-disciplined)
 * [ ] Stale data never shown as current; placeholders persist until a fresh broadcast
 * [ ] Screen carousel works both directions: swipe up/down AND knob CW/CCW
-* [ ] Touch gestures work: tap, swipe, and Setup slider drag (absolute)
-* [ ] Setup brightness shows the NVS value on boot; adjusts by touch drag and by knob (ADJUSTING mode), persists after reboot
-* [ ] Deep sleep entry after the 8 s timeout; button wake (GPIO18) restores the last screen
+* [ ] Touch gestures work: tap, swipe, Setup slider drag (absolute) and Setup switch tap
+* [ ] Setup brightness shows the NVS value on boot, adjusts by touch drag, persists after reboot
+* [ ] Setup prevent-sleep switch: red off / green on, keeps the watch awake on battery, still sleeps at the 120 s ceiling, persists after reboot
+* [ ] Deep sleep entry after the 10 s timeout; button wake (GPIO18) restores the last screen
 * [ ] Battery bar: SoC color green/amber/red, and blue/100 % while on USB power
 * [ ] No memory leaks (heap free stable over time)
 * [ ] Serial output reports no unexpected bottlenecks

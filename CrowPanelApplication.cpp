@@ -180,8 +180,12 @@ void CrowPanelApplication::loop() {
     _battery.update(now);   // refresh the top battery bar (self-gated, ~3 s cadence)
     this->checkBatteryCutoff();   // near-empty cell → charge prompt + protective sleep
 
+    // User's prevent-sleep choice → power policy. PowerManager decides whether it may
+    // actually be honoured (the low-charge ladder overrides it from CRITICAL down).
+    _power.setPreventSleep(_setupUI.preventSleep());
+
     // Backlight clamp for the current power state: low-charge ladder on battery, idle
-    // dim while docked on USB. No-ops unless the ceiling actually moved.
+    // dim in either stay-awake mode. No-ops unless the ceiling actually moved.
     _setupUI.setBrightnessCeiling(_power.brightnessCeiling());
 
     _power.loop(now);   // may enter deep sleep after the display-on timeout (no return)

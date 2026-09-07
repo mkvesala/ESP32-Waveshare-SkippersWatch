@@ -173,12 +173,20 @@ Always visible above the screens: a bar showing the **watch's own LiPo** (distin
 
 <img src="docs/setupview.png" width="240">
 
-- Backlight brightness slider (`ui_SliderBrightness`)
-- **Touch:** drag the slider directly (absolute, no mode) — applies instantly, saves to NVS on release
-- **Knob:** press to enter ADJUSTING mode (slider indicator turns amber), rotate ±2 %, 3 s idle or leaving the page saves to NVS
-- Range 2 %–100 % (2 % minimum keeps the screen from going fully dark); default 20 % (readable in daylight, low continuous draw). NVS-stored value always wins
-- Persistence: Preferences (NVS), namespace `"display"`, key `"brightness"`. PWM: GPIO13, 5 kHz, 8-bit
-- The power layer may apply a **ceiling** on top of this (low battery, or the USB idle dim) — it clamps only what reaches the backlight pin, never the stored setting, so the slider keeps showing your choice and it is restored the moment the ceiling lifts
+**Touch-only.** The knob does not reach this screen: rotating it switches pages here like anywhere else, and a press does nothing. The slider position and the switch colour show the state directly, so the SquareLine value labels are hidden and never written.
+
+**Backlight brightness** (`ui_SliderBrightness`) — drag the slider; applies instantly, saves to NVS on release. Range 2 %–100 % (the 2 % minimum keeps the screen from going fully dark); default 20 % (readable in daylight, low continuous draw), with the NVS-stored value always winning. Persistence: namespace `"display"`, key `"brightness"`. PWM: GPIO13, 5 kHz, 8-bit.
+
+The power layer may apply a **ceiling** on top of the slider (low battery, or the stay-awake idle dim). It clamps only what reaches the backlight pin, never the stored setting, so the slider keeps showing your choice and it is restored the moment the ceiling lifts.
+
+**Prevent sleep** (`ui_SwitchPreventSleep`) — tap to keep the watch awake on battery, the same way it stays awake while docked on USB: no display timeout, and the panel dims to 5 % after 60 s of no input instead of sleeping. Persistence: namespace `"display"`, key `"nosleep"`, saved the instant you flip it (`onLeave()` never runs on the way into deep sleep, so a later save would lose it). Red knob = off, green = on.
+
+Two limits still apply, deliberately:
+
+- **The 120 s awake ceiling is not suspended.** The switch suspends the display timeout, never the ceiling, so an awake session stays bounded — see [Power guards](#power-guards). USB is the only mode that lifts the ceiling, because on external power there is no endurance to protect.
+- **The low-charge ladder overrides it from `CRITICAL` down** (SoC ≤ 10 %): the normal 3 s timeout and the 10 % backlight clamp come back. Your stored setting is not rewritten, so prevent sleep resumes by itself once the cell recovers — the same principle as the backlight ceiling.
+
+**Cost.** With the switch on, every wake runs the full 120 s instead of timing out: ~4.7 mAh per wake (60 s at ~145 mA, then 60 s dimmed), roughly **11× a normal 0.42 mAh glance**. At 10 wakes/day that is ~99 mAh/day (~2.5 days); at 30, ~193 mAh/day (~1.3 days). The 24 h + nightly-charge requirement still holds, but the margin drops from ~3× to ~1.3× under heavy use — this is a "keep it awake while I am actively using it" switch, not a set-and-forget setting.
 
 ## Input
 
@@ -188,8 +196,8 @@ Touch and the rotary knob feed the **same** `IScreenUI` dispatch, so both drive 
 |---|---|---|
 | Next screen | Swipe up | Rotate CW |
 | Previous screen | Swipe down | Rotate CCW |
-| Screen action (e.g. Setup enter ADJUSTING) | Tap | Button press |
-| Adjust brightness | Drag the slider (absolute) | Rotate in ADJUSTING mode (±2 %) |
+| Screen action | Tap | Button press |
+| Adjust brightness / toggle prevent sleep | Drag the slider, tap the switch | — (Setup is touch-only) |
 | Wake from deep sleep | — (see note) | Button press (GPIO18, ext0) |
 
 Screen carousel order:
@@ -232,7 +240,9 @@ The measured budget below is comfortable, so what actually threatens endurance i
 
 Shortening the **timeout** is the real lever, not the brightness clamp: active baseline is ~145 mA while the backlight adds only ~10 mA at 20 %, so 10 s → 3 s saves roughly two-thirds per glance where the clamp saves about 5 %. The cutoff check deliberately runs *before* the radio is brought up — RF bring-up is the sharpest current edge on the board and the last thing a near-empty cell should be asked for. Button wake stays armed at cutoff on purpose: a press just repeats the short prompt cycle, and plugging in USB restores a normal boot, whereas refusing to wake would read as a bricked watch.
 
-**On USB power the watch does not sleep.** With external power present (GPIO17) there is no endurance to protect, so the display timeout and the awake ceiling are both suspended and the watch works as a docked display; after 60 s without input the panel dims to 5 % instead of sleeping. Unplugging grants a fresh display window and restarts the awake ceiling. The clamp is applied as a *ceiling* on what reaches the backlight pin — the user's stored brightness and the Setup slider are never overwritten.
+**On USB power the watch does not sleep.** With external power present (GPIO17) there is no endurance to protect, so the display timeout and the awake ceiling are both suspended and the watch works as a docked display; after `STAYAWAKE_DIM_IDLE_MS` (60 s) without input the panel dims to `STAYAWAKE_DIM_PERCENT` (5 %) instead of sleeping. Unplugging grants a fresh display window and restarts the awake ceiling. The clamp is applied as a *ceiling* on what reaches the backlight pin — the user's stored brightness and the Setup slider are never overwritten.
+
+**The Setup screen's prevent-sleep switch is the battery-powered version of the same behaviour** — same dim, no display timeout — with one deliberate difference: the 120 s awake ceiling stays armed, and the low-charge ladder overrides the switch from `CRITICAL` down. See [Setup screen](#setup-screen) for the endurance cost.
 
 ### Freshness
 

@@ -14,8 +14,31 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
   `HeadingDelta` payload carries both fields; `getHeadingTrueDeg()` existed but was unused
   anywhere in the tree. The README's Navigation section was also missing HDG entirely.
 
+### Added
+
+- **Prevent-sleep switch on the Setup screen** (`ui_SwitchPreventSleep`). Keeps the watch
+  awake on battery the same way it stays awake while docked on USB — no display timeout,
+  panel dimmed to 5 % after 60 s of no input — with two deliberate limits: the 120 s awake
+  ceiling stays armed (only USB lifts it), and the low-charge ladder overrides the switch
+  from `CRITICAL` down without rewriting the stored setting, so it resumes by itself once
+  the cell recovers. Persisted to NVS (`"display"` / `"nosleep"`) the instant it is flipped,
+  since `onLeave()` never runs on the way into deep sleep. Red knob = off, green = on.
+  Costs ~4.7 mAh per wake (~11x a normal glance) while on, so it is a "keep it awake while
+  I am using it" control rather than a set-and-forget setting.
+
 ### Changed
 
+- **The Setup screen is now touch-only.** The knob's ADJUSTING capture mode is gone with the
+  state machine behind it (`SetupState`, `onButtonPress`, `onRotation`, `interceptsRotation`,
+  the 3 s autosave): brightness is set by dragging the slider and prevent sleep by tapping the
+  switch. Rotating the knob now switches pages on the Setup screen like on every other screen
+  instead of being captured, and a knob press does nothing there. The hidden SquareLine value
+  labels are no longer written — the slider position and the switch colour show the state.
+- `IScreenUI::interceptsTouchAt()` is no longer `const`: a page with several controls also
+  records which one a touch claimed, since the drag/end pair that follows cannot identify it.
+- `USB_DIM_IDLE_MS` / `USB_DIM_PERCENT` renamed to `STAYAWAKE_DIM_IDLE_MS` /
+  `STAYAWAKE_DIM_PERCENT` — they now govern the battery-side prevent-sleep mode too, and the
+  `USB_` prefix would mislead. `STAY_AWAKE_ON_USB` keeps its name, being genuinely USB-specific.
 - **Display-on window lengthened from 8 s to 10 s** (`DISPLAY_TIMEOUT_MS`). Costs ~0.08 mAh
   per glance; endurance on the 250 mAh cell goes from ~4.0/3.5/2.9 days to ~3.9/3.2/2.7 days
   at 30/60/100 glances per day, i.e. still 2.7-4.8x the 24 h + nightly-charge requirement.

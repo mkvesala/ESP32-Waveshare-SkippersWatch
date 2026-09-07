@@ -76,6 +76,10 @@ public:
     using SleepHook = void (*)(void* ctx);
     void setPreSleepHook(SleepHook hook, void* ctx) { _sleep_hook = hook; _sleep_ctx = ctx; }
 
+    // User's "prevent sleep" choice (SetupUI switch), pushed in every loop by the app.
+    // Storing it is not the same as honouring it — see preventSleepActive().
+    void setPreventSleep(bool on) { _prevent_sleep = on; }
+
     // Call once at end of app.begin(); records why we woke, starts the idle timer and
     // the awake ceiling, and subscribes the Arduino loop task to the task watchdog
     void begin(esp_sleep_wakeup_cause_t cause);
@@ -119,10 +123,14 @@ public:
     static constexpr uint32_t MAX_AWAKE_MS = 120000;
 
     // On USB there is no endurance to protect: stay awake so the watch works as a
-    // docked display. The panel is dimmed (not slept) after USB_DIM_IDLE_MS.
-    static constexpr bool     STAY_AWAKE_ON_USB = true;
-    static constexpr uint32_t USB_DIM_IDLE_MS   = 60000;
-    static constexpr int8_t   USB_DIM_PERCENT   = 5;
+    // docked display, with no display timeout AND no awake ceiling.
+    static constexpr bool STAY_AWAKE_ON_USB = true;
+
+    // Idle dim shared by BOTH stay-awake modes (USB and the prevent-sleep switch):
+    // the panel is dimmed rather than slept after this long without input. Named for
+    // the behaviour, not the power source — prevent sleep runs it on battery too.
+    static constexpr uint32_t STAYAWAKE_DIM_IDLE_MS = 60000;
+    static constexpr int8_t   STAYAWAKE_DIM_PERCENT = 5;
 
 private:
 
@@ -135,6 +143,16 @@ private:
     void initWatchdog();
 
     bool chargingNow() const { return _battery != nullptr && _battery->charging(); }
+
+    // Whether the user's prevent-sleep choice may actually be honoured right now. The
+    // low-charge ladder wins from CRITICAL down: holding ~145 mA on a cell that is
+    // already under 10 % is exactly what the ladder exists to stop. The stored setting
+    // is never rewritten, so it resumes by itself once the cell recovers — same
+    // principle as the backlight ceiling, which clamps without touching the slider.
+    // (CUTOFF is handled earlier still, by CrowPanelApplication::checkBatteryCutoff().)
+    bool preventSleepActive() const {
+        return _prevent_sleep && this->levelNow() < BatteryMonitor::Level::CRITICAL;
+    }
     BatteryMonitor::Level levelNow() const {
         return (_battery != nullptr) ? _battery->level() : BatteryMonitor::Level::OK;
     }
@@ -147,6 +165,8 @@ private:
 
     SleepHook _sleep_hook = nullptr;
     void*     _sleep_ctx  = nullptr;
+
+    bool _prevent_sleep = false;   // user's SetupUI choice, pushed in every loop
 
     esp_sleep_wakeup_cause_t _cause = ESP_SLEEP_WAKEUP_UNDEFINED;
     PowerState _state = PowerState::WAKING;

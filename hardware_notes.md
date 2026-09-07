@@ -127,9 +127,11 @@ table, unlike the verrokki's RGB ST7701).
 - On boot/wake the UI comes up with every value `---`, fills in as ESP-NOW
   packets arrive, and after `PowerManager::DISPLAY_TIMEOUT_MS` (10 s) of no knob
   activity the watch soft-ramps the backlight down and enters **deep sleep**.
-- **Press the encoder button (GPIO18) to wake.** Rotating the knob switches
-  pages; on the Setup page, press to grab the knob for brightness, press again
-  (or wait 3 s) to save.
+- **Press the encoder button (GPIO18) to wake.** Rotating the knob switches pages
+  on every page including Setup; the knob no longer has any Setup-specific mode.
+- **The Setup page is touch-only:** drag `ui_SliderBrightness` for backlight, tap
+  `ui_SwitchPreventSleep` to keep the watch awake on battery. Both persist to NVS
+  (`"display"` / `"brightness"`, `"nosleep"`).
 
 ### RTC memory across reset causes
 `RTC_DATA_ATTR` (`.rtc.data`) is **not** enough to carry state across a reset: the
@@ -175,10 +177,17 @@ sharpest current edge on the board) and keeps the button wake armed, so a press 
 repeats the short prompt cycle and plugging in USB restores a normal boot.
 
 On USB (GPIO17 HIGH) the watch **does not sleep**: it stays up as a docked display and
-dims the panel to `USB_DIM_PERCENT` (5 %) after `USB_DIM_IDLE_MS` (60 s) of no input.
-Unplugging grants a fresh 10 s window and restarts the awake ceiling. The clamp is applied
-through `SetupUI::setBrightnessCeiling()`, which never overwrites the user's stored
+dims the panel to `STAYAWAKE_DIM_PERCENT` (5 %) after `STAYAWAKE_DIM_IDLE_MS` (60 s) of no
+input. Unplugging grants a fresh 10 s window and restarts the awake ceiling. The clamp is
+applied through `SetupUI::setBrightnessCeiling()`, which never overwrites the user's stored
 brightness — only what reaches the LEDC pin.
+
+The Setup **prevent-sleep** switch (`SetupUI::preventSleep()` → `PowerManager::setPreventSleep()`)
+is the same stay-awake behaviour on battery, with two deliberate limits: `MAX_AWAKE_MS`
+stays armed (only USB lifts the ceiling), and `preventSleepActive()` returns false from
+`Level::CRITICAL` down, so the ladder wins on a low cell. The stored setting is never
+rewritten — it resumes on its own once the cell recovers. Constants are shared with the USB
+path, which is why they are named `STAYAWAKE_*` and not `USB_*`.
 
 ## Sources
 Elecrow official repo `CrowPanel_2.01_inch-HMI_ESP32_Watch_Display_240_296`:

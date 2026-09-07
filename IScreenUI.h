@@ -20,7 +20,9 @@
 //   onRotation(dir)      — called by CrowPanelApplication on knob rotation
 //                          only if interceptsRotation() returns true
 //   interceptsRotation() — return true to consume rotation events instead of
-//                          switching screens (e.g. BrightnessUI in ADJUSTING mode)
+//                          switching screens. NO page currently does: SetupUI was the
+//                          last one and is now touch-only, so rotation always switches
+//                          screens. The seam is kept for a future page that needs it.
 //
 // Touch input (parallel to the knob, dispatched by CrowPanelApplication::handleTouch;
 // coordinates are in the panel's pixel space). A page opts into raw-touch handling
@@ -29,7 +31,10 @@
 //   interceptsTouchAt(x,y) — return true on touch-DOWN to claim this touch as a drag
 //                            (e.g. the point is on the page's slider). When claimed,
 //                            the app forwards onTouchDrag/onTouchEnd and suppresses
-//                            the swipe/tap classification for that touch.
+//                            the swipe/tap classification for that touch. Deliberately
+//                            NOT const: a page with several controls also records which
+//                            one was claimed, since the drag/end pair that follows
+//                            cannot always identify it (SetupUI's switch).
 //   onTouchDrag(x,y)       — live drag position while the claimed touch is held
 //   onTouchEnd()           — the claimed touch was released (persist here)
 
@@ -50,7 +55,7 @@ public:
 
     virtual bool interceptsRotation() const { return false; }
 
-    virtual bool interceptsTouchAt(int16_t x, int16_t y) const { return false; }
+    virtual bool interceptsTouchAt(int16_t x, int16_t y) { return false; }
     virtual void onTouchDrag(int16_t x, int16_t y){}
     virtual void onTouchEnd(){}
 

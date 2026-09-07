@@ -91,12 +91,19 @@ void PowerManager::loop(uint32_t now) {
     if (charging && STAY_AWAKE_ON_USB) return;
 
     // Absolute ceiling: fires regardless of how often notifyActivity() was called, so a
-    // stuck input source cannot hold the board at ~145 mA until the cell is flat.
+    // stuck input source cannot hold the board at ~145 mA until the cell is flat. This
+    // check sits ABOVE the prevent-sleep branch on purpose — the switch suspends the
+    // display timeout, never the ceiling, so an awake session is still bounded at 120 s.
     if ((long)(now - _wake_ms) >= (long)MAX_AWAKE_MS) {
         Serial.println("[power] awake ceiling reached -> sleep");
         _state = PowerState::SLEEP_PREP;
         this->enterDeepSleep();   // does not return
     }
+
+    // Prevent-sleep: behave like the docked case for the rest of this session — no
+    // display timeout, panel dimmed instead (brightnessCeiling()). The ceiling above
+    // has already been honoured, so this cannot hold the watch awake indefinitely.
+    if (this->preventSleepActive()) return;
 
     // Overflow-safe elapsed check (same idiom as the rest of the codebase)
     if ((long)(now - _last_activity) < (long)this->displayTimeoutMs()) {
@@ -126,14 +133,20 @@ uint32_t PowerManager::displayTimeoutMs() const {
     }
 }
 
+// Two clamps can apply at once, and the LOWER always wins:
+//   - the low-charge ladder (battery only; USB power means there is nothing to ration)
+//   - the idle dim, in either stay-awake mode (docked on USB, or the prevent-sleep switch)
+// Any knob/touch activity calls notifyActivity(), so the dim lifts on the next loop.
 int8_t PowerManager::brightnessCeiling() const {
-    if (this->chargingNow()) {
-        // Docked: full brightness while in use, dimmed (not slept) once left alone.
-        // Any knob/touch activity calls notifyActivity() and restores it next loop.
-        const bool idle = (long)(millis() - _last_activity) >= (long)USB_DIM_IDLE_MS;
-        return idle ? USB_DIM_PERCENT : CEILING_NONE;
+    const bool charging = this->chargingNow();
+
+    int8_t ceiling = charging ? CEILING_NONE : backlightCeilingFor(this->levelNow());
+
+    if (charging || this->preventSleepActive()) {
+        const bool idle = (long)(millis() - _last_activity) >= (long)STAYAWAKE_DIM_IDLE_MS;
+        if (idle && STAYAWAKE_DIM_PERCENT < ceiling) ceiling = STAYAWAKE_DIM_PERCENT;
     }
-    return backlightCeilingFor(this->levelNow());
+    return ceiling;
 }
 
 int8_t PowerManager::backlightCeilingFor(BatteryMonitor::Level level) {
