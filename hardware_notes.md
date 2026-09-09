@@ -141,12 +141,26 @@ deep-sleep wake, where it deliberately skips the initialisation. Use
 word for anything that must also survive the reset button, a watchdog trip or a panic
 — see `CrowPanelApplication::resolveStartPage()`.
 
-**Open (measure on HW):** the reset button is presumed wired to **EN (CHIP_PU)**, which
-power-cycles the chip internally; whether the RTC domain keeps its contents across that
-is board-specific and not documented by Elecrow. The boot log
-`[page] reset=<esp_reset_reason> src=rtc|nvs` answers it: tap RESET and read the source.
-`src=rtc` → EN reset preserves RTC RAM here; `src=nvs` → it wipes it, and the NVS tier is
-load-bearing. Either way the page is restored — this is diagnostics, not a dependency.
+**MEASURED 2026-09-09 — the reset button wipes RTC RAM on this board.** Boot log from a
+RESET-button boot:
+
+```
+[page] reset=1 src=nvs page=5
+[power] cold boot
+```
+
+`reset=1` is **`ESP_RST_POWERON`**, not `ESP_RST_EXT` (see the `esp_reset_reason_t` enum in
+`esp_system.h`) — i.e. the button pulls **EN (CHIP_PU)** low, the RTC domain is power-cycled
+with everything else, and the SoC genuinely cannot tell the press apart from a cold power-on.
+`src=nvs` confirms the magic word did not survive.
+
+Consequences worth keeping in mind:
+- **The NVS tier is load-bearing, not belt-and-braces.** `RTC_NOINIT_ATTR` alone would NOT
+  have restored the page across the reset button — the case the feature was built for.
+- The RTC tier still earns its place: it is free, it keeps flash off the common deep-sleep
+  wake path entirely, and it covers watchdog and panic resets a sleep cycle sooner than NVS.
+- `reset=` cannot distinguish "user pressed RESET" from "battery reconnected" here. Nothing
+  depends on that distinction; `resolveStartPage()` only tests `!= ESP_RST_DEEPSLEEP`.
 
 ### Power guards (M1 hardening)
 The measured budget is comfortable (2.16 mA sleep floor, ~145 mA active, 250 mAh cell,

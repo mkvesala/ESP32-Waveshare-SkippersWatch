@@ -261,7 +261,7 @@ The screen you were last on is restored on **every** boot, not only a deep-sleep
 
 Tier 2 is read **only** when tier 1 is gone, and written **only** when the page actually changed — so the common deep-sleep wake touches no flash and the wake sequence is unchanged. The write is placed at the top of the deep-sleep entry, before the backlight ramp, where the radio is idle and no render is in flight: one load moving at a time, the same spike-staggering rule the wake sequence follows. The restore is not gated on the wake cause (a reset reports `ESP_SLEEP_WAKEUP_UNDEFINED`); the magic word answers the real question, which is whether the stored value is trustworthy, and `ScreenManager::begin()` clamps it regardless.
 
-Boot logs the reset reason and which tier supplied the page (`[page] reset=… src=rtc|nvs page=…`).
+Boot logs the reset reason and which tier supplied the page (`[page] reset=… src=rtc|nvs page=…`). That log settled a question the datasheets do not: on this board the **reset button wipes RTC RAM** — it reports `ESP_RST_POWERON` (1), not `ESP_RST_EXT`, because the button pulls EN (CHIP_PU) low and power-cycles the RTC domain with everything else. The NVS tier is therefore load-bearing rather than belt-and-braces; `RTC_NOINIT_ATTR` alone would not have survived the very case this feature exists for. See `hardware_notes.md`.
 
 ### Consumption measurements
 
