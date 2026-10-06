@@ -76,6 +76,14 @@ extern lv_obj_t *ui_LabelDay;
 extern lv_obj_t *ui_LabelDate;
 extern lv_obj_t *ui_LabelTimeUTC;
 extern lv_obj_t *ui_LabelDateUTC;
+extern lv_obj_t *ui_ContainerMenu;
+extern lv_obj_t *ui_ImgButtonNavigation;
+extern lv_obj_t *ui_ImgButtonBatteries;
+extern lv_obj_t *ui_ImgButtonEngine;
+extern lv_obj_t *ui_ImgButtonWeather;
+extern lv_obj_t *ui_ImgButtonSetup;
+extern lv_obj_t *ui_ImgButtonClock;
+extern lv_obj_t *ui_ImgButtonAttitude;
 // CUSTOM VARIABLES
 
 #ifdef __cplusplus

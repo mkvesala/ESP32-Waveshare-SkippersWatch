@@ -33,9 +33,20 @@ extern "C" {
 // EVENTS
 extern lv_obj_t *ui____initial_actions0;
 
+// IMAGES AND IMAGE SETS
+LV_IMG_DECLARE( ui_img_navigation_96x96_png);   // assets/navigation_96x96.png
+LV_IMG_DECLARE( ui_img_batteries_96x96_png);   // assets/batteries_96x96.png
+LV_IMG_DECLARE( ui_img_engine_room_96x96_png);   // assets/engine_room_96x96.png
+LV_IMG_DECLARE( ui_img_weather_96x96_png);   // assets/weather_96x96.png
+LV_IMG_DECLARE( ui_img_setup_96x96_png);   // assets/setup_96x96.png
+LV_IMG_DECLARE( ui_img_clock_96x96_png);   // assets/clock_96x96.png
+LV_IMG_DECLARE( ui_img_attitude_96x96_png);   // assets/attitude_96x96.png
+
 // FONTS
 LV_FONT_DECLARE( ui_font_FontLabel14);
+LV_FONT_DECLARE( ui_font_FontLabel24);
 LV_FONT_DECLARE( ui_font_FontLabel32);
+LV_FONT_DECLARE( ui_font_FontLabel48);
 
 // UI INIT
 void ui_init(void);
