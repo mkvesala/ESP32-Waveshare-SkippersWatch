@@ -10,7 +10,7 @@
 // - Weather page adapter: Temp °C / Humid % / Pres hPa (all shown at once)
 // - Source: WEATHER_DELTA
 // - Realizes IScreenUI over container ui_ContainerWeather
-// - Owned by: CrowPanelApplication
+// - Owned by: WatchApplication
 
 class WeatherUI : public IScreenUI {
 

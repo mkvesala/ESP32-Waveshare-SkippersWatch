@@ -2,18 +2,23 @@
 
 #include <Arduino.h>
 #include <lvgl.h>
+#include <Wire.h>
 #include "ui.h"   // ui_BarBatteryIndicator (top status-bar gauge on ui_ScreenMain)
+#include "BatteryLevel.h"
+
+class XPowersAXP2101;   // XPowersLib, included only in BatteryMonitor.cpp
 
 // === C L A S S  B A T T E R Y M O N I T O R ===
 //
 // - Drives the always-visible top battery bar (ui_BarBatteryIndicator) from the
 //   watch's OWN LiPo — distinct from BatteryUI, which shows the boat's remote banks.
-// - Samples the GPIO1 battery ADC (100k/137k divider, powered off the GPIO47
-//   peripheral rail that is HIGH whenever the watch is awake), smooths it (EMA),
-//   estimates State-of-Charge from a LiPo resting curve, fills the bar (0..100),
-//   and recolors it green/amber/red by charge level.
-// - Owned by: CrowPanelApplication. begin() once after the rails + UI exist;
-//   update(now) each loop (self time-gates to SAMPLE_INTERVAL_MS).
+// - Reads the cell from the AXP2101 PMIC (XPowersLib) over the shared I2C bus:
+//   battery voltage (smoothed, EMA), the PMIC's fuel-gauge percentage (falls back to a
+//   LiPo resting curve if the gauge reports nothing), and VBUS presence. Fills the bar
+//   (0..100) and recolors it green/amber/red by charge level.
+// - Owns the PMIC driver object. beginPmu() once, early (Wire already begun); begin()
+//   once after ui_init(); update(now) each loop (self time-gates to SAMPLE_INTERVAL_MS).
+// - Owned by: WatchApplication.
 // - Also classifies the charge state into a coarse Level (OK/WARN/CRITICAL/CUTOFF).
 //   That is DATA, not policy: what to do about each level (shorter display timeout,
 //   backlight ceiling, protective sleep) lives in PowerManager.
@@ -24,7 +29,11 @@ public:
 
     // Coarse charge state driving PowerManager's low-charge ladder. Deliberately
     // aligned with the color buckets below, so the red bar IS the WARN indicator.
-    enum class Level : uint8_t { OK = 0, WARN = 1, CRITICAL = 2, CUTOFF = 3 };
+    using Level = BatteryLevel;
+
+    // Bring up the AXP2101 on the shared bus and enable its ADC channels. Touches no
+    // power rails. False if the PMIC does not ACK (the bar then shows charging/100).
+    bool beginPmu(TwoWire& wire, int sda, int scl);
 
     void begin();
     void update(uint32_t now);
@@ -36,7 +45,7 @@ public:
     // not only a curve extrapolation at the steep bottom end)
     uint16_t cellMillivolts() const { return (uint16_t)(_ema_mv + 0.5f); }
 
-    // True while the watch is on external USB power (GPIO17 HIGH)
+    // True while the watch is on external USB power (AXP2101 VBUS present)
     bool charging() const { return _charging; }
 
     // Current charge level. Escalates only within one awake session (see _level) and
@@ -45,21 +54,10 @@ public:
 
 private:
 
-    // --- Hardware (see hardware_notes.md) ---
-    // GPIO1 = ADC1. Divider 100k upper / 137k lower → V_batt = V_adc * 237/137.
-    static constexpr uint8_t  BATTERY_ADC_PIN = 1;
-    static constexpr uint32_t DIVIDER_NUM     = 237;   // (100k + 137k)
-    static constexpr uint32_t DIVIDER_DEN     = 137;   // 137k lower leg
-
-    // USB power detect (GPIO17): HIGH = on external 5 V (charging). Authoritative
-    // per hardware_notes.md. Charge-status (GPIO15) polarity is undocumented in
-    // Elecrow's Lesson11 (it only prints the raw level) — read/logged, not acted on.
-    static constexpr uint8_t  USB_DETECT_PIN    = 17;
-    static constexpr uint8_t  CHARGE_STATUS_PIN = 15;
+    XPowersAXP2101* _pmu = nullptr;
 
     // --- Sampling ---
     static constexpr uint32_t SAMPLE_INTERVAL_MS = 3000;  // SoC drifts slowly
-    static constexpr uint8_t  ADC_SAMPLES        = 16;    // averaged per reading (noise)
     static constexpr float    EMA_ALPHA          = 0.2f;  // smoothing weight of a new sample
 
     // --- Indicator colors (code-owned; override the SLS white). Amber matches
@@ -73,14 +71,7 @@ private:
     static constexpr uint8_t GREEN_ABOVE = 40;
     static constexpr uint8_t AMBER_ABOVE = 20;
 
-    // --- Low-charge ladder thresholds (percent, and a hard voltage floor) ---
-    // WARN coincides with the red bar (AMBER_ABOVE), so the visual warning already
-    // exists. CUTOFF triggers on EITHER a very low SoC or a low measured cell
-    // voltage, whichever comes first — the LiPo curve is steep and coarse down there.
-    static constexpr uint8_t  WARN_AT_OR_BELOW     = 20;
-    static constexpr uint8_t  CRITICAL_AT_OR_BELOW = 10;
-    static constexpr uint8_t  CUTOFF_AT_OR_BELOW   = 5;
-    static constexpr uint16_t CUTOFF_CELL_MV       = 3400;  // well above the cell's own PCM cutoff
+    // Low-charge ladder thresholds live in BatteryLevel.h (BatteryLadder).
 
     float   _ema_mv      = 0.0f;   // smoothed cell millivolts
     bool    _seeded      = false;  // false until the first sample seeds the EMA
@@ -90,14 +81,14 @@ private:
     uint8_t _soc         = 0;      // last SoC 0..100
     int8_t  _last_bucket = -1;     // last applied color bucket (-1 = none yet)
 
-    // Ladder level. Only ever ESCALATES while awake, so EMA jitter under the ~145 mA
-    // active load cannot make the ladder flap across a threshold. A deep-sleep wake is
+    // Ladder level. Only ever ESCALATES while awake, so EMA jitter under the active load cannot make the ladder flap across a threshold. A deep-sleep wake is
     // a full reboot, so every wake re-evaluates from scratch.
     Level _level = Level::OK;
 
-    bool     usbPresent() const { return digitalRead(USB_DETECT_PIN) == HIGH; }
-    uint16_t sampleCellMillivolts() const;   // averaged, divider-corrected cell mV
-    uint8_t  estimateSoc(uint16_t cell_mv) const;  // LiPo resting-curve lookup
+    bool     usbPresent() const;             // AXP2101 VBUS in (true if no PMIC: fail safe)
+    uint16_t sampleCellMillivolts() const;   // AXP2101 battery voltage, mV
+    uint8_t  estimateSoc(uint16_t cell_mv) const;  // gauge %, else LiPo resting curve
+    uint8_t  curveSoc(uint16_t cell_mv) const;     // LiPo resting-curve lookup
     Level    classify() const;                // current reading → Level (no hysteresis)
     void     escalateLevel();                 // apply classify() one-way (never de-escalates)
     void     render();                        // push state to the bar (value + color)

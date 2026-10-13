@@ -14,9 +14,9 @@
 // - Pages are registered via addScreen() before begin()
 // - Init: addScreen() for each page, then screenMgr.begin(start_index) — the start
 //   page defaults to 0 (Navigation) but a button-wake restores the last-active page
-//   (see CrowPanelApplication::resolveStartPage / RTC_NOINIT_ATTR s_last_page_index + NVS)
+//   (see WatchApplication::resolveStartPage / RTC_NOINIT_ATTR s_last_page_index + NVS)
 // - Carousel order matches registration order (modulo index arithmetic)
-// - Owned by: CrowPanelApplication
+// - Owned by: WatchApplication
 
 class ScreenManager {
 
@@ -30,20 +30,27 @@ public:
     void begin(uint8_t start_index = 0);
     void switchNext();
     void switchPrevious();
+
+    // Jump straight to a page (the page menu's image buttons). Out-of-range is ignored.
+    void switchToIndex(uint8_t index);
     IScreenUI* getCurrentScreen() const;
 
     // Zero-based index of the active page — persisted to RTC memory so a wake can
     // restore the last-active page instead of always starting on Navigation
     uint8_t currentIndex() const { return _current; }
 
-    // Re-assert the current page's visibility (used after a wake re-render)
+    // Re-assert the current page's visibility (after a wake re-render, or when the
+    // page menu is dismissed and the last-active page comes back)
     void showCurrent();
+
+    // Hide the current page container without leaving it (the page menu covers it)
+    void hideCurrent();
+
+    uint8_t screenCount() const { return _screen_count; }
 
 private:
 
-    enum class Direction { CW, CCW };
-
-    void switchTo(uint8_t index, Direction dir);
+    void switchTo(uint8_t index);
     void hideAll();
 
     uint8_t nextIdx() const { return (_current + 1) % _screen_count; }

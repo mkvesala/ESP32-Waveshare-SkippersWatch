@@ -12,7 +12,7 @@
 //   + HALMET_WATER_DELTA (fresh water ratio 0..1)
 // - Fuel/water arrive as a 0..1 ratio → liters via FUEL/WATER_TANK_CAPACITY_L (confirm real capacity)
 // - Realizes IScreenUI over container ui_ContainerEngineroom
-// - Owned by: CrowPanelApplication
+// - Owned by: WatchApplication
 
 class EngineUI : public IScreenUI {
 

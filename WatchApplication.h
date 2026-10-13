@@ -12,31 +12,31 @@
 #include "AttitudeUI.h"
 #include "ClockUI.h"
 #include "SetupUI.h"
-#include "RotaryEncoder.h"
+#include "MenuUI.h"
 #include "TouchInput.h"
 #include "ScreenManager.h"
 #include "PowerManager.h"
 #include "BatteryMonitor.h"
+#include "PanelBrightness.h"
 
-// === C L A S S  C R O W P A N E L A P P L I C A T I O N ===
+// === C L A S S  W A T C H A P P L I C A T I O N ===
 //
-// - "The app": orchestrates the CrowPanel 2.01" Watch (GC9309 SPI, 240x296)
+// - "The app": orchestrates the Skipper's Watch on the Waveshare ESP32-S3-Touch-AMOLED-2.06
+//   (CO5300 QSPI AMOLED 410×502, FT3168 touch, AXP2101 PMIC)
 // - Init: app.begin();  Loop: app.loop()
-// - Owns: Arduino_GFX SPI display stack, ESPNowReceiver, the seven page adapters,
-//         RotaryEncoder, TouchInput, ScreenManager
-// - Input: knob AND touch feed the same IScreenUI seam (handleKnobRotation/
-//   handleKnobButtonPress/handleTouch). Touch is additive; the encoder can later be
-//   deleted (its rotation is fully covered by swipe/tap/drag) leaving only its
-//   push-button as the deep-sleep wake source — see PowerManager WAKE_BUTTON_PIN.
+// - Owns: Arduino_GFX QSPI display stack, ESPNowReceiver, the seven page adapters, the page
+//   menu, TouchInput, ScreenManager, PowerManager, BatteryMonitor (+ the AXP2101)
+// - Input: touch only (no knob on this board). Swipe left/right steps the carousel, swipe
+//   down opens the page menu, swipe up closes it, tap goes to the page or a menu button.
 // - Page carousel: NAVIGATION(0) → BATTERIES(1) → WEATHER(2) → ENGINE(3) → ATTITUDE(4) → CLOCK(5) → SETUP(6)
-// - Pins/parts confirmed from Elecrow example — see hardware_notes.md
-// - M0 baseline: runs flat-out (no sleep). PowerManager (Model B) is layered on in M1.
+// - Pins/parts from Waveshare's examples — see hardware_notes_waveshare.md
+// - Model B power: deep sleep at rest, the PWR button wakes (see PowerManager).
 
-class CrowPanelApplication {
+class WatchApplication {
 
 public:
 
-    explicit CrowPanelApplication();
+    explicit WatchApplication();
 
     void begin();
     void loop();
@@ -54,31 +54,29 @@ private:
 
     // How long the "BATTERY EMPTY / CHARGE NOW" prompt is held before the protective
     // sleep. Long enough to read, short enough that a repeated press of the wake button
-    // on a dead cell costs ~0.1 mAh instead of a full 8 s glance.
+    // on a dead cell costs little.
     static constexpr uint32_t CUTOFF_MESSAGE_MS = 2000;
 
-    // --- Pin map (see hardware_notes.md) ---
-    static constexpr uint8_t PIN_LCD_CS        = 9;
-    static constexpr uint8_t PIN_LCD_DC        = 10;
-    static constexpr uint8_t PIN_LCD_SCK       = 7;
-    static constexpr uint8_t PIN_LCD_MOSI      = 8;
-    static constexpr int8_t  PIN_LCD_MISO      = -1;
-    static constexpr uint8_t PIN_LCD_RST       = 6;
-    static constexpr uint8_t PIN_LCD_TE        = 21;   // tearing-effect sync
-    static constexpr uint8_t PIN_LCD_POWER     = 40;   // ACTIVE-LOW: LOW = rail on
-    static constexpr uint8_t PIN_PERIPH_POWER  = 47;   // shared peripheral rail: HIGH = on
-    static constexpr uint8_t PIN_BACKLIGHT     = 13;   // LEDC PWM
+    // --- Pin map (see hardware_notes_waveshare.md) ---
+    static constexpr uint8_t PIN_LCD_CS    = 12;
+    static constexpr uint8_t PIN_LCD_SCK   = 11;
+    static constexpr uint8_t PIN_LCD_SIO0  = 4;
+    static constexpr uint8_t PIN_LCD_SIO1  = 5;
+    static constexpr uint8_t PIN_LCD_SIO2  = 6;
+    static constexpr uint8_t PIN_LCD_SIO3  = 7;
+    static constexpr uint8_t PIN_LCD_RST   = 8;
+    static constexpr uint8_t PIN_I2C_SDA   = 15;   // shared: FT3168, AXP2101 (+ unused IMU/RTC/codecs)
+    static constexpr uint8_t PIN_I2C_SCL   = 14;
+    static constexpr uint8_t PIN_PA_CTRL   = 46;   // speaker amp enable — kept LOW (off)
 
-    // Backlight PWM
-    static constexpr uint32_t PWM_FREQ = 5000;
-    static constexpr uint8_t  PWM_RESOLUTION = 8;
+    // Display. Column offset 22 is part of Waveshare's CO5300 init; without it the image
+    // is shifted.
+    static constexpr uint16_t SCREEN_WIDTH  = 410;
+    static constexpr uint16_t SCREEN_HEIGHT = 502;
+    static constexpr uint8_t  LCD_COL_OFFSET = 22;
 
-    // Display
-    static constexpr uint16_t SCREEN_WIDTH  = 240;
-    static constexpr uint16_t SCREEN_HEIGHT = 296;
-    static constexpr uint32_t SPI_FREQUENCY = 80UL * 1000UL * 1000UL;
-
-    // LVGL partial draw buffer: 40 lines × 240 px × 2 bytes = 19 200 B internal SRAM
+    // LVGL partial draw buffer: 40 lines × 410 px × 2 bytes = 32 800 B internal SRAM
+    // (keeps PSRAM out of the wake path)
     static constexpr uint16_t DRAW_BUFFER_LINES = 40;
     lv_display_t* _lvgl_disp = nullptr;
     uint16_t* _buf1 = nullptr;
@@ -94,6 +92,7 @@ private:
     uint32_t _last_ui_update = 0;
 
     // Core instances
+    PanelBrightness _brightness;
     ESPNowReceiver _receiver;
     NavigationUI   _navUI;
     BatteryUI      _batteryUI;
@@ -102,11 +101,11 @@ private:
     AttitudeUI     _attitudeUI;
     ClockUI        _clockUI;
     SetupUI        _setupUI;
-    RotaryEncoder  _encoder;
+    MenuUI         _menu;
     TouchInput     _touch;
     ScreenManager  _screenMgr;
     PowerManager   _power;
-    BatteryMonitor _battery;   // drives the top bar from the watch's own LiPo (GPIO1 ADC)
+    BatteryMonitor _battery;   // drives the top bar from the watch's own LiPo (AXP2101)
 
     // True while a touch claimed at touch-down is being handled as a page drag
     // (e.g. the Setup brightness slider) rather than a swipe/tap.
@@ -123,9 +122,9 @@ private:
     uint8_t _nvs_page_written = 0xFF;
 
     // Decide the page to open on. Tier 1: RTC .rtc.noinit (free, survives deep sleep,
-    // software reset, watchdog and panic). Tier 2: NVS (survives a true power loss).
-    // Falls back to Navigation. Also logs the reset reason and which tier supplied the
-    // value — that log is what answers whether an EN-pin reset wipes RTC on this board.
+    // software reset, watchdog and panic). Tier 2: NVS (survives a true power loss, e.g.
+    // the AXP2101 long-press power-off). Falls back to Navigation. Also logs the reset
+    // reason and which tier supplied the value.
     uint8_t resolveStartPage();
     uint8_t loadPageFromNvs();
     void    savePageToNvs();
@@ -133,16 +132,19 @@ private:
     // PowerManager pre-sleep hook trampoline (plain function pointer + ctx).
     static void preSleepFlush(void* ctx);
 
-    void initPowerRails();
-    void initBacklight();
     void initDisplay();
     void initLvgl();
     void handleLvglTick(const uint32_t now);
-    void handleKnobRotation();
-    void handleKnobButtonPress();
     void handleTouch(const uint32_t now);
+    void handleGesture(TouchGesture gesture);
     void handleUIUpdate(const uint32_t now);
     void handleTimeSync();
+
+    // Page menu (ui_ContainerMenu): open over the current page / close back to it / jump.
+    void openMenu();
+    void closeMenu();
+    void jumpToPage(uint8_t index);
+    void rememberPage();
 
     // Full-screen "charge now" overlay shown just before a protective sleep on a
     // near-empty cell. Built in code (no SquareLine round-trip) — it must be available

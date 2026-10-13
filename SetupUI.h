@@ -4,6 +4,7 @@
 #include <lvgl.h>
 #include <Preferences.h>
 #include "IScreenUI.h"
+#include "PanelBrightness.h"
 
 // === C L A S S  S E T U P U I ===
 //
@@ -11,27 +12,24 @@
 //     * ui_SliderBrightness    — drag to set backlight brightness
 //     * ui_SwitchPreventSleep  — tap to keep the watch awake on battery
 // - Both settings persist to NVS ("display"/"brightness", "display"/"nosleep")
-// - The knob no longer reaches this page at all: interceptsRotation() is false, so
-//   rotation switches pages here like anywhere else, and a knob press does nothing.
-//   (The encoder is slated for removal, leaving only its push-button as the wake
-//   source — see PowerManager WAKE_BUTTON_PIN.) The old ADJUSTING state machine that
-//   captured the knob for brightness is gone with it.
+// - Brightness reaches the AMOLED through PanelBrightness (a panel command, 0..255);
+//   there is no backlight LED on this board.
 // - The SquareLine value labels (ui_LabelBrightnessValue, ui_LabelPreventSleepValue)
 //   are hidden in the export and deliberately never written: the slider position and
 //   the switch colour already show the state, and the numbers only crowded the layout.
 // - Realizes IScreenUI over container ui_ContainerSetup
-// - Owned by: CrowPanelApplication
+// - Owned by: WatchApplication
 
 class SetupUI : public IScreenUI {
 
 public:
 
-    explicit SetupUI(uint8_t backlight_pin);
+    explicit SetupUI(PanelBrightness& brightness);
 
     void begin() override;
     lv_obj_t* getLvglScreen() const override;
 
-    // Soft-ramp the backlight from 0 to the stored brightness — called by the app
+    // Soft-ramp the panel brightness from 0 to the stored brightness — called by the app
     // AFTER the first frame is rendered into the dark panel (staggered wake). Keeps
     // the backlight rise as its own load step, never simultaneous with radio bring-up.
     void rampBacklightUp();
@@ -39,7 +37,7 @@ public:
     // Cap the APPLIED backlight without touching the user's stored setting. Used by the
     // power layer for the low-charge ladder (CRITICAL/CUTOFF) and the stay-awake idle dim.
     // The slider and NVS keep showing/holding what the user chose — only what reaches
-    // the LEDC pin is clamped, so lifting the ceiling restores their brightness exactly.
+    // the panel is clamped, so lifting the ceiling restores their brightness exactly.
     void setBrightnessCeiling(int8_t percent);
 
     // User's "keep the watch awake on battery" choice. Read every loop by the app and
@@ -66,13 +64,13 @@ private:
     int8_t _brightness_percent = DEFAULT_BRIGHTNESS_PERCENT;
     int8_t _ceiling_percent = MAX_BRIGHTNESS_PERCENT;   // power-layer clamp (100 = none)
     bool _prevent_sleep = false;
-    uint8_t _backlight_pin;
+    PanelBrightness& _brightness;
 
     void applyBrightness();
     // What actually reaches the panel: the user's brightness, clamped by the ceiling
     int8_t effectivePercent() const;
     void updateUI();
-    uint8_t percentToPwm(int8_t percent) const;
+    uint8_t percentToLevel(int8_t percent) const;
 
     void saveBrightness();
     int8_t loadBrightness();
@@ -110,9 +108,9 @@ private:
     static constexpr const char* NVS_NAMESPACE = "display";
     static constexpr const char* NVS_KEY_BRIGHTNESS = "brightness";
     static constexpr const char* NVS_KEY_PREVENT_SLEEP = "nosleep";
-    static constexpr int8_t DEFAULT_BRIGHTNESS_PERCENT = 20;  // ~51/255 PWM — readable in
+    static constexpr int8_t DEFAULT_BRIGHTNESS_PERCENT = 20;  // ~51/255 — readable in
                                                              // daylight, low continuous draw
-                                                             // (backlight = biggest load).
+                                                             // (AMOLED draw vs level: [M]).
                                                              // Fallback only: NVS-stored value wins.
 
 };

@@ -16,7 +16,7 @@ using namespace ESPNow;
 // - Receives: HEADING_DELTA (compass/attitude), WEATHER_DELTA (weather sensor), BATTERY_DELTA,
 //   GNSS_DELTA, HALMET_ENGINE_DELTA, HALMET_TANK_DELTA, HALMET_WATER_DELTA, DEPTH_DELTA
 // - Init: _receiver.begin(channel)
-// - Owned by: CrowPanelApplication
+// - Owned by: WatchApplication
 
 class ESPNowReceiver {
 

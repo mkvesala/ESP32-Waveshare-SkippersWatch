@@ -9,13 +9,13 @@
 // - Clock page adapter: local date + weekday + local HH:MM:SS (24h) + UTC HH:MM:SS,
 //   and a PREV./NEXT indicator under UTC when the UTC date differs from the local date
 // - Reads the ESP32 system clock (POSIX time.h). The clock is disciplined by GNSS UTC:
-//   CrowPanelApplication applies incoming DATETIME_DELTA packets via settimeofday() and
+//   WatchApplication applies incoming DATETIME_DELTA packets via settimeofday() and
 //   sets the Finland TZ once. This adapter has NO ESPNowReceiver dependency — it only
 //   formats whatever the system clock currently holds.
 // - "Never show a fabricated time": until the clock has been set (system year < 2020)
 //   all fields show placeholders.
 // - Realizes IScreenUI over container ui_ContainerClock
-// - Owned by: CrowPanelApplication
+// - Owned by: WatchApplication
 
 class ClockUI : public IScreenUI {
 

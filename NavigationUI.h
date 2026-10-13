@@ -15,7 +15,7 @@
 //   gateway RX timestamp AND the payload's own age_ms (relayed feed liveness); either
 //   stale, or a NAN value, → "---" (never a frozen depth under the keel)
 // - Realizes IScreenUI over container ui_ContainerNavigation
-// - Owned by: CrowPanelApplication
+// - Owned by: WatchApplication
 
 class NavigationUI : public IScreenUI {
 

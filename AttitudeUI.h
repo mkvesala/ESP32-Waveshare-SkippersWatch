@@ -11,7 +11,7 @@
 // - Source: HEADING_DELTA (pitch_rad, roll_rad → x10 integer degrees)
 // - Sign convention: pitch > 0 = bow up; roll > 0 = starboard heel
 // - Realizes IScreenUI over container ui_ContainerAttitude
-// - Owned by: CrowPanelApplication
+// - Owned by: WatchApplication
 
 class AttitudeUI : public IScreenUI {
 

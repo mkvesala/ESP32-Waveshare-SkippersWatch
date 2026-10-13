@@ -21,16 +21,22 @@ void ScreenManager::begin(uint8_t start_index) {
     _screens[_current]->onEnter();
 }
 
-// CW carousel step
+// Carousel step forward (swipe left)
 void ScreenManager::switchNext() {
     if (_screen_count <= 1) return;
-    this->switchTo(this->nextIdx(), Direction::CW);
+    this->switchTo(this->nextIdx());
 }
 
-// CCW carousel step
+// Carousel step back (swipe right)
 void ScreenManager::switchPrevious() {
     if (_screen_count <= 1) return;
-    this->switchTo(this->previousIdx(), Direction::CCW);
+    this->switchTo(this->previousIdx());
+}
+
+// Direct jump (page menu)
+void ScreenManager::switchToIndex(uint8_t index) {
+    if (index >= _screen_count) return;
+    this->switchTo(index);
 }
 
 // Return pointer to the active page
@@ -46,6 +52,11 @@ void ScreenManager::showCurrent() {
     lv_obj_remove_flag(_screens[_current]->getLvglScreen(), LV_OBJ_FLAG_HIDDEN);
 }
 
+void ScreenManager::hideCurrent() {
+    if (!_initialized) return;
+    lv_obj_add_flag(_screens[_current]->getLvglScreen(), LV_OBJ_FLAG_HIDDEN);
+}
+
 // === P R I V A T E ===
 
 // Hide every registered page container
@@ -56,7 +67,7 @@ void ScreenManager::hideAll() {
 }
 
 // Unified page switch: cleanup current, show target container, notify new
-void ScreenManager::switchTo(uint8_t index, Direction dir) {
+void ScreenManager::switchTo(uint8_t index) {
     if (!_initialized) return;
     if (index == _current) return;
 

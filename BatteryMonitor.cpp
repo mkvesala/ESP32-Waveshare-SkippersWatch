@@ -1,8 +1,10 @@
 #include "BatteryMonitor.h"
+#define XPOWERS_CHIP_AXP2101
+#include <XPowersLib.h>
 
 // LiPo single-cell resting-curve lookup: cell millivolts → State-of-Charge %.
-// Coarse but honest (no fuel-gauge IC on this board); the light ~0.6C load means
-// modest sag, so the resting curve is adequate. Points are strictly descending in
+// Fallback only, for when the AXP2101 gauge reports no percentage. Also logged next to
+// the gauge value so a full discharge shows how far the two agree [M]. Points are strictly descending in
 // both columns; estimateSoc() interpolates linearly between neighbours.
 namespace {
     struct SocPoint { uint16_t mv; uint8_t soc; };
@@ -16,17 +18,28 @@ namespace {
 
 // === P U B L I C ===
 
+bool BatteryMonitor::beginPmu(TwoWire& wire, int sda, int scl) {
+    if (_pmu != nullptr) return true;
+    XPowersAXP2101* pmu = new XPowersAXP2101();
+    if (!pmu->begin(wire, AXP2101_SLAVE_ADDRESS, sda, scl)) {
+        Serial.println("WARN: AXP2101 not detected — battery bar unavailable");
+        delete pmu;
+        return false;
+    }
+    // As in Waveshare's 05_LVGL_AXP2101_ADC_Data: IRQs off and cleared, 4.2 V charge
+    // target, ADC channels on. No rail is switched here (rail-to-load map is [M]).
+    pmu->disableIRQ(XPOWERS_AXP2101_ALL_IRQ);
+    pmu->clearIrqStatus();
+    pmu->setChargeTargetVoltage(XPOWERS_AXP2101_CHG_VOL_4V2);
+    pmu->enableBattDetection();
+    pmu->enableVbusVoltageMeasure();
+    pmu->enableBattVoltageMeasure();
+    pmu->enableSystemVoltageMeasure();
+    _pmu = pmu;
+    return true;
+}
+
 void BatteryMonitor::begin() {
-    // 11 dB attenuation → ~0..3.1 V ADC range; the divided cell (1.73..2.43 V for a
-    // 3.0..4.2 V LiPo) sits comfortably inside it. analogReadMilliVolts() applies the
-    // per-chip eFuse calibration, so no manual reference math is needed.
-    analogSetPinAttenuation(BATTERY_ADC_PIN, ADC_11db);
-
-    // USB-present (GPIO17, HIGH) + charge-status (GPIO15) — match Lesson11 (plain INPUT,
-    // no assumed pull). GPIO15 is only logged; its polarity is undocumented.
-    pinMode(USB_DETECT_PIN, INPUT);
-    pinMode(CHARGE_STATUS_PIN, INPUT);
-
     _last_sample_ms = millis();
 
     // On USB power the cell voltage is charger-elevated and meaningless for SoC, so
@@ -63,8 +76,9 @@ void BatteryMonitor::update(uint32_t now) {
         // Log on CHANGE only: the watch now stays awake indefinitely on USB
         // (PowerManager STAY_AWAKE_ON_USB), so a per-sample line would never stop.
         if (!_charge_logged) {
-            Serial.printf("[battery] USB present (charge-pin=%d) -> charging\n",
-                          digitalRead(CHARGE_STATUS_PIN));
+            Serial.printf("[battery] USB present (charging=%d, batt %u mV) -> external power\n",
+                          (_pmu != nullptr) ? (int)_pmu->isCharging() : -1,
+                          this->sampleCellMillivolts());
             _charge_logged = true;
         }
         this->render();
@@ -86,26 +100,39 @@ void BatteryMonitor::update(uint32_t now) {
 
     _soc = estimateSoc((uint16_t)(_ema_mv + 0.5f));
     this->escalateLevel();
-    Serial.printf("[battery] cell %u mV (ema %u) -> SoC %u%%\n",
-                  cell_mv, (uint16_t)(_ema_mv + 0.5f), _soc);
+    Serial.printf("[battery] cell %u mV (ema %u) -> SoC %u%% (gauge %d%%, curve %u%%)\n",
+                  cell_mv, (uint16_t)(_ema_mv + 0.5f), _soc,
+                  (_pmu != nullptr) ? _pmu->getBatteryPercent() : -1,
+                  this->curveSoc((uint16_t)(_ema_mv + 0.5f)));
     this->render();
 }
 
 // === P R I V A T E ===
 
-// Average ADC_SAMPLES calibrated reads of the divider node, then scale back up to the
-// true cell voltage. Averaging beats ADC noise; sampling is cheap and only runs awake.
+// No PMIC → report external power: the bar shows charging and the ladder stays at OK,
+// so a missing gauge can never trigger a protective sleep on a healthy cell.
+bool BatteryMonitor::usbPresent() const {
+    if (_pmu == nullptr) return true;
+    return _pmu->isVbusIn();
+}
+
 uint16_t BatteryMonitor::sampleCellMillivolts() const {
-    uint32_t acc = 0;
-    for (uint8_t i = 0; i < ADC_SAMPLES; ++i) {
-        acc += analogReadMilliVolts(BATTERY_ADC_PIN);
+    if (_pmu == nullptr) return 0;
+    return _pmu->getBattVoltage();
+}
+
+// Prefer the AXP2101 fuel gauge; fall back to the resting curve when it reports nothing
+// (no battery detected, or a value outside 0..100).
+uint8_t BatteryMonitor::estimateSoc(uint16_t cell_mv) const {
+    if (_pmu != nullptr && _pmu->isBatteryConnect()) {
+        const int pct = _pmu->getBatteryPercent();
+        if (pct >= 0 && pct <= 100) return (uint8_t)pct;
     }
-    const uint32_t adc_mv = acc / ADC_SAMPLES;
-    return (uint16_t)((adc_mv * DIVIDER_NUM) / DIVIDER_DEN);
+    return this->curveSoc(cell_mv);
 }
 
 // Linear interpolation over the LiPo resting curve, clamped to 0..100.
-uint8_t BatteryMonitor::estimateSoc(uint16_t cell_mv) const {
+uint8_t BatteryMonitor::curveSoc(uint16_t cell_mv) const {
     if (cell_mv >= kSocCurve[0].mv)                return kSocCurve[0].soc;            // full
     if (cell_mv <= kSocCurve[kSocCurveLen - 1].mv) return kSocCurve[kSocCurveLen - 1].soc; // empty
 
@@ -121,20 +148,14 @@ uint8_t BatteryMonitor::estimateSoc(uint16_t cell_mv) const {
     return 0;  // unreachable (guarded above)
 }
 
-// Classify the current (smoothed) reading into a ladder level. No hysteresis here —
-// escalateLevel() provides that by refusing to go back down within an awake session.
-// CUTOFF trips on either a near-empty SoC or the hard voltage floor, whichever first.
+// Classify the current (smoothed) reading into a ladder level (rules in BatteryLevel.h).
+// No hysteresis here — escalateLevel() refuses to go back down within an awake session.
 BatteryMonitor::Level BatteryMonitor::classify() const {
     if (_charging || !_seeded) return Level::OK;
-
-    const uint16_t mv = this->cellMillivolts();
-    if (_soc <= CUTOFF_AT_OR_BELOW   || mv <= CUTOFF_CELL_MV) return Level::CUTOFF;
-    if (_soc <= CRITICAL_AT_OR_BELOW)                         return Level::CRITICAL;
-    if (_soc <= WARN_AT_OR_BELOW)                             return Level::WARN;
-    return Level::OK;
+    return BatteryLadder::classify(_soc, this->cellMillivolts());
 }
 
-// One-way escalation: the level can only get worse while awake. The ~145 mA active load
+// One-way escalation: the level can only get worse while awake. The active load
 // sags the cell enough that a reading can hop back over a threshold; a ladder that
 // flapped would flip the display timeout and backlight ceiling back and forth.
 void BatteryMonitor::escalateLevel() {

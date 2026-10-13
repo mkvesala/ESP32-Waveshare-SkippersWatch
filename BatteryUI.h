@@ -10,7 +10,7 @@
 // - Batteries page adapter: House V / Start V / House % / House A
 // - Source: BATTERY_DELTA (house V/A/SoC + start V; current signed, - = charging)
 // - Realizes IScreenUI over container ui_ContainerBatteries
-// - Owned by: CrowPanelApplication
+// - Owned by: WatchApplication
 
 class BatteryUI : public IScreenUI {
 

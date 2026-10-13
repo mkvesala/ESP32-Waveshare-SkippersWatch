@@ -3,8 +3,8 @@
 
 // === P U B L I C ===
 
-SetupUI::SetupUI(uint8_t backlight_pin)
-    : _backlight_pin(backlight_pin) {}
+SetupUI::SetupUI(PanelBrightness& brightness)
+    : _brightness(brightness) {}
 
 lv_obj_t* SetupUI::getLvglScreen() const {
     return ui_ContainerSetup;
@@ -23,16 +23,16 @@ void SetupUI::begin() {
     _initialized = true;
 }
 
-// Soft-ramp backlight 0 → stored brightness (PWM soft-start, never a hard step).
+// Soft-ramp brightness 0 → stored brightness (soft-start, never a hard step).
 // Ramps to the CLAMPED target, so a low-battery wake never flashes bright then dims.
 void SetupUI::rampBacklightUp() {
-    uint8_t target = this->percentToPwm(this->effectivePercent());
+    uint8_t target = this->percentToLevel(this->effectivePercent());
     uint8_t step = (target / 16) > 0 ? (target / 16) : 1;
     for (uint16_t d = 0; d < target; d += step) {
-        ledcWrite(_backlight_pin, d);
+        _brightness.set((uint8_t)d);
         delay(8);
     }
-    ledcWrite(_backlight_pin, target);
+    _brightness.set(target);
 }
 
 // Apply a new clamp. Called every loop by the app, so it must be cheap: no-op unless the
@@ -74,7 +74,7 @@ bool SetupUI::interceptsTouchAt(int16_t x, int16_t y) {
 }
 
 // Live slider drag: map the touch x across the slider's width to a percentage and apply
-// immediately (LEDC + slider position). Touch is absolute, so no capture mode is needed.
+// immediately (panel brightness + slider position). Touch is absolute, so no capture mode is needed.
 // The switch is a discrete control — it acts on release, not while the finger moves.
 void SetupUI::onTouchDrag(int16_t x, int16_t y) {
     if (!_initialized || _touch_target != TouchTarget::SLIDER) return;
@@ -164,7 +164,7 @@ void SetupUI::applyPreventSleepVisual() {
 }
 
 void SetupUI::applyBrightness() {
-    ledcWrite(_backlight_pin, this->percentToPwm(this->effectivePercent()));
+    _brightness.set(this->percentToLevel(this->effectivePercent()));
 }
 
 int8_t SetupUI::effectivePercent() const {
@@ -211,6 +211,6 @@ bool SetupUI::loadPreventSleep() {
     return v;
 }
 
-uint8_t SetupUI::percentToPwm(int8_t percent) const {
+uint8_t SetupUI::percentToLevel(int8_t percent) const {
     return (uint8_t)((int)percent * 255 / 100);
 }

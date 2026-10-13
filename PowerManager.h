@@ -2,37 +2,41 @@
 
 #include <Arduino.h>
 #include <esp_sleep.h>
+#include <Arduino_GFX_Library.h>
 #include "BatteryMonitor.h"
+#include "PanelBrightness.h"
+#include "TouchInput.h"
 
 // === C L A S S  P O W E R M A N A G E R ===
 //
 // - Model B (deep-sleep wake-to-fetch) power owner for the SkippersWatch.
-// - Deep sleep is the resting default; the encoder button (GPIO18, RTC-capable)
-//   wakes the watch, which is a FULL REBOOT — so all cached readings start stale
+// - Deep sleep is the resting default; the PWR button (GPIO10 = SYS_OUT, RTC-capable,
+//   ACTIVE-HIGH) wakes the watch, which is a FULL REBOOT — so all cached readings start stale
 //   ("---") and are refreshed only when a fresh ESP-NOW broadcast lands. That
 //   full-reboot-on-wake is itself the never-show-stale freshness reset.
 // - This class manages the display-on timeout and the peripheral-gating +
-//   wake-arming sleep entry. The staggered WAKE bring-up (CPU→panel→render→
-//   backlight ramp→radio last) lives in CrowPanelApplication::begin(), which runs
-//   on every wake.
-// - Owned by: CrowPanelApplication
+//   wake-arming sleep entry. The staggered WAKE bring-up (panel dark → radio →
+//   listen window → render → brightness ramp) lives in WatchApplication::begin(),
+//   which runs on every wake.
+// - Owned by: WatchApplication
 //
 // It is also the POLICY owner for everything that can force a sleep decision. The
-// measured budget (2.16 mA sleep floor, ~145 mA active, 250 mAh cell) is comfortable
-// for the 24 h + nightly-charge requirement, so the remaining risks are failure modes,
+// policy is carried over unchanged from the CrowPanel build, where the measured budget
+// was comfortable for the 24 h + nightly-charge requirement; this board's sleep floor
+// and active draw are still to be measured [M]. The remaining risks are failure modes,
 // not averages. Four guards, all here:
 //
 //   1. MAX_AWAKE_MS  — an ABSOLUTE ceiling on one awake session that notifyActivity()
 //      cannot reset. A stuck input source (bouncing button, latched touch INT, a UI
-//      path calling notifyActivity() per frame) would otherwise hold ~145 mA and empty
-//      the 250 mAh cell in under two hours, silently.
+//      path calling notifyActivity() per frame) would otherwise hold active current
+//      and empty the cell in a few hours, silently.
 //   2. Task watchdog — the ceiling only fires while loop() still runs; a HUNG loop
 //      needs hardware. A trip resets the SoC, which is a recoverable cold boot.
 //   3. Low-charge ladder — BatteryMonitor::Level shortens the display timeout, clamps
 //      the backlight, and finally forces a protective sleep before the cell reaches
 //      its own protection cutoff.
 //   4. Stuck wake-button guard — ext0 is LEVEL-triggered, so a button held down at
-//      sleep entry (pocket pressure on the EC11) would wake the watch instantly, over
+//      sleep entry (strap/sleeve pressure on the PWR key) would wake the watch instantly, over
 //      and over. armWakeSource() then arms a timer instead and rechecks cheaply.
 //
 // Model C (light-listen window, accel wrist-raise) was evaluated and rejected — see
@@ -45,19 +49,24 @@ public:
     // States within one awake session (deep sleep itself = powered down, next boot)
     enum class PowerState { WAKING, ACTIVE, DISPLAY_HOLD, SLEEP_PREP };
 
-    explicit PowerManager(uint8_t backlight_pin,
-                          uint8_t lcd_power_pin,
-                          uint8_t periph_power_pin);
+    explicit PowerManager(PanelBrightness& brightness);
 
-    // Release GPIO holds latched before the previous deep sleep. MUST be called at the
-    // very START of app.begin(), before the power rails / display are re-initialised —
-    // otherwise those pads stay frozen (LCD rail off) and the panel wakes to black.
+    // Release GPIO holds latched before the previous deep sleep (panel/touch reset lines,
+    // amp enable). MUST be called at the very START of app.begin(), before the display
+    // and touch are re-initialised — otherwise those pads stay frozen.
     void releaseHolds();
+
+    // Hand over the peripherals put to sleep at sleep entry. Until attached (the stuck-
+    // button timer path), sleep entry only latches the pins.
+    void attachPeripherals(Arduino_OLED* panel, TouchInput* touch) {
+        _panel = panel;
+        _touch = touch;
+    }
 
     // Stuck-wake-button recheck. Call immediately after releaseHolds(), before ANY rail,
     // display, UI or radio init. On a timer wake it re-reads the wake button and goes
     // straight back to sleep without lighting anything up (~0.003 mAh per check), so a
-    // held button costs a trickle instead of a 145 mA wake loop. Returns false on every
+    // held button costs a trickle instead of an active-current wake loop. Returns false on every
     // other wake cause (normal boot continues); the true branch never actually returns.
     bool handleTimerRecheck(esp_sleep_wakeup_cause_t cause);
 
@@ -84,7 +93,7 @@ public:
     // the awake ceiling, and subscribes the Arduino loop task to the task watchdog
     void begin(esp_sleep_wakeup_cause_t cause);
 
-    // Reset the display-on timer — call on any user interaction (knob/button/touch).
+    // Reset the display-on timer — call on any user interaction (touch).
     // Deliberately does NOT touch the awake ceiling.
     void notifyActivity();
 
@@ -118,8 +127,8 @@ public:
 
     // Absolute ceiling on one awake session, battery only. notifyActivity() cannot
     // extend it. Generous enough for brightness adjustment and a long look; a stuck
-    // input source therefore costs ~4.8 mAh per wake (120 s x 145 mA, ~2 % of the
-    // 250 mAh cell) instead of the whole cell.
+    // input source therefore costs at most 120 s of active current per wake instead of
+    // the whole cell.
     static constexpr uint32_t MAX_AWAKE_MS = 120000;
 
     // On USB there is no endurance to protect: stay awake so the watch works as a
@@ -134,10 +143,10 @@ public:
 
 private:
 
-    // ramp_backlight=false for sleep paths that run before LEDC is attached
-    // (the timer recheck), where ledcRead/ledcDetach would act on an unattached pin
-    void enterDeepSleep(bool ramp_backlight = true);
-    void rampBacklightDown();
+    // ramp_brightness=false for sleep paths that run before the panel is initialised
+    // (the timer recheck)
+    void enterDeepSleep(bool ramp_brightness = true);
+    void rampBrightnessDown();
     void gatePeripherals();
     void armWakeSource();
     void initWatchdog();
@@ -145,11 +154,11 @@ private:
     bool chargingNow() const { return _battery != nullptr && _battery->charging(); }
 
     // Whether the user's prevent-sleep choice may actually be honoured right now. The
-    // low-charge ladder wins from CRITICAL down: holding ~145 mA on a cell that is
+    // low-charge ladder wins from CRITICAL down: holding active current on a cell that is
     // already under 10 % is exactly what the ladder exists to stop. The stored setting
     // is never rewritten, so it resumes by itself once the cell recovers — same
     // principle as the backlight ceiling, which clamps without touching the slider.
-    // (CUTOFF is handled earlier still, by CrowPanelApplication::checkBatteryCutoff().)
+    // (CUTOFF is handled earlier still, by WatchApplication::checkBatteryCutoff().)
     bool preventSleepActive() const {
         return _prevent_sleep && this->levelNow() < BatteryMonitor::Level::CRITICAL;
     }
@@ -157,9 +166,9 @@ private:
         return (_battery != nullptr) ? _battery->level() : BatteryMonitor::Level::OK;
     }
 
-    uint8_t _backlight_pin;
-    uint8_t _lcd_power_pin;
-    uint8_t _periph_power_pin;
+    PanelBrightness& _brightness;
+    Arduino_OLED* _panel = nullptr;
+    TouchInput*   _touch = nullptr;
 
     const BatteryMonitor* _battery = nullptr;
 
@@ -175,12 +184,18 @@ private:
     bool _was_charging = false;     // for the unplug edge (grants a fresh display window)
     bool _wdt_armed = false;
 
-    // Encoder push-button — RTC-capable, zero standing draw (a mechanical switch),
-    // the deep-sleep wake source (ext0, active-low). Deep-sleep touch-wake was tried
-    // and found infeasible: the AXS5106L INT rests low and deep-sleep ext1 is
-    // single-mode level-triggered, so it can't be mixed with the active-low button
-    // (it would need a light-sleep conversion — see [[build-status]]). Parked.
-    static constexpr uint8_t WAKE_BUTTON_PIN = 18;
+    // PWR button state line (SYS_OUT) — RTC-capable, ACTIVE-HIGH (high = pressed), the
+    // deep-sleep wake source (ext0, level 1). Touch cannot wake from deep sleep on this
+    // board: the FT3168 INT is GPIO38, not an RTC pin. The same key is the AXP2101 power
+    // key: ~6 s held cuts power in hardware, whatever the firmware does.
+    static constexpr uint8_t WAKE_BUTTON_PIN = 10;
+
+    // Pins latched through deep sleep: panel and touch reset lines held HIGH so both chips
+    // stay in their sleep modes (a floating reset could reboot them into active mode), and
+    // the speaker amp enable held LOW.
+    static constexpr uint8_t PIN_LCD_RST  = 8;
+    static constexpr uint8_t PIN_TP_RST   = TouchInput::TOUCH_RST_PIN;
+    static constexpr uint8_t PIN_PA_CTRL  = 46;
 
     // Stuck-button guard: how long to sleep before rechecking a held wake button
     static constexpr uint64_t STUCK_BUTTON_RECHECK_US = 30ULL * 1000ULL * 1000ULL;
@@ -189,18 +204,18 @@ private:
     // stretch (LVGL render, NVS commit, backlight ramp) can trip it.
     static constexpr uint32_t WDT_TIMEOUT_MS = 30000;
 
-    // Display-on windows per charge level (ms). Shortening the window is what actually
-    // saves charge on this board: active baseline is ~145 mA and the backlight adder at
-    // 20 % is only ~10 mA, so 10 s → 3 s buys far more than any brightness clamp.
+    // Display-on windows per charge level (ms). On CrowPanel shortening the window was the
+    // real lever (active baseline dominated the backlight). Whether that holds on the
+    // AMOLED is [M]; constants carried over unchanged until measured.
     static constexpr uint32_t TIMEOUT_WARN_MS     = 5000;
     static constexpr uint32_t TIMEOUT_CRITICAL_MS = 3000;
 
-    // Backlight ceilings per charge level (percent). Small change, kept because it is free.
+    // Brightness ceilings per charge level (percent). Small change, kept because it is free.
     static constexpr int8_t CEILING_NONE     = 100;
     static constexpr int8_t CEILING_CRITICAL = 10;
     static constexpr int8_t CEILING_CUTOFF   = 5;
 
-    // Backlight soft ramp-down: steps × delay spreads the load-shed (no hard step)
+    // Brightness soft ramp-down: steps × delay spreads the load-shed (no hard step)
     static constexpr uint8_t  RAMP_STEPS = 16;
     static constexpr uint32_t RAMP_STEP_MS = 8;
 
