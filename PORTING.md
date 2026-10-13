@@ -86,16 +86,20 @@ unverified one.
 ## Open items
 
 Decisions for Masa:
-- [ ] Board-neutral names for the repo, the sketch folder / `.ino` and
-      `CrowPanelApplication`
-- [ ] Wake button: PWR only, or PWR + BOOT
-- [ ] Remove the knob methods from `IScreenUI` / `SetupUI`, or leave them unused
+- [x] Board-neutral names: `CrowPanelApplication` → `WatchApplication` (2026-10-13).
+      Repo, sketch folder and `.ino` keep their names for now (IDE needs .ino = folder).
+- [x] Wake button: PWR only (GPIO10, active-high, ext0 level 1)
+- [x] Knob methods removed from `IScreenUI`; `RotaryEncoder`, `axs5106l_touch` deleted
 - [ ] Resting state: ESP32 deep sleep, or AXP2101 `shutdown()` (decide after measuring)
-- [ ] Battery to use (the board's own cell, or another capacity)
+- [ ] Battery to use (the board's own cell, or another capacity) — assume ~300 mAh
+
+Phase 1 ("as-is" port, 2026-10-13): code ported and compiling, awaiting first flash.
+New UI behaviour: swipe left/right = next/previous page, swipe down = page menu
+(`ui_ContainerMenu`, `MenuUI`), swipe up = close menu, tap a menu icon = that page.
 
 To verify on hardware (all marked [M] in `hardware_notes_waveshare.md`):
 - [ ] Rail-to-load map of the AXP2101 from the schematic
-- [ ] Installed Arduino_GFX contains `Arduino_CO5300`
+- [x] Installed Arduino_GFX contains `Arduino_CO5300`
 - [ ] `ext0` + `ext1` combination for opposite-polarity buttons
 - [ ] Deep-sleep floor, active current, `shutdown()` floor
 - [ ] AXP2101 gauge accuracy over a full discharge

@@ -164,6 +164,25 @@ used above and `XPOWERS_CHIP_AXP2101`.
   boot logs may be lost — UART0 (GPIO43/44) is the fallback log channel. [D]
 - Waveshare warns not to mix in LVGL 8.4.0 from its other boards' examples.
 
+### As used by this project (port branch, 2026-10-13) [V: compiles]
+| Setting | Value |
+|---|---|
+| Board | ESP32S3 Dev Module, core esp32 3.3.11 |
+| USB CDC On Boot | Enabled |
+| USB Mode | Hardware CDC and JTAG |
+| Flash Size | 32MB (256Mb) |
+| Partition Scheme | Huge APP (3MB No OTA/1MB SPIFFS) |
+| PSRAM | OPI PSRAM (not used on the wake path) |
+| Flash Mode | QIO 80MHz |
+
+Libraries: GFX Library for Arduino 1.6.7 (the GC9309-patched install also contains
+`Arduino_CO5300` — confirmed), LVGL 9.5.0 with the project-local `lv_conf.h`,
+**XPowersLib 0.3.3** (added for the port). No Arduino_DriveBus: the FT3168 is driven by
+the project's own `ft3168_touch.*`. Sketch: ~1.53 MB of the 3 MB app slot.
+
+CLI equivalent (the arduino-cli bundled with the IDE):
+`arduino-cli compile --fqbn esp32:esp32:esp32s3:CDCOnBoot=cdc,FlashSize=32M,PartitionScheme=huge_app,PSRAM=opi .`
+
 ## To measure first on the bench [M]
 1. Deep-sleep floor on battery only, with display off and everything default-off.
 2. Active current at several brightness levels, on a typical (mostly black) screen.
