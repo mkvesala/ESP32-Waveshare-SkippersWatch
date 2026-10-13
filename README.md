@@ -1,15 +1,27 @@
 <!-- TODO(images): add project logo here, e.g. ![Logo](docs/projectlogo.svg) -->
 
-# ESP32 CrowPanel SkippersWatch
+# ESP32 SkippersWatch
 
 [![Platform: ESP32-S3](https://img.shields.io/badge/Platform-ESP32--S3-blue)](https://www.espressif.com/en/sdks/esp-arduino)
-[![Display: CrowPanel 2.01" Watch](https://img.shields.io/badge/Display-CrowPanel%202.01%22%20Watch-lightgrey)](https://github.com/Elecrow-RD/CrowPanel_2.01_inch-HMI_ESP32_Watch_Display_240_296)
+[![Board: Waveshare AMOLED 2.06"](https://img.shields.io/badge/Board-Waveshare%20AMOLED%202.06%22-lightgrey)](https://docs.waveshare.com/ESP32-S3-Touch-AMOLED-2.06)
 [![Protocol: ESP-NOW](https://img.shields.io/badge/Protocol-ESP--NOW-orange)](https://www.espressif.com/en/solutions/low-power-solutions/esp-now)
 [![Power: Deep-sleep (Model B)](https://img.shields.io/badge/Power-Deep--sleep-brightgreen)](#power-management)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![UI: LVGL9](https://img.shields.io/badge/UI-LVGL9-black)](https://lvgl.io)
 
-A wrist-worn marine instrument for the [Elecrow CrowPanel 2.01" HMI ESP32 Watch Display](https://github.com/Elecrow-RD/CrowPanel_2.01_inch-HMI_ESP32_Watch_Display_240_296) (ESP32-S3, 240×296 IPS SPI touchscreen, rotary knob, ~250 mAh LiPo). It is the battery-powered sibling of my always-on [ESP32-Crowpanel-compass](https://github.com/mkvesala/ESP32-Crowpanel-compass) helm display — same receive-only ESP-NOW architecture, but rationed to run for days on a coin-cell-class battery and charged nightly.
+## Disclaimer
+
+This is a personal hobby project. It is provided "as is", without warranty of any kind. See LICENSE.
+
+This firmware is NOT intended for navigation or for any safety-critical use at sea. Do not rely on the data it produces (such as heading, depth or position) to navigate a vessel. Always use certified navigation equipment and proper seamanship.
+
+You use this code entirely at your own risk. The author accepts no liability for any damage, injury or loss arising from its use.
+
+## Introduction
+
+A wrist-worn marine instrument for the [Waveshare ESP32-S3-Touch-AMOLED-2.06](https://docs.waveshare.com/ESP32-S3-Touch-AMOLED-2.06) watch board (SKU 31957: ESP32-S3, 410×502 AMOLED touchscreen, AXP2101 PMIC, LiPo, factory case with strap). It is the battery-powered sibling of my always-on [ESP32-Crowpanel-compass](https://github.com/mkvesala/ESP32-Crowpanel-compass) helm display — same receive-only ESP-NOW architecture, but rationed to run for a day or more on a small battery and charged nightly.
+
+> **v2.0.0 is the Waveshare port.** v1.0.0 ran on the [Elecrow CrowPanel 2.01" Watch Display](https://github.com/Elecrow-RD/CrowPanel_2.01_inch-HMI_ESP32_Watch_Display_240_296) (240×296 IPS, rotary knob); that build is kept as tag `v1.0.0` and on the `legacy/crowpanel` branch. The repository keeps its original name.
 
 Receives via ESP-NOW broadcast:
 - GNSS position, speed over ground (SOG), course over ground (COG) and **UTC date/time** from [UBLOX-ESP32-SignalK-gateway](https://github.com/mkvesala/UBLOX-ESP32-SignalK-gateway)
@@ -19,23 +31,24 @@ Receives via ESP-NOW broadcast:
 - Temperature, air pressure and relative humidity from [BME280-ESP32-SignalK-gateway](https://github.com/mkvesala/BME280-ESP32-SignalK-gateway)
 - Engine exhaust temperature, fuel tank and fresh-water tank levels from [HALMET-ESP32-SignalK-gateway](https://github.com/mkvesala/HALMET-ESP32-SignalK-gateway)
 
-Values are shown on an LVGL UI. Interaction is by **capacitive touch** (swipe / tap / slider drag) and, in parallel, by the **rotary knob** (rotate / press). The knob is retained mainly as the deep-sleep wake button; the touch layer is designed so the encoder can be removed later with no UI rewrite (see [Input](#input)).
+Values are shown on an LVGL UI. Interaction is by **capacitive touch**: swipe left / right through the screens, swipe down for a page menu, tap and slider drag. The **PWR button** wakes the watch from deep sleep (see [Input](#input)).
 
-Screens (carousel):
-- **Navigation** — POS (lat/lon), COG, SOG, depth below surface (DPT)
+Screens (carousel, plus a page menu for direct access):
+- **Navigation** — POS (lat/lon), true heading (HDG), COG, SOG, depth below surface (DPT)
 - **Batteries** — house voltage / current / SoC and starter voltage
 - **Weather** — temperature, air pressure, relative humidity
 - **Engine** — exhaust temperature, fuel and fresh-water tank litres
 - **Attitude** — artificial horizon with pitch and roll
 - **Clock** — local date + weekday, local and UTC time (GNSS-disciplined, no RTC chip, no NTP)
-- **Setup** — backlight brightness with NVS persistence
+- **Setup** — display brightness and a prevent-sleep switch, both persisted to NVS
 
-Developed and tested on:
-- [Elecrow CrowPanel 2.01" HMI ESP32 Watch Display 240×296](https://github.com/Elecrow-RD/CrowPanel_2.01_inch-HMI_ESP32_Watch_Display_240_296)
-- [ESP32 board package](https://github.com/espressif/arduino-esp32) (3.x — requires the `ledcAttach`/`ledcWrite` API)
+Developed on:
+- [Waveshare ESP32-S3-Touch-AMOLED-2.06](https://docs.waveshare.com/ESP32-S3-Touch-AMOLED-2.06) (SKU 31957)
+- [ESP32 board package](https://github.com/espressif/arduino-esp32) (3.3.11)
 - [Arduino IDE](https://www.arduino.cc/en/software/) (2.3.x)
-- [LVGL](https://lvgl.io/) (9.x)
-- [Arduino GFX Library](https://github.com/moononournation/Arduino_GFX) (1.6.7, patched with Elecrow's `Arduino_GC9309` driver — see [Software](#software))
+- [LVGL](https://lvgl.io/) (9.5)
+- [Arduino GFX Library](https://github.com/moononournation/Arduino_GFX) (1.6.7, `Arduino_CO5300` driver)
+- [XPowersLib](https://github.com/lewisxhe/XPowersLib) (0.3.3, AXP2101 PMIC)
 - [SquareLine Studio](https://squareline.io/) for UI design
 
 Integrated via ESP-NOW with:
@@ -56,72 +69,81 @@ This is one of my individual digital boat projects. Use at your own risk. Not fo
 
 ## Project status
 
-**Version 1.0.0** (2026-09-04) — see [CHANGELOG.md](CHANGELOG.md).
+**Version 2.0.0** (unreleased) — see [CHANGELOG.md](CHANGELOG.md).
 
-Running on hardware on M/V Frida: all seven screens live, GNSS-disciplined clock live end-to-end, touch UI live, the power budget measured and closed, and the power guards in place (see [Power management](#power-management)).
+Port to the Waveshare AMOLED board: the firmware compiles and carries the full v1.0.0 feature set plus the page menu. Hardware verification is in progress: first flash, touch orientation, the PWR-button wake and the board's own current measurements are still open. Until they are measured, no endurance figures are claimed for this board (see [Power management](#power-management)).
+
+**Version 1.0.0** (CrowPanel 2.01") ran on hardware on M/V Frida with all seven screens, the GNSS-disciplined clock, the touch UI and a measured, closed power budget.
 
 ## Classes
 
 <!-- TODO(diagram): add class / UML diagram here, e.g. <img src="docs/full_uml_diagram.jpeg" width="480"> -->
 
-**`CrowPanelApplication`:**
-- Owns: `Arduino_ESP32SPIDMA`, `Arduino_GC9309`, `ESPNowReceiver`, `NavigationUI`, `BatteryUI`, `WeatherUI`, `EngineUI`, `AttitudeUI`, `ClockUI`, `SetupUI`, `RotaryEncoder`, `TouchInput`, `ScreenManager`, `PowerManager`, `BatteryMonitor`
-- Responsible for: orchestrating everything within the main program, including the staggered wake sequence and GNSS time discipline
+**`WatchApplication`:**
+- Owns: `Arduino_ESP32QSPI`, `Arduino_CO5300`, `PanelBrightness`, `ESPNowReceiver`, `NavigationUI`, `BatteryUI`, `WeatherUI`, `EngineUI`, `AttitudeUI`, `ClockUI`, `SetupUI`, `MenuUI`, `TouchInput`, `ScreenManager`, `PowerManager`, `BatteryMonitor`
+- Responsible for: orchestrating everything within the main program, including the staggered wake sequence, gesture dispatch (carousel and page menu) and GNSS time discipline
 
 **`PowerManager`:**
-- Uses: `BatteryMonitor` (read-only, for the low-charge ladder and the USB stay-awake rule)
-- Responsible for: Model B deep-sleep power ownership — display-on timeout, peripheral gating + GPIO holds on sleep entry, wake-source arming — and for all policy that can force a sleep decision: the absolute awake ceiling, the task watchdog, the low-charge ladder and the stuck-wake-button guard (see [Power guards](#power-guards))
-- Owned by: `CrowPanelApplication`
+- Uses: `BatteryMonitor` (read-only, for the low-charge ladder and the USB stay-awake rule), `PanelBrightness`, `TouchInput` (hibernate) and the panel (sleep) at sleep entry
+- Responsible for: Model B deep-sleep power ownership — display-on timeout, putting the panel and touch to sleep + GPIO holds on sleep entry, PWR-button wake arming — and for all policy that can force a sleep decision: the absolute awake ceiling, the task watchdog, the low-charge ladder and the stuck-wake-button guard (see [Power guards](#power-guards))
+- Owned by: `WatchApplication`
 
 **`BatteryMonitor`:**
-- Responsible for: sampling the watch's own LiPo via the GPIO1 ADC, EMA smoothing, state-of-charge estimation from a LiPo resting curve, USB-power detection, driving the status-bar indicator, and classifying the charge into the `OK` / `WARN` / `CRITICAL` / `CUTOFF` level the power ladder acts on. Data only — the policy lives in `PowerManager`
-- Owned by: `CrowPanelApplication`
+- Uses: `XPowersAXP2101` (XPowersLib)
+- Responsible for: reading the watch's own LiPo from the AXP2101 PMIC (voltage, EMA smoothing, fuel-gauge state-of-charge with a LiPo resting curve as fallback), VBUS detection, driving the status-bar indicator, and classifying the charge into the `OK` / `WARN` / `CRITICAL` / `CUTOFF` level the power ladder acts on. Data only — the policy lives in `PowerManager`
+- Owned by: `WatchApplication`
 
 **`ESPNowReceiver`:**
 - Responsible for: receiving `GnssDelta`, `DateTimeDelta`, `HeadingDelta`, `BatteryDelta`, `WeatherDelta`, `HALMETEngineDelta`, `HALMETTankDelta`, `HALMETWaterDelta` and `DepthDelta` broadcasts (receive-only), with per-source RX timestamps for freshness
-- Owned by: `CrowPanelApplication`
-
-**`RotaryEncoder`:**
-- Responsible for: reading knob rotation (Buxton quadrature decoder) and button press via FreeRTOS tasks; button (GPIO18) doubles as the deep-sleep wake source
-- Owned by: `CrowPanelApplication`
+- Owned by: `WatchApplication`
 
 **`TouchInput`:**
-- Uses: `Axs5106lTouch` (local AXS5106L driver)
-- Responsible for: polling the capacitive touch panel and recognizing gestures in software (tap / swipe up / swipe down; long-press reserved), feeding the same `IScreenUI` seam as the knob
-- Owned by: `CrowPanelApplication`
+- Uses: `Ft3168Touch` (local FT3168 driver), `GestureClassifier`
+- Responsible for: polling the capacitive touch panel and recognizing gestures in software (tap / swipe left / right / up / down; long-press reserved), plus absolute slider drags; hibernating the controller before deep sleep
+- Owned by: `WatchApplication`
+
+**`MenuUI`:**
+- Responsible for: the page menu overlay (`ui_ContainerMenu`, one image button per screen): show / hide and hit-testing a tap to a screen index. Not an `IScreenUI` page — never part of the carousel or the last-active store
+- Owned by: `WatchApplication`
+
+**`PanelBrightness`:**
+- Responsible for: AMOLED brightness as a panel command (0..255), remembering the last level sent; shared by `SetupUI` and `PowerManager`
+- Owned by: `WatchApplication`
 
 **`IScreenUI`:**
-- Abstract base class for all UI adapter class implementations. Input-source-agnostic: `onButtonPress()` / `onRotation()` (knob) plus `interceptsTouchAt()` / `onTouchDrag()` / `onTouchEnd()` (touch drag)
+- Abstract base class for all UI adapter class implementations: `onButtonPress()` (tap) plus `interceptsTouchAt()` / `onTouchDrag()` / `onTouchEnd()` (touch drag)
 
 **`NavigationUI` / `BatteryUI` / `WeatherUI` / `EngineUI` / `AttitudeUI` / `ClockUI` / `SetupUI`:**
 - Realize: `IScreenUI`
 - Use: `ESPNowReceiver` (all data screens); `ClockUI` reads the ESP32 system clock; `SetupUI` uses `Preferences` (NVS)
 - Responsible for: updating the LVGL objects of their container from the relevant data source, showing placeholders until a fresh packet arrives
-- Owned by: `CrowPanelApplication`
+- Owned by: `WatchApplication`
 
 **`ScreenManager`:**
 - Depends on: `IScreenUI*`
-- Responsible for: screen carousel management (containers on one LVGL screen, toggled via `LV_OBJ_FLAG_HIDDEN`)
-- Owned by: `CrowPanelApplication`
+- Responsible for: screen carousel management (containers on one LVGL screen, toggled via `LV_OBJ_FLAG_HIDDEN`), including direct jumps from the page menu
+- Owned by: `WatchApplication`
 
 ## Features
+
+> Screenshots are SquareLine Studio previews of the 410×502 layout.
 
 Each screen is a container on a single LVGL screen. On wake, all cached values start as placeholders (`---` / `--.-`) and fill in only when a fresh ESP-NOW broadcast arrives — **stale data is never shown as if current** (see [Freshness](#freshness)).
 
 ### Status bar
 
-Always visible above the screens: a bar showing the **watch's own LiPo** (distinct from the Batteries screen, which shows the boat's banks). Sampled from the GPIO1 ADC every ~3 s, EMA-smoothed and mapped to a state-of-charge through a LiPo resting curve.
+Always visible above the screens: a bar showing the **watch's own LiPo** (distinct from the Batteries screen, which shows the boat's banks). Read from the AXP2101 PMIC every ~3 s: the cell voltage is EMA-smoothed, the state-of-charge comes from the PMIC's fuel gauge (a LiPo resting curve is the fallback, and both are logged so the gauge can be checked over a full discharge).
 
 | Indicator | Meaning |
 |---|---|
 | Green | above 40 % |
 | Amber | above 20 %, up to 40 % |
 | Red | 20 % or below — the low-charge ladder is active (see [Power guards](#power-guards)) |
-| Blue, full | on USB power; the charger-elevated cell voltage is meaningless for SoC, so it is not estimated while charging |
+| Blue, full | on USB power (AXP2101 VBUS present); the charger-elevated cell voltage is meaningless for SoC, so it is not estimated while charging |
 
 ### Navigation screen
 
-<img src="docs/navigationview.png" width="240">
+<img src="docs/navigation.png" width="240">
 
 - **POS** — latitude / longitude, shown only with a valid GNSS fix (blank until fix)
 - **HDG** — heading, **true** (`heading_true_x10` from the CMPS14 sender, which applies the variation). Deliberately true rather than magnetic so it is directly comparable with the true COG beside it — a magnetic HDG next to a true COG reads as a ~11° crab angle that is not there
@@ -131,7 +153,7 @@ Always visible above the screens: a bar showing the **watch's own LiPo** (distin
 
 ### Batteries screen
 
-<img src="docs/batteryview.png" width="240">
+<img src="docs/batteries.png" width="240">
 
 - House bank voltage, current (negative = charging) and state-of-charge
 - Starter battery voltage
@@ -139,14 +161,14 @@ Always visible above the screens: a bar showing the **watch's own LiPo** (distin
 
 ### Weather screen
 
-<img src="docs/weatherview.png" width="240">
+<img src="docs/weather.png" width="240">
 
 - Temperature (°C), air pressure (hPa), relative humidity (%)
 - Source: `WeatherDelta` from a BME280-based sender
 
 ### Engine screen
 
-<img src="docs/engineview.png" width="240">
+<img src="docs/engineroom.png" width="240">
 
 - Exhaust temperature (°C, converted from Kelvin)
 - Fuel tank litres and fresh-water tank litres (ratio × capacity; **M/V Frida: fuel 400 L, water 80 L**)
@@ -154,7 +176,7 @@ Always visible above the screens: a bar showing the **watch's own LiPo** (distin
 
 ### Attitude screen
 
-<img src="docs/attitudeview.png" width="240">
+<img src="docs/attitude.png" width="240">
 
 - Artificial horizon plus pitch and roll value labels
 - Source: `HeadingDelta` (pitch/roll) from the CMPS14 compass sender
@@ -162,7 +184,7 @@ Always visible above the screens: a bar showing the **watch's own LiPo** (distin
 
 ### Clock screen
 
-<img src="docs/clockview.png" width="240">
+<img src="docs/clock.png" width="240">
 
 - Local date `DD.MM.YYYY`, English 3-letter weekday
 - Local and UTC time `HH:MM:SS` (24 h); a `PREV.`/`NEXT.` indicator appears under UTC when its calendar day differs from local
@@ -171,76 +193,85 @@ Always visible above the screens: a bar showing the **watch's own LiPo** (distin
 
 ### Setup screen
 
-<img src="docs/setupview.png" width="240">
+<img src="docs/setup.png" width="240">
 
-**Touch-only.** The knob does not reach this screen: rotating it switches pages here like anywhere else, and a press does nothing. The slider position and the switch colour show the state directly, so the SquareLine value labels are hidden and never written.
+**Touch-only**, like the rest of the UI. The slider position and the switch colour show the state directly, so the SquareLine value labels are hidden and never written.
 
-**Backlight brightness** (`ui_SliderBrightness`) — drag the slider; applies instantly, saves to NVS on release. Range 2 %–100 % (the 2 % minimum keeps the screen from going fully dark); default 20 % (readable in daylight, low continuous draw), with the NVS-stored value always winning. Persistence: namespace `"display"`, key `"brightness"`. PWM: GPIO13, 5 kHz, 8-bit.
+**Display brightness** (`ui_SliderBrightness`) — drag the slider; applies instantly, saves to NVS on release. Range 2 %–100 % (the 2 % minimum keeps the screen from going fully dark); default 20 % (readable in daylight, low continuous draw), with the NVS-stored value always winning. Persistence: namespace `"display"`, key `"brightness"`. The AMOLED has no backlight: brightness is a panel command (CO5300 `0x51`, 0..255) sent by `PanelBrightness`.
 
-The power layer may apply a **ceiling** on top of the slider (low battery, or the stay-awake idle dim). It clamps only what reaches the backlight pin, never the stored setting, so the slider keeps showing your choice and it is restored the moment the ceiling lifts.
+The power layer may apply a **ceiling** on top of the slider (low battery, or the stay-awake idle dim). It clamps only what reaches the panel, never the stored setting, so the slider keeps showing your choice and it is restored the moment the ceiling lifts.
 
 **Prevent sleep** (`ui_SwitchPreventSleep`) — tap to keep the watch awake on battery, the same way it stays awake while docked on USB: no display timeout, and the panel dims to 5 % after 60 s of no input instead of sleeping. Persistence: namespace `"display"`, key `"nosleep"`, saved the instant you flip it (`onLeave()` never runs on the way into deep sleep, so a later save would lose it). Red knob = off, green = on.
 
 Two limits still apply, deliberately:
 
 - **The 120 s awake ceiling is not suspended.** The switch suspends the display timeout, never the ceiling, so an awake session stays bounded — see [Power guards](#power-guards). USB is the only mode that lifts the ceiling, because on external power there is no endurance to protect.
-- **The low-charge ladder overrides it from `CRITICAL` down** (SoC ≤ 10 %): the normal 3 s timeout and the 10 % backlight clamp come back. Your stored setting is not rewritten, so prevent sleep resumes by itself once the cell recovers — the same principle as the backlight ceiling.
+- **The low-charge ladder overrides it from `CRITICAL` down** (SoC ≤ 10 %): the normal 3 s timeout and the 10 % brightness clamp come back. Your stored setting is not rewritten, so prevent sleep resumes by itself once the cell recovers — the same principle as the brightness ceiling.
 
-**Cost.** With the switch on, every wake runs the full 120 s instead of timing out: ~4.7 mAh per wake (60 s at ~145 mA, then 60 s dimmed), roughly **11× a normal 0.42 mAh glance**. At 10 wakes/day that is ~99 mAh/day (~2.5 days); at 30, ~193 mAh/day (~1.3 days). The 24 h + nightly-charge requirement still holds, but the margin drops from ~3× to ~1.3× under heavy use — this is a "keep it awake while I am actively using it" switch, not a set-and-forget setting.
+**Cost.** With the switch on, every wake runs the full 120 s instead of timing out — on the CrowPanel that was roughly **11× a normal glance**. It is a "keep it awake while I am actively using it" switch, not a set-and-forget setting. The figure for the AMOLED board follows from its own active-current measurement (still open).
 
 ## Input
 
-Touch and the rotary knob feed the **same** `IScreenUI` dispatch, so both drive the whole UI. Touch is additive; the encoder rotation is fully redundant and removable, leaving only the encoder's push-button as the (zero-standing-draw) wake source.
+All interaction is by touch; the PWR button is the wake source.
 
-| Gesture / action | Touch | Knob |
-|---|---|---|
-| Next screen | Swipe up | Rotate CW |
-| Previous screen | Swipe down | Rotate CCW |
-| Screen action | Tap | Button press |
-| Adjust brightness / toggle prevent sleep | Drag the slider, tap the switch | — (Setup is touch-only) |
-| Wake from deep sleep | — (see note) | Button press (GPIO18, ext0) |
+| Action | Gesture |
+|---|---|
+| Next screen | Swipe left |
+| Previous screen | Swipe right |
+| Open the page menu | Swipe down (on any screen) |
+| Close the page menu, back to the last screen | Swipe up |
+| Jump to a screen | Tap its icon in the page menu |
+| Screen action | Tap |
+| Adjust brightness / toggle prevent sleep | Drag the slider, tap the switch (Setup) |
+| Wake from deep sleep | Press the **PWR** button (GPIO10, `ext0`) |
 
 Screen carousel order:
-- **Swipe up / knob CW:** Navigation → Batteries → Weather → Engine → Attitude → Clock → Setup → Navigation
-- **Swipe down / knob CCW:** the reverse
+- **Swipe left:** Navigation → Batteries → Weather → Engine → Attitude → Clock → Setup → Navigation
+- **Swipe right:** the reverse
 
-The last-active screen is restored on **every** boot, not just a deep-sleep wake — a reset button press, a watchdog trip, a panic and even a flat cell or a disconnected battery all come back to the page you were on. Two tiers: `RTC_NOINIT_ATTR` (free, always current) with an NVS backstop written once on the way into sleep. See [Last-active screen](#last-active-screen).
+<img src="docs/menu.png" width="240">
 
-**Touch driver:** the AXS5106L is interrupt-based (`readPoint()` returns a point only on a fresh INT). `TouchInput` debounces this event stream into a stable "held" state (80 ms release grace) so swipes and slider drags don't break up. Gestures are recognized in software — no dependence on any chip gesture register.
+**Page menu.** A 3×3 grid of image buttons (`ui_ContainerMenu`), one per screen. It is an overlay, not a carousel page: opening it hides the current screen without leaving it, closing it brings that screen straight back, and it is never stored as the last-active screen. While it is open, swipes left / right and taps outside the icons do nothing, and no screen update runs underneath.
 
-**Note on touch-wake:** waking from deep sleep by touch is *not* used — deep-sleep `ext1` is single-mode level-triggered and the AXS5106L INT rests low, so it can't be combined with the active-low button; it would work only via a light-sleep conversion (Elecrow's Lesson15 does exactly that), which isn't worth the refactor on a device that already meets its budget on the zero-draw encoder-button wake. The encoder button is the wake source.
+The last-active screen is restored on **every** boot, not just a deep-sleep wake. Two tiers: `RTC_NOINIT_ATTR` (free, always current) with an NVS backstop written once on the way into sleep. See [Last-active screen](#last-active-screen).
+
+**Touch driver:** a small local FT3168 driver (`ft3168_touch`, I2C 0x38 on the bus shared with the AXP2101, SDA=GPIO15 / SCL=GPIO14), polled on the main loop. Gestures are recognized in software (`GestureClassifier`): the dominant axis of the net travel decides the swipe direction (ties go vertical), tap ≤ 27 px of travel, swipe ≥ 48 px. A short release grace keeps a held finger held across a single missed read. A page can claim a touch-down as a drag (the Setup slider), in which case no swipe is classified for it.
+
+**Why not touch-to-wake:** the FT3168 interrupt line is GPIO38, which is not an RTC-capable pin, so it cannot wake the ESP32-S3 from deep sleep. The touch controller is hibernated before sleep instead.
+
+**PWR button:** the same key is the AXP2101 power key. Holding it for about 6 s powers the board off in hardware, whatever the firmware does; a press then powers it on again as a cold boot.
 
 ## Power management
 
 The whole architecture resolves one contradiction: **in deep sleep the radio is off, so no ESP-NOW packet can be received.** You cannot both deep-sleep and listen.
 
-**Model B (deep-sleep, wake-to-fetch).** Deep sleep is the resting default. A button press wakes the watch; only *then* does it bring the radio up, catch a broadcast, render, and — after a short display-on timeout (`DISPLAY_TIMEOUT_MS = 10 s`, shortened automatically as the cell empties) of no interaction — soft-ramp the backlight down and return to deep sleep. On sleep entry the LCD rail (GPIO40), backlight (GPIO13) and shared peripheral rail (GPIO47) are driven off and GPIO-held through sleep; the encoder button (GPIO18, RTC-capable) is armed as the ext0 wake source.
+**Model B (deep-sleep, wake-to-fetch).** Deep sleep is the resting default. A PWR-button press wakes the watch; only *then* does it bring the radio up, catch a broadcast, render, and — after a short display-on timeout (`DISPLAY_TIMEOUT_MS = 10 s`, shortened automatically as the cell empties) of no interaction — soft-ramp the brightness down and return to deep sleep. On sleep entry the AMOLED is switched off and put into sleep-in, the FT3168 into hibernate, the panel and touch reset lines are held high and the speaker amp enable (GPIO46) low through sleep; the PWR button (GPIO10, RTC-capable, **active-high**) is armed as the `ext0` wake source. The AXP2101 rails are left on for now: which load hangs on which rail is still to be traced, and cutting the wrong one could cut the SoC or the I2C pull-ups.
 
-**Staggered wake (spike discipline).** A wake from deep sleep is the worst-timed current spike — several loads want to turn on at once on a small, possibly-aged cell. The bring-up spreads the inrush in time: release GPIO holds → power rails + panel init (panel stays dark) → radio up first into the dark, low-load moment → ~200 ms dark ESP-NOW listen window so the first *lit* frame shows real data, not a placeholder flash → render → **then** the backlight ramps up (PWM soft-start, never a hard step). The brownout detector is kept enabled — a trip means the sequence is too aggressive, not a reason to disable protection.
+**Staggered wake (spike discipline).** A wake from deep sleep is the worst-timed current spike — several loads want to turn on at once on a small, possibly-aged cell. The bring-up spreads the inrush in time: release GPIO holds → PMIC + panel init (panel stays dark) → low-battery check → radio up first into the dark, low-load moment → ~200 ms dark ESP-NOW listen window so the first *lit* frame shows real data, not a placeholder flash → render → **then** the brightness ramps up (soft-start in panel-command steps, never a hard step). The brownout detector is kept enabled — a trip means the sequence is too aggressive, not a reason to disable protection.
 
 ### Power guards
 
-The measured budget below is comfortable, so what actually threatens endurance is not the average draw but **failure modes** — a firmware bug or a stuck button that keeps the board awake at ~145 mA empties the 250 mAh cell in under two hours. Four guards, all owned by `PowerManager`:
+With a comfortable average budget, what actually threatens endurance is not the average draw but **failure modes** — a firmware bug or a stuck button that keeps the board awake at active current empties the cell in a few hours. Four guards, all owned by `PowerManager`:
 
 | Guard | Value | Protects against |
 |---|---|---|
 | Absolute awake ceiling | 120 s | A stuck input source (bouncing button, latched touch INT, a UI path signalling activity every frame) holding the watch awake indefinitely. User activity **cannot** extend this ceiling — that is the whole point. Suspended on USB power |
 | Task watchdog | 30 s | A *hung* loop, which the ceiling cannot catch because the ceiling itself needs the loop to run. A trip resets the SoC, i.e. a recoverable cold boot rather than a flat cell |
-| Stuck wake-button guard | 30 s recheck | Deep-sleep `ext0` is **level-triggered**: arming it while the encoder button is already held (pocket pressure) makes the SoC wake immediately, over and over. The pin is read before arming and, when held, a timer is armed instead; the recheck runs before any rail, panel, UI or radio bring-up and costs ~0.003 mAh |
+| Stuck wake-button guard | 30 s recheck | Deep-sleep `ext0` is **level-triggered**: arming it while the PWR button is already held (strap or sleeve pressure) makes the SoC wake immediately, over and over. The pin is read before arming (high = held) and, when held, a timer is armed instead; the recheck runs before any panel, UI or radio bring-up |
 | Low-charge ladder | see below | Running the cell down to its own protection cutoff |
 
 **Low-charge ladder.** `BatteryMonitor` classifies the charge and `PowerManager` acts on it. The level only ever escalates within one awake session, so a reading that jitters across a threshold under load cannot make the behaviour flap; a wake is a full reboot, so every wake re-evaluates from scratch. On USB power the ladder is suppressed entirely.
 
-| Level | Trigger | Display timeout | Backlight ceiling |
+| Level | Trigger | Display timeout | Brightness ceiling |
 |---|---|---|---|
 | `OK` | SoC above 20 % | 10 s | 100 % |
 | `WARN` | SoC 20 % or below | 5 s | 100 % (the status bar is already red) |
 | `CRITICAL` | SoC 10 % or below | 3 s | 10 % |
 | `CUTOFF` | SoC 5 % or below, **or** cell at/below 3400 mV | — | 5 %, then a `BATTERY EMPTY / CHARGE NOW` prompt for 2 s and a protective deep sleep |
 
-Shortening the **timeout** is the real lever, not the brightness clamp: active baseline is ~145 mA while the backlight adds only ~10 mA at 20 %, so 10 s → 3 s saves roughly two-thirds per glance where the clamp saves about 5 %. The cutoff check deliberately runs *before* the radio is brought up — RF bring-up is the sharpest current edge on the board and the last thing a near-empty cell should be asked for. Button wake stays armed at cutoff on purpose: a press just repeats the short prompt cycle, and plugging in USB restores a normal boot, whereas refusing to wake would read as a bricked watch.
+On the CrowPanel, shortening the **timeout** was the real lever, not the brightness clamp, because the active baseline dominated the backlight. An AMOLED's draw depends on lit pixels and brightness instead, so which lever matters on this board is part of the open measurements; the constants are unchanged until then. The cutoff check deliberately runs *before* the radio is brought up — RF bring-up is the sharpest current edge on the board and the last thing a near-empty cell should be asked for. Button wake stays armed at cutoff on purpose: a press just repeats the short prompt cycle, and plugging in USB restores a normal boot, whereas refusing to wake would read as a bricked watch.
 
-**On USB power the watch does not sleep.** With external power present (GPIO17) there is no endurance to protect, so the display timeout and the awake ceiling are both suspended and the watch works as a docked display; after `STAYAWAKE_DIM_IDLE_MS` (60 s) without input the panel dims to `STAYAWAKE_DIM_PERCENT` (5 %) instead of sleeping. Unplugging grants a fresh display window and restarts the awake ceiling. The clamp is applied as a *ceiling* on what reaches the backlight pin — the user's stored brightness and the Setup slider are never overwritten.
+**On USB power the watch does not sleep.** With external power present (AXP2101 VBUS) there is no endurance to protect, so the display timeout and the awake ceiling are both suspended and the watch works as a docked display; after `STAYAWAKE_DIM_IDLE_MS` (60 s) without input the panel dims to `STAYAWAKE_DIM_PERCENT` (5 %) instead of sleeping. Unplugging grants a fresh display window and restarts the awake ceiling. The clamp is applied as a *ceiling* on what reaches the panel — the user's stored brightness and the Setup slider are never overwritten.
 
 **The Setup screen's prevent-sleep switch is the battery-powered version of the same behaviour** — same dim, no display timeout — with one deliberate difference: the 120 s awake ceiling stays armed, and the low-charge ladder overrides the switch from `CRITICAL` down. See [Setup screen](#setup-screen) for the endurance cost.
 
@@ -259,41 +290,26 @@ The screen you were last on is restored on **every** boot, not only a deep-sleep
 
 `.rtc.noinit` matters here: the bootloader reloads `.rtc.data` (i.e. `RTC_DATA_ATTR`) from the flash image on every boot **except** a deep-sleep wake, where it deliberately skips the initialisation — so an `RTC_DATA_ATTR` value survives sleep but is wiped by a reset. `.rtc.noinit` is not in the image at all, so nothing initialises it; the magic word is what distinguishes a real value from the uninitialised RAM you get after a power-on.
 
-Tier 2 is read **only** when tier 1 is gone, and written **only** when the page actually changed — so the common deep-sleep wake touches no flash and the wake sequence is unchanged. The write is placed at the top of the deep-sleep entry, before the backlight ramp, where the radio is idle and no render is in flight: one load moving at a time, the same spike-staggering rule the wake sequence follows. The restore is not gated on the wake cause (a reset reports `ESP_SLEEP_WAKEUP_UNDEFINED`); the magic word answers the real question, which is whether the stored value is trustworthy, and `ScreenManager::begin()` clamps it regardless.
+Tier 2 is read **only** when tier 1 is gone, and written **only** when the page actually changed — so the common deep-sleep wake touches no flash and the wake sequence is unchanged. The write is placed at the top of the deep-sleep entry, before the brightness ramp, where the radio is idle and no render is in flight: one load moving at a time, the same spike-staggering rule the wake sequence follows. The restore is not gated on the wake cause (a reset reports `ESP_SLEEP_WAKEUP_UNDEFINED`); the magic word answers the real question, which is whether the stored value is trustworthy, and `ScreenManager::begin()` clamps it regardless.
 
-Boot logs the reset reason and which tier supplied the page (`[page] reset=… src=rtc|nvs page=…`). That log settled a question the datasheets do not: on this board the **reset button wipes RTC RAM** — it reports `ESP_RST_POWERON` (1), not `ESP_RST_EXT`, because the button pulls EN (CHIP_PU) low and power-cycles the RTC domain with everything else. The NVS tier is therefore load-bearing rather than belt-and-braces; `RTC_NOINIT_ATTR` alone would not have survived the very case this feature exists for. See `hardware_notes.md`.
+Boot logs the reset reason and which tier supplied the page (`[page] reset=… src=rtc|nvs page=…`). On the CrowPanel that log showed the reset button wipes RTC RAM (`ESP_RST_POWERON`), which made the NVS tier load-bearing. On the Waveshare board the AXP2101 long-press power-off certainly does the same; how each of its buttons treats the RTC domain is to be confirmed from the same log.
 
 ### Consumption measurements
 
-Measured on the actual board with the battery as the only supply (**USB unplugged** — otherwise the USB-UART bridge and charger IC, both USB-powered, contaminate the reading). A plain handheld DMM (Velleman DVM850BL) can't measure the in-series milliamps directly — its burden voltage on the mA ranges browns the board out — so two indirect methods were used:
+**Not yet measured on the Waveshare board.** No current figures are claimed for it until they are: the sleep floor and the active current decide the whole budget. To measure, battery only (USB unplugged):
 
-- **Deep-sleep floor — series shunt + voltmeter.** A known resistor in series on battery `+`; the board is booted with a jumper across it (so boot inrush bypasses the resistor), allowed to deep-sleep, then the jumper is removed and the voltage across the resistor is read. `I = U / R`. A 100 Ω shunt read **216 mV → 2.16 mA**.
-- **Active current — DMM 10 A jack, in series.** The 10 A range's internal shunt is ~0.01 Ω, so its burden is negligible and the board runs normally (coarse ~10 mA resolution). Measured while continuously swiping (worst-case active).
+- **Deep-sleep floor — series shunt + voltmeter.** A known resistor (e.g. 100 Ω) in series on battery `+`, bridged with a jumper while booting so the inrush bypasses it; once the watch sleeps, remove the jumper and read the voltage across the resistor. `I = U / R`.
+- **Active current — DMM 10 A jack in series.** The mA ranges' burden voltage browns the board out; the 10 A range does not. Measure at several brightness levels on a typical (mostly black) screen.
 
-| State | Current | Notes |
-|---|---|---|
-| Deep sleep (floor) | **2.16 mA** | Board-level standing draw (regulators / charger quiescent / touch + accel), ~50–200× the S3's intrinsic ~10–50 µA — the dev-board reality |
-| Active, 9 % / 20 % backlight | ~0.14–0.15 A | Baseline: radio + S3 + SPI panel + touch + continuous render |
-| Active, 50 % backlight | ~0.16–0.18 A | Backlight adds ~+25 mA |
-| Active, 75 % backlight | ~0.18–0.19 A | Backlight adds ~+40 mA |
-| Active, 95 % backlight | ~0.19–0.21 A | Backlight adds ~+55 mA |
-
-Notable: during active use the panel + radio + render **baseline (~145 mA) dominates**, not the backlight (~55 mA max adder). But active time is tiny (glances), so the daily budget is dominated by the deep-sleep floor instead.
+For reference, v1.0.0 on the CrowPanel measured a **2.16 mA** deep-sleep floor and **~145 mA** active at 20 % backlight. Those numbers belong to that board and are not carried over.
 
 ### Endurance
 
-On the physical **250 mAh** cell (the largest that fits the case without modification), with a 24 h target and nightly charging. Daily sleep energy = 2.16 mA × 24 h = 51.8 mAh/day; each ~10.5 s glance (10 s window + ~0.5 s wake sequence) ≈ 0.42 mAh at ~145 mA active.
+Daily budget = sleep floor × 24 h + glances per day × active current × glance length (10 s window + ~0.5 s wake). The target is one to two days on the fitted cell (assumed ~300 mAh until confirmed) with nightly charging. The table is filled in once the floor and the active current have been measured.
 
-| Glances / day | mAh / day | Endurance | vs. 24 h target |
-|---|---|---|---|
-| 0 (pure sleep) | 51.8 | ~4.8 days | 4.8× |
-| 30 | ~65 | ~3.9 days | 3.9× |
-| 60 | ~77 | ~3.2 days | 3.2× |
-| 100 | ~94 | ~2.7 days | 2.7× |
+On the CrowPanel, Model B met the 24 h + nightly-charge requirement with a 2.7–4.8× margin, so a hybrid light-sleep "watch mode" (Model C) was dropped; whether that still holds here follows from the measurements.
 
-Sleep is ~55–80 % of the budget; even heavy glancing barely moves it. **Conclusion: Model B alone comfortably meets the 24 h + nightly-charge requirement with 2.7–4.8× margin.** A hybrid light-sleep "watch mode" (Model C) was considered but is not needed here and was dropped, and the 2.16 mA floor is not worth chasing lower for a 1-day requirement.
-
-**The dominant endurance risk is not the average draw but a failure to sleep**: at ~145 mA the 250 mAh cell drains in under two hours. That is exactly what the awake ceiling, the task watchdog and the stuck-wake-button guard exist for — see [Power guards](#power-guards).
+**The dominant endurance risk is not the average draw but a failure to sleep**: at active current a small cell is flat in hours. That is exactly what the awake ceiling, the task watchdog and the stuck-wake-button guard exist for — see [Power guards](#power-guards).
 
 ## ESP-NOW communication
 
@@ -361,61 +377,68 @@ struct DepthDelta {
 
 (`HeadingDelta`, `BatteryDelta`, `WeatherDelta`, `HALMETEngineDelta`, `HALMETTankDelta`, `HALMETWaterDelta` are shared with the compass project — see `espnow_protocol.h`.) On the receiver side, `GnssDelta`/`HeadingDelta` are converted once into integer-scaled internal structs (`GnssData`/`HeadingData`); note that position-fix validity (`hasFix()`) and course validity (`hasCog()`) are kept **distinct**, so position and SOG remain visible at anchor even though COG is undefined.
 
-**Channel:** all devices must share one WiFi channel. Configured to channel 6 (`static constexpr uint8_t ESP_NOW_CHANNEL = 6` in `CrowPanelApplication.h`). Fix your router to channel 6 so senders can use WiFi and ESP-NOW simultaneously without channel-hopping.
+**Channel:** all devices must share one WiFi channel. Configured to channel 6 (`static constexpr uint8_t ESP_NOW_CHANNEL = 6` in `WatchApplication.h`). Fix your router to channel 6 so senders can use WiFi and ESP-NOW simultaneously without channel-hopping.
 
 ## Project structure
 
 | File(s) | Description |
 |---------|-------------|
-| `ESP32-Crowpanel-SkippersWatch.ino` | Owns `CrowPanelApplication app`, contains `setup()` and `loop()` |
-| `CrowPanelApplication.h/.cpp` | Class `CrowPanelApplication`, the "app" — owns all instances, staggered wake, GNSS time sync |
-| `PowerManager.h/.cpp` | Class `PowerManager` — Model B deep-sleep, display timeout, peripheral gating, wake arming, and the power guards (awake ceiling, watchdog, low-charge ladder, stuck-button guard) |
-| `BatteryMonitor.h/.cpp` | Class `BatteryMonitor` — watch LiPo ADC sampling, SoC estimation, USB detection, status-bar indicator, charge-level classification |
+| `ESP32-Crowpanel-SkippersWatch.ino` | Owns `WatchApplication app`, contains `setup()` and `loop()` |
+| `WatchApplication.h/.cpp` | Class `WatchApplication`, the "app" — owns all instances, display stack, staggered wake, gesture dispatch, GNSS time sync |
+| `PowerManager.h/.cpp` | Class `PowerManager` — Model B deep-sleep, display timeout, peripheral sleep, PWR-button wake arming, and the power guards (awake ceiling, watchdog, low-charge ladder, stuck-button guard) |
+| `BatteryMonitor.h/.cpp` | Class `BatteryMonitor` — AXP2101 battery voltage + fuel gauge, VBUS detection, status-bar indicator, charge-level classification |
+| `BatteryLevel.h` | Charge levels and the low-charge ladder thresholds (pure, host-tested) |
+| `PanelBrightness.h/.cpp` | Class `PanelBrightness` — AMOLED brightness as a panel command |
 | `espnow_protocol.h` | Shared fleet wire protocol (namespace `ESPNow`): header, packet, `ESPNowMsgType`, all deltas + receiver-side `GnssData`/`HeadingData` |
-| `IScreenUI.h` | Abstract base class for all UI adapter implementations (knob + touch seam) |
+| `IScreenUI.h` | Abstract base class for all UI adapter implementations (tap + touch-drag seam) |
 | `ESPNowReceiver.h/.cpp` | Class `ESPNowReceiver` — ESP-NOW receive (receive-only), per-source freshness |
-| `NavigationUI.h/.cpp` | Class `NavigationUI` — POS / COG / SOG / DPT, realizes `IScreenUI` |
+| `NavigationUI.h/.cpp` | Class `NavigationUI` — POS / HDG / COG / SOG / DPT, realizes `IScreenUI` |
 | `BatteryUI.h/.cpp` | Class `BatteryUI` — battery screen adapter, realizes `IScreenUI` |
 | `WeatherUI.h/.cpp` | Class `WeatherUI` — weather screen adapter, realizes `IScreenUI` |
 | `EngineUI.h/.cpp` | Class `EngineUI` — exhaust + fuel/water tanks, realizes `IScreenUI` |
 | `AttitudeUI.h/.cpp` | Class `AttitudeUI` — artificial horizon, realizes `IScreenUI` |
 | `ClockUI.h/.cpp` | Class `ClockUI` — system-clock reader + formatting, realizes `IScreenUI` |
-| `SetupUI.h/.cpp` | Class `SetupUI` — brightness slider + adjust state machine (knob) + touch drag, realizes `IScreenUI` |
-| `RotaryEncoder.h/.cpp` | Class `RotaryEncoder` — knob rotation (quadrature) + button, FreeRTOS tasks |
-| `TouchInput.h/.cpp` | Class `TouchInput` — touch polling + software gesture recognition |
-| `axs5106l_touch.h/.cpp` | Local AXS5106L capacitive-touch driver (ported from Elecrow's Lesson03 example) |
-| `ScreenManager.h/.cpp` | Class `ScreenManager` — scalable screen carousel (container visibility) |
-| `lv_conf.h` | LVGL configuration (project-local, `LV_COLOR_DEPTH 16`) |
-| `ui.h/.c`, `ui_ScreenMain.h/.c`, `ui_helpers.h/.c`, `ui_font_*.c` | SquareLine Studio generated — UI + fonts |
-| `hardware_notes.md` | Authoritative pin map + build/toolchain notes + power-guard reference |
+| `SetupUI.h/.cpp` | Class `SetupUI` — brightness slider + prevent-sleep switch (touch), realizes `IScreenUI` |
+| `MenuUI.h/.cpp` | Class `MenuUI` — page menu overlay and its hit-testing |
+| `TouchInput.h/.cpp` | Class `TouchInput` — touch polling, held/released state, drag points |
+| `GestureClassifier.h` | Software gesture rules (pure, host-tested) |
+| `ft3168_touch.h/.cpp` | Local FT3168 capacitive-touch driver (registers from Waveshare's `Arduino_FT3x68`) |
+| `ScreenManager.h/.cpp` | Class `ScreenManager` — scalable screen carousel (container visibility) + direct jumps |
+| `lv_conf.h` | LVGL configuration (project-local, `LV_COLOR_DEPTH 16`, `LV_MEM_SIZE` 96 kB) |
+| `ui.h/.c`, `ui_ScreenMain.h/.c`, `ui_helpers.h/.c`, `ui_font_*.c`, `ui_img_*.c` | SquareLine Studio generated — UI, fonts and menu icons |
+| `tests/host/` | Host unit tests for the pure logic (`make -C tests/host`); not part of the sketch |
+| `hardware_notes_waveshare.md` | Waveshare pin map, parts, build settings, open hardware questions |
+| `hardware_notes.md` | CrowPanel (v1.0.0) pin map and measurements, kept for reference |
+| `PORTING.md` | CrowPanel → Waveshare porting plan and open items |
 | `CHANGELOG.md` | Release history (Keep a Changelog / Semantic Versioning) |
-| `SLS_project/`, `SLS_export/` | SquareLine Studio project and export |
+| `SLS_project_WS/`, `SLS_export/` | SquareLine Studio project (410×502) and export directory; `SLS_project/` is the v1.0.0 CrowPanel project |
 | `docs/` | Screenshots, diagrams, other documents |
 
 ## Hardware
 
 ### Bill of materials
 
-1. [Elecrow CrowPanel 2.01" HMI ESP32 Watch Display 240×296](https://github.com/Elecrow-RD/CrowPanel_2.01_inch-HMI_ESP32_Watch_Display_240_296), having:
-   - ESP32-S3R8 module (dual LX7, 8 MB PSRAM, 16 MB flash)
-   - 240×296 IPS SPI display (GC9309)
-   - AXS5106L capacitive touch (I2C, INT=GPIO2, RST=GPIO5)
-   - ALPS EC11 rotary encoder with push button (A=GPIO20, B=GPIO19, button=GPIO18)
-   - SC7A20H 3-axis accelerometer (I2C 0x19) — not used yet
-   - Vibration motor (GPIO45) — not used yet
-   - ~250 mAh LiPo cell, USB-C charging via a CH34x USB-UART bridge
+1. [Waveshare ESP32-S3-Touch-AMOLED-2.06](https://docs.waveshare.com/ESP32-S3-Touch-AMOLED-2.06) (SKU 31957), having:
+   - ESP32-S3R8 (dual LX7, 8 MB OPI PSRAM, 32 MB flash), native USB
+   - 2.06" AMOLED 410×502, CO5300 driver over QSPI
+   - FT3168 capacitive touch (I2C 0x38, INT=GPIO38, RST=GPIO9)
+   - AXP2101 PMIC: charger, rails, fuel gauge, power key
+   - PWR button (GPIO10 = SYS_OUT, high = pressed) and BOOT button (GPIO0)
+   - QMI8658 IMU, PCF85063 RTC, ES8311/ES7210 audio, TF slot — not used (audio amp held off)
+   - LiPo cell on an MX1.25 connector (capacity of the fitted cell to be confirmed; ~300 mAh assumed), factory case with strap
 2. WiFi router set to a fixed channel 6
-3. The ESP-NOW senders listed under [Integrated via ESP-NOW with](#esp32-crowpanel-skipperswatch)
+3. The ESP-NOW senders listed under [Integrated via ESP-NOW with](#esp32-skipperswatch)
 
 **No paid partnerships.**
 
 ## Software
 
 1. Arduino IDE 2.3.x
-2. Espressif Systems esp32 board package 3.x
+2. Espressif Systems esp32 board package 3.x (developed on 3.3.11)
 3. Additional libraries:
    - LVGL 9.x (with a project-local `lv_conf.h`, `LV_COLOR_DEPTH 16`)
-   - Arduino GFX Library 1.6.7 — **patched** with Elecrow's `Arduino_GC9309.{h,cpp}` (mainline GFX has no GC9309; drop the driver into `src/display/` and add its include to `src/Arduino_GFX_Library.h`; re-apply if the library is reinstalled)
+   - Arduino GFX Library 1.6.7 (contains `Arduino_CO5300`; no patch needed for this board — the `Arduino_GC9309` patch is only for the v1.0.0 CrowPanel build)
+   - XPowersLib 0.3.x (Lewis He) for the AXP2101
 4. SquareLine Studio for UI design and code generation
 5. The ESP-NOW sender projects (see above)
 
@@ -425,15 +448,25 @@ struct DepthDelta {
    ```
    git clone https://github.com/mkvesala/ESP32-Crowpanel-SkippersWatch.git
    ```
-2. Install the required libraries in Arduino IDE (LVGL, Arduino_GFX_Library) and apply the `Arduino_GC9309` patch to the GFX library (see [Software](#software))
-3. Set the ESP-NOW channel in `CrowPanelApplication.h` to match your router:
+2. Install the required libraries in Arduino IDE: LVGL, GFX Library for Arduino, XPowersLib (see [Software](#software))
+3. Set the ESP-NOW channel in `WatchApplication.h` to match your router:
    ```cpp
    static constexpr uint8_t ESP_NOW_CHANNEL = 6;
    ```
 4. Configure the board (see [Flashing](#flashing)), connect USB-C
-5. Compile and upload with Arduino IDE (board: ESP32S3 Dev Module, PSRAM: OPI, Flash: 16 MB / QIO 80 MHz, **Partition Scheme: Huge APP (3 MB No OTA/1 MB SPIFFS)**)
+5. Compile and upload with Arduino IDE using these board settings:
 
-   The partition scheme matters: at ~1.30 MB the sketch leaves under 12 kB of headroom in the default 1.2 MB app partition (99 % full — it links, but the next small change overflows it). With Huge APP it uses about 41 %.
+   | Setting | Value |
+   |---|---|
+   | Board | ESP32S3 Dev Module |
+   | USB CDC On Boot | **Enabled** |
+   | USB Mode | Hardware CDC and JTAG |
+   | Flash Size | **32MB (256Mb)** |
+   | Partition Scheme | **Huge APP (3MB No OTA/1MB SPIFFS)** |
+   | PSRAM | OPI PSRAM |
+   | Flash Mode | QIO 80MHz |
+
+   The sketch is ~1.53 MB, about half of the Huge APP slot; the default 1.2 MB app partition is too small.
 6. Point the ESP-NOW senders to the same WiFi channel
 
 **Note** that `lv_conf.h` is project-local. If you use LVGL elsewhere, a second `lv_conf.h` may live under `Arduino/libraries/` next to the `lvgl` folder — check both to avoid conflicts.
@@ -442,12 +475,11 @@ struct DepthDelta {
 
 ## Flashing
 
-This board's USB-C connector is a **CH34x USB-UART bridge** on UART0 — **not** the S3's native USB. Consequences:
+This board uses the ESP32-S3's **native USB** (no USB-UART bridge, no extra driver). Consequences:
 
-- macOS/Windows need the **WCH CH34x driver** installed; without it no serial port appears even though the S3 is running. The port enumerates as WCH VID `0x1a86` (e.g. `/dev/cu.wchusbserial*`).
-- Set **`USB CDC On Boot` = Disabled**, so `Serial` maps to UART0 → CH34x and the Serial Monitor works.
-- Upload uses the bridge's DTR/RTS auto-reset (no manual BOOT+RESET normally needed). Fallback on "Failed to connect": hold **BOOT (GPIO0)** → tap **RESET** → release BOOT → Upload.
-- The CH34x port persists across firmware deep-sleep (the bridge is independent of the S3).
+- **`USB CDC On Boot` = Enabled**, so `Serial` is the native USB CDC port (the opposite of the v1.0.0 CrowPanel setting).
+- On battery the watch spends most of its time in deep sleep, and **the USB port disappears while it sleeps**. On USB power it stays awake, so a watch that is already plugged in is normally reachable. To flash a sleeping watch, hold **BOOT** while plugging in USB, then upload.
+- Early boot logs can be lost before the host re-enumerates the port; UART0 (GPIO43/44) is the fallback log channel.
 
 ## Security
 
@@ -461,7 +493,7 @@ Software and libraries used are documented in the sections above.
 
 Companion project to my always-on helm display [ESP32-Crowpanel-compass](https://github.com/mkvesala/ESP32-Crowpanel-compass), and to the ESP-NOW sender projects [UBLOX-ESP32-SignalK-gateway](https://github.com/mkvesala/UBLOX-ESP32-SignalK-gateway), [SignalK-ESP-NOW-gateway](https://github.com/mkvesala/SignalK-ESP-NOW-gateway), [CMPS14-ESP32-SignalK-gateway](https://github.com/mkvesala/CMPS14-ESP32-SignalK-gateway), [VEDirect-ESP32-SignalK-gateway](https://github.com/mkvesala/VEDirect-ESP32-SignalK-gateway), [BME280-ESP32-SignalK-gateway](https://github.com/mkvesala/BME280-ESP32-SignalK-gateway) and [HALMET-ESP32-SignalK-gateway](https://github.com/mkvesala/HALMET-ESP32-SignalK-gateway).
 
-Inspired by [example source code by Elecrow](https://github.com/Elecrow-RD/CrowPanel_2.01_inch-HMI_ESP32_Watch_Display_240_296). The local `axs5106l_touch` driver is adapted from Elecrow's Lesson03 example.
+Board bring-up follows [Waveshare's example code](https://github.com/waveshareteam/ESP32-S3-Touch-AMOLED-2.06); the local `ft3168_touch` driver uses the register map of its `Arduino_FT3x68`. v1.0.0 was inspired by [example source code by Elecrow](https://github.com/Elecrow-RD/CrowPanel_2.01_inch-HMI_ESP32_Watch_Display_240_296).
 
 <!-- TODO(credits): add icon/font attributions here if used in the UI -->
 
@@ -473,14 +505,16 @@ Developed by Matti Vesala in collaboration with Claude.
 
 <!-- TODO(images): add the UML diagram and a photo of the watch on the wrist here -->
 
+SquareLine Studio previews of the 410×502 layout:
+
 | Navigation | Batteries | Weather |
 |---|---|---|
-| <img src="docs/navigationview.png" width="200"> | <img src="docs/batteryview.png" width="200"> | <img src="docs/weatherview.png" width="200"> |
+| <img src="docs/navigation.png" width="200"> | <img src="docs/batteries.png" width="200"> | <img src="docs/weather.png" width="200"> |
 
 | Engine | Attitude | Clock |
 |---|---|---|
-| <img src="docs/engineview.png" width="200"> | <img src="docs/attitudeview.png" width="200"> | <img src="docs/clockview.png" width="200"> |
+| <img src="docs/engineroom.png" width="200"> | <img src="docs/attitude.png" width="200"> | <img src="docs/clock.png" width="200"> |
 
-| Setup |
-|---|
-| <img src="docs/setupview.png" width="200"> |
+| Setup | Page menu |
+|---|---|
+| <img src="docs/setup.png" width="200"> | <img src="docs/menu.png" width="200"> |
