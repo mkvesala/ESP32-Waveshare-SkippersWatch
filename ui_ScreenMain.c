@@ -37,10 +37,9 @@ lv_obj_set_style_bg_opa(ui_BarBatteryIndicator, 255, LV_PART_INDICATOR| LV_STATE
 if (lv_obj_get_style_pad_top(ui_BarBatteryIndicator,LV_PART_MAIN) > 0) lv_obj_set_style_pad_right( ui_BarBatteryIndicator, lv_obj_get_style_pad_right(ui_BarBatteryIndicator,LV_PART_MAIN) + 1, LV_PART_MAIN );
 ui_ContainerNavigation = lv_obj_create(ui_ScreenMain);
 lv_obj_remove_style_all(ui_ContainerNavigation);
-lv_obj_set_width( ui_ContainerNavigation, 360);
-lv_obj_set_height( ui_ContainerNavigation, 452);
+lv_obj_set_width( ui_ContainerNavigation, 340);
+lv_obj_set_height( ui_ContainerNavigation, 440);
 lv_obj_set_align( ui_ContainerNavigation, LV_ALIGN_CENTER );
-lv_obj_add_flag( ui_ContainerNavigation, LV_OBJ_FLAG_HIDDEN );   /// Flags
 lv_obj_remove_flag( ui_ContainerNavigation, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_SCROLLABLE );    /// Flags
 
 ui_LabelCOGTitle = lv_label_create(ui_ContainerNavigation);
@@ -123,8 +122,8 @@ lv_obj_set_style_text_font(ui_LabelPOSTitle, &ui_font_FontLabel24, LV_PART_MAIN|
 
 ui_ContainerBatteries = lv_obj_create(ui_ScreenMain);
 lv_obj_remove_style_all(ui_ContainerBatteries);
-lv_obj_set_width( ui_ContainerBatteries, 360);
-lv_obj_set_height( ui_ContainerBatteries, 452);
+lv_obj_set_width( ui_ContainerBatteries, 340);
+lv_obj_set_height( ui_ContainerBatteries, 440);
 lv_obj_set_align( ui_ContainerBatteries, LV_ALIGN_CENTER );
 lv_obj_add_flag( ui_ContainerBatteries, LV_OBJ_FLAG_HIDDEN );   /// Flags
 lv_obj_remove_flag( ui_ContainerBatteries, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_SCROLLABLE );    /// Flags
@@ -200,8 +199,8 @@ lv_obj_set_style_text_font(ui_LabelBatteries, &ui_font_FontLabel24, LV_PART_MAIN
 
 ui_ContainerWeather = lv_obj_create(ui_ScreenMain);
 lv_obj_remove_style_all(ui_ContainerWeather);
-lv_obj_set_width( ui_ContainerWeather, 360);
-lv_obj_set_height( ui_ContainerWeather, 452);
+lv_obj_set_width( ui_ContainerWeather, 340);
+lv_obj_set_height( ui_ContainerWeather, 440);
 lv_obj_set_align( ui_ContainerWeather, LV_ALIGN_CENTER );
 lv_obj_add_flag( ui_ContainerWeather, LV_OBJ_FLAG_HIDDEN );   /// Flags
 lv_obj_remove_flag( ui_ContainerWeather, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_SCROLLABLE );    /// Flags
@@ -261,8 +260,8 @@ lv_obj_set_style_text_font(ui_LabelWeather, &ui_font_FontLabel24, LV_PART_MAIN| 
 
 ui_ContainerEngineroom = lv_obj_create(ui_ScreenMain);
 lv_obj_remove_style_all(ui_ContainerEngineroom);
-lv_obj_set_width( ui_ContainerEngineroom, 360);
-lv_obj_set_height( ui_ContainerEngineroom, 452);
+lv_obj_set_width( ui_ContainerEngineroom, 340);
+lv_obj_set_height( ui_ContainerEngineroom, 440);
 lv_obj_set_align( ui_ContainerEngineroom, LV_ALIGN_CENTER );
 lv_obj_add_flag( ui_ContainerEngineroom, LV_OBJ_FLAG_HIDDEN );   /// Flags
 lv_obj_remove_flag( ui_ContainerEngineroom, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_SCROLLABLE );    /// Flags
@@ -322,8 +321,8 @@ lv_obj_set_style_text_font(ui_LabelEngineroom, &ui_font_FontLabel24, LV_PART_MAI
 
 ui_ContainerAttitude = lv_obj_create(ui_ScreenMain);
 lv_obj_remove_style_all(ui_ContainerAttitude);
-lv_obj_set_width( ui_ContainerAttitude, 360);
-lv_obj_set_height( ui_ContainerAttitude, 452);
+lv_obj_set_width( ui_ContainerAttitude, 340);
+lv_obj_set_height( ui_ContainerAttitude, 440);
 lv_obj_set_align( ui_ContainerAttitude, LV_ALIGN_CENTER );
 lv_obj_add_flag( ui_ContainerAttitude, LV_OBJ_FLAG_HIDDEN );   /// Flags
 lv_obj_remove_flag( ui_ContainerAttitude, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_SCROLLABLE );    /// Flags
@@ -412,8 +411,8 @@ lv_obj_set_style_text_font(ui_LabelPortValue, &ui_font_FontLabel48, LV_PART_MAIN
 
 ui_ContainerSetup = lv_obj_create(ui_ScreenMain);
 lv_obj_remove_style_all(ui_ContainerSetup);
-lv_obj_set_width( ui_ContainerSetup, 360);
-lv_obj_set_height( ui_ContainerSetup, 452);
+lv_obj_set_width( ui_ContainerSetup, 340);
+lv_obj_set_height( ui_ContainerSetup, 440);
 lv_obj_set_align( ui_ContainerSetup, LV_ALIGN_CENTER );
 lv_obj_add_flag( ui_ContainerSetup, LV_OBJ_FLAG_HIDDEN );   /// Flags
 lv_obj_remove_flag( ui_ContainerSetup, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_SCROLLABLE );    /// Flags
@@ -489,8 +488,8 @@ lv_obj_set_style_text_font(ui_LabelPreventSleep, &ui_font_FontLabel24, LV_PART_M
 
 ui_ContainerClock = lv_obj_create(ui_ScreenMain);
 lv_obj_remove_style_all(ui_ContainerClock);
-lv_obj_set_width( ui_ContainerClock, 360);
-lv_obj_set_height( ui_ContainerClock, 452);
+lv_obj_set_width( ui_ContainerClock, 340);
+lv_obj_set_height( ui_ContainerClock, 440);
 lv_obj_set_align( ui_ContainerClock, LV_ALIGN_CENTER );
 lv_obj_add_flag( ui_ContainerClock, LV_OBJ_FLAG_HIDDEN );   /// Flags
 lv_obj_remove_flag( ui_ContainerClock, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_SCROLLABLE );    /// Flags
@@ -540,9 +539,10 @@ lv_obj_set_style_text_font(ui_LabelDateUTC, &ui_font_FontLabel24, LV_PART_MAIN| 
 
 ui_ContainerMenu = lv_obj_create(ui_ScreenMain);
 lv_obj_remove_style_all(ui_ContainerMenu);
-lv_obj_set_width( ui_ContainerMenu, 360);
-lv_obj_set_height( ui_ContainerMenu, 360);
+lv_obj_set_width( ui_ContainerMenu, 340);
+lv_obj_set_height( ui_ContainerMenu, 440);
 lv_obj_set_align( ui_ContainerMenu, LV_ALIGN_CENTER );
+lv_obj_add_flag( ui_ContainerMenu, LV_OBJ_FLAG_HIDDEN );   /// Flags
 lv_obj_remove_flag( ui_ContainerMenu, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_SCROLLABLE );    /// Flags
 
 ui_ImgButtonNavigation = lv_imagebutton_create(ui_ContainerMenu);

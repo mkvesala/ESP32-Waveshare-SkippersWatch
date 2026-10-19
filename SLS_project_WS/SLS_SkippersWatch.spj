@@ -1879,8 +1879,8 @@
                 "flags": 17,
                 "strtype": "OBJECT/Size",
                 "intarray": [
-                  360,
-                  452
+                  340,
+                  440
                 ],
                 "InheritedType": 7
               },
@@ -3463,8 +3463,8 @@
                 "flags": 17,
                 "strtype": "OBJECT/Size",
                 "intarray": [
-                  360,
-                  452
+                  340,
+                  440
                 ],
                 "InheritedType": 7
               },
@@ -4727,8 +4727,8 @@
                 "flags": 17,
                 "strtype": "OBJECT/Size",
                 "intarray": [
-                  360,
-                  452
+                  340,
+                  440
                 ],
                 "InheritedType": 7
               },
@@ -5991,8 +5991,8 @@
                 "flags": 17,
                 "strtype": "OBJECT/Size",
                 "intarray": [
-                  360,
-                  452
+                  340,
+                  440
                 ],
                 "InheritedType": 7
               },
@@ -7617,8 +7617,8 @@
                 "flags": 17,
                 "strtype": "OBJECT/Size",
                 "intarray": [
-                  360,
-                  452
+                  340,
+                  440
                 ],
                 "InheritedType": 7
               },
@@ -8932,8 +8932,8 @@
                 "flags": 17,
                 "strtype": "OBJECT/Size",
                 "intarray": [
-                  360,
-                  452
+                  340,
+                  440
                 ],
                 "InheritedType": 7
               },
@@ -9876,8 +9876,8 @@
                 "flags": 17,
                 "strtype": "OBJECT/Size",
                 "intarray": [
-                  360,
-                  452
+                  340,
+                  440
                 ],
                 "InheritedType": 7
               },
@@ -11218,8 +11218,8 @@
                 "flags": 17,
                 "strtype": "OBJECT/Size",
                 "intarray": [
-                  360,
-                  360
+                  340,
+                  440
                 ],
                 "InheritedType": 7
               },
@@ -11483,7 +11483,7 @@
     "custom_variable_prefix": "uic",
     "separate_screen_save": false,
     "hierarchy_state_save": false,
-    "backup_cnt": 63,
+    "backup_cnt": 65,
     "autosave_cnt": 0,
     "group_color_cnt": 0,
     "imagebytearrayprefix": "",
