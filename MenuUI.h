@@ -2,6 +2,7 @@
 
 #include <Arduino.h>
 #include <lvgl.h>
+#include "NightPalette.h"
 
 // === C L A S S  M E N U U I ===
 //
@@ -26,6 +27,10 @@ public:
     void hide();
     bool isVisible() const { return _visible; }
 
+    // Night palette: the full-color icons are recolored to a flat red (alpha kept, so
+    // the icon shapes stay); off restores the original artwork.
+    void setNightMode(bool on);
+
     // Page index (carousel order) of the button under (x, y), or -1 for none.
     int8_t pageAt(int16_t x, int16_t y) const;
 
@@ -41,6 +46,8 @@ public:
     };
 
 private:
+
+    static constexpr uint32_t NIGHT_ICON = NightPalette::RED_BRIGHT;
 
     // Finger padding around each 96×96 button for hit-testing
     static constexpr int16_t TOUCH_PAD_PX = 8;

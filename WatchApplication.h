@@ -18,6 +18,9 @@
 #include "PowerManager.h"
 #include "BatteryMonitor.h"
 #include "PanelBrightness.h"
+#include "DemoSource.h"
+#include "ThemeController.h"
+#include "version.h"
 
 // === C L A S S  W A T C H A P P L I C A T I O N ===
 //
@@ -31,6 +34,11 @@
 // - Page carousel: NAVIGATION(0) → BATTERIES(1) → WEATHER(2) → ENGINE(3) → ATTITUDE(4) → CLOCK(5) → SETUP(6)
 // - Pins/parts from Waveshare's examples — see hardware_notes_waveshare.md
 // - Model B power: deep sleep at rest, the PWR button wakes (see PowerManager).
+// - A true power-on (after the AXP2101 cut power) shows the startup screen for
+//   STARTUP_SCREEN_MS first; a deep-sleep wake opens the last page directly, so the two
+//   are told apart at a glance.
+// - Setup's demo and night switches are applied here (applyModes): demo swaps the data
+//   source behind the receiver, night swaps the palette.
 
 class WatchApplication {
 
@@ -56,6 +64,10 @@ private:
     // sleep. Long enough to read, short enough that a repeated press of the wake button
     // on a dead cell costs little.
     static constexpr uint32_t CUTOFF_MESSAGE_MS = 2000;
+
+    // Startup screen on a true power-on. Not taken from the wake time: the display-on
+    // window starts only after it (PowerManager::begin() runs afterwards).
+    static constexpr uint32_t STARTUP_SCREEN_MS = 3000;
 
     // --- Pin map (see hardware_notes_waveshare.md) ---
     static constexpr uint8_t PIN_LCD_CS    = 12;
@@ -94,6 +106,7 @@ private:
     // Core instances
     PanelBrightness _brightness;
     ESPNowReceiver _receiver;
+    DemoSource     _demo;
     NavigationUI   _navUI;
     BatteryUI      _batteryUI;
     WeatherUI      _weatherUI;
@@ -106,6 +119,10 @@ private:
     ScreenManager  _screenMgr;
     PowerManager   _power;
     BatteryMonitor _battery;   // drives the top bar from the watch's own LiPo (AXP2101)
+    ThemeController _theme;
+
+    // Demo mode as currently applied to the receiver (Setup holds the user's choice)
+    bool _demo_active = false;
 
     // True while a touch claimed at touch-down is being handled as a page drag
     // (e.g. the Setup brightness slider) rather than a swipe/tap.
@@ -139,6 +156,14 @@ private:
     void handleGesture(TouchGesture gesture);
     void handleUIUpdate(const uint32_t now);
     void handleTimeSync();
+
+    // Bring the receiver, top bar, Clock and palette in line with Setup's demo and night
+    // switches. Cheap when nothing changed — called on every wake and every loop.
+    void applyModes();
+
+    // Startup screen (name + version) lit for STARTUP_SCREEN_MS, LVGL kept running.
+    // The radio is already up, so this doubles as the wake listen window.
+    void showStartupScreen();
 
     // Page menu (ui_ContainerMenu): open over the current page / close back to it / jump.
     void openMenu();

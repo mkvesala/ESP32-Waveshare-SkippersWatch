@@ -31,20 +31,26 @@ void ClockUI::update() {
     struct timeval tv;
     gettimeofday(&tv, nullptr);
 
-    // Not yet disciplined by GNSS (system clock still ~1970) → never show a made-up time
+    // Not yet disciplined by GNSS (system clock still ~1970) → never show a made-up time,
+    // except in demo mode, which says so on the top bar
+    time_t t = tv.tv_sec;
     struct tm lt;
-    localtime_r(&tv.tv_sec, &lt);
+    localtime_r(&t, &lt);
     if (lt.tm_year + 1900 < MIN_VALID_YEAR) {
-        if (_last_shown_sec != -1) { this->showWaiting(); _last_shown_sec = -1; }
-        return;
+        if (!_demo) {
+            if (_last_shown_sec != -1) { this->showWaiting(); _last_shown_sec = -1; }
+            return;
+        }
+        t = DEMO_EPOCH_UTC + (time_t)(millis() / 1000);
+        localtime_r(&t, &lt);
     }
 
     // Tick the display at 1 Hz — skip redundant LVGL writes within the same second
-    if ((long)tv.tv_sec == _last_shown_sec) return;
-    _last_shown_sec = (long)tv.tv_sec;
+    if ((long)t == _last_shown_sec) return;
+    _last_shown_sec = (long)t;
 
     struct tm ut;
-    gmtime_r(&tv.tv_sec, &ut);
+    gmtime_r(&t, &ut);
 
     char buf[16];
 

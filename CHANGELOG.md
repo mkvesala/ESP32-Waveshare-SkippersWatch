@@ -9,8 +9,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 Port to the **Waveshare ESP32-S3-Touch-AMOLED-2.06** (SKU 31957): 410×502 AMOLED, larger
 battery, factory case with an integrated strap. Breaking: the firmware no longer runs on the
 Elecrow CrowPanel 2.01". The CrowPanel build stays available as `v1.0.0` and on the
-`legacy/crowpanel` branch. Phase 1 is an "as-is" port: same screens, same data, same power
-policy. The only new UI feature is the page menu.
+`legacy/crowpanel` branch. Same screens, same data, same power policy, plus a page menu,
+a startup screen and three new Setup controls (wake time, demo mode, night mode).
 
 ### Added
 
@@ -19,6 +19,20 @@ policy. The only new UI feature is the page menu.
   screen, or swipe up to close the menu and return to the screen you were on. The menu is
   an overlay, not a carousel page, so it is never stored as the last-active screen and a
   wake always opens a screen.
+- **Battery percentage** next to the status bar (`ui_LabelSoC`). On USB it shows the fuel
+  gauge's live value, so charging progress is visible while the bar stays blue.
+- **Startup screen** (`ui_ContainerStartup`, version from `version.h`) for 3 s after a true
+  power-on (AXP2101 power-off, then PWR). A deep-sleep wake opens the last screen directly,
+  so the two are told apart at a glance. The 3 s does not count against the wake time.
+- **Wake time** slider in Setup: display-on window 2–20 s (default 10 s, was fixed 10 s),
+  persisted to NVS. The low-charge ladder still caps it (5 s / 3 s). Disabled while prevent
+  sleep is on.
+- **Demo mode** switch in Setup: made-up values on every screen (`DemoSource`,
+  `DemoValues`), injected through the receiver's normal parser and freshness logic. The
+  radio keeps listening as usual (same battery behaviour), received frames are not stored,
+  the status bar shows `DEMO`, and the watch's own battery stays real. Persisted to NVS.
+- **Night mode** switch in Setup: the whole UI in shades of red (`ThemeController`,
+  `NightPalette`), applied before the first frame of a wake. Persisted to NVS.
 - `PanelBrightness`: AMOLED brightness as a panel command (CO5300 `0x51`, 0..255), shared
   by `SetupUI` (ramp up, slider, ceiling) and `PowerManager` (ramp down).
 - `ft3168_touch`: small local FT3168 driver (I2C 0x38, RST=GPIO9), polled on the main loop;
@@ -26,8 +40,10 @@ policy. The only new UI feature is the page menu.
 - AXP2101 PMIC support via **XPowersLib** in `BatteryMonitor`: battery voltage, the PMIC's
   fuel-gauge percentage (LiPo resting curve as fallback, both logged for comparison), VBUS
   presence for the USB stay-awake rule.
-- `GestureClassifier.h` and `BatteryLevel.h`: the gesture rules and the low-charge ladder
-  as pure, Arduino-free code, with host unit tests in `tests/host` (`make -C tests/host`).
+- `GestureClassifier.h`, `BatteryLevel.h`, `NightPalette.h` and `DemoValues.h`: the gesture
+  rules, the low-charge ladder and display-timeout cap, the night palette and the demo
+  values as pure, Arduino-free code, with host unit tests in `tests/host`
+  (`make -C tests/host`).
 
 ### Changed
 

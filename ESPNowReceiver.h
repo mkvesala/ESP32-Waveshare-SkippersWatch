@@ -62,10 +62,24 @@ public:
 
     float getPacketsPerSecond() const { return _packets_per_second; }
 
+    // Demo mode: the radio keeps listening and parsing exactly as normal (same power
+    // profile), but radio frames are no longer stored — only frames handed in through
+    // injectFrame() are. Switching either way clears every source, so pages fall back to
+    // their placeholders until the new source delivers.
+    void setDemoMode(bool on);
+    void injectFrame(const uint8_t* data, int data_len);
+
 private:
 
     // Static callback for ESP-NOW
     static void onDataRecv(const esp_now_recv_info_t* recv_info, const uint8_t* data, int data_len);
+
+    // Shared frame parser for radio and demo frames (see the source gate in the .cpp)
+    static void dispatch(const uint8_t* data, int data_len, bool from_demo);
+
+    // Caller holds s_spinlock. True if a frame from this source may be stored now.
+    static bool acceptLocked(bool from_demo) { return from_demo == s_demo_mode; }
+    inline static volatile bool s_demo_mode = false;
 
     // Static data storage for ESP-NOW
     inline static portMUX_TYPE s_spinlock = portMUX_INITIALIZER_UNLOCKED;

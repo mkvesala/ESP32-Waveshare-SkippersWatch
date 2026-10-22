@@ -27,4 +27,17 @@ struct BatteryLadder {
         return BatteryLevel::OK;
     }
 
+    // Display-on window for a level. The user's wake time (Setup slider) applies as is on
+    // a healthy cell; from WARN down the ladder's shorter window wins, but never extends a
+    // user choice that is already shorter.
+    static constexpr uint32_t TIMEOUT_WARN_MS     = 5000;
+    static constexpr uint32_t TIMEOUT_CRITICAL_MS = 3000;
+
+    static uint32_t displayTimeoutMs(BatteryLevel level, uint32_t user_ms) {
+        uint32_t cap = UINT32_MAX;
+        if (level == BatteryLevel::WARN)          cap = TIMEOUT_WARN_MS;
+        else if (level >= BatteryLevel::CRITICAL) cap = TIMEOUT_CRITICAL_MS;
+        return user_ms < cap ? user_ms : cap;
+    }
+
 };

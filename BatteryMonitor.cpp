@@ -107,6 +107,20 @@ void BatteryMonitor::update(uint32_t now) {
     this->render();
 }
 
+void BatteryMonitor::setDemoSuffix(bool on) {
+    if (on == _demo_suffix) return;
+    _demo_suffix = on;
+    _label_dirty = true;
+    this->render();
+}
+
+void BatteryMonitor::setNightMode(bool on) {
+    if (on == _night) return;
+    _night = on;
+    _last_bucket = -1;   // force the recolor
+    this->render();
+}
+
 // === P R I V A T E ===
 
 // No PMIC → report external power: the bar shows charging and the ladder stays at OK,
@@ -169,10 +183,34 @@ void BatteryMonitor::escalateLevel() {
                                             : "OK");
 }
 
+// On battery: the same SoC the bar shows. On USB the bar is forced to a full blue, but
+// the label shows the gauge's live percentage so charging progress is visible (the
+// gauge counts charge; it is not fooled by the charger-elevated voltage like the curve).
+int16_t BatteryMonitor::labelPercent() const {
+    if (!_charging) return _soc;
+    if (_pmu == nullptr || !_pmu->isBatteryConnect()) return -1;
+    const int pct = _pmu->getBatteryPercent();
+    return (pct >= 0 && pct <= 100) ? (int16_t)pct : -1;
+}
+
 // Push the current state to the bar, and recolor the indicator only when the bucket
 // changes — avoids redundant style invalidations every sample. Buckets:
 //   3 = charging (blue, forced 100 %), 2 = green > 40 %, 1 = amber > 20 %, 0 = red.
+// The label is rewritten only when its text would change.
 void BatteryMonitor::render() {
+    if (ui_LabelSoC != nullptr) {
+        const int16_t pct = this->labelPercent();
+        if (_label_dirty || pct != _label_pct) {
+            _label_pct = pct;
+            _label_dirty = false;
+            const char* suffix = _demo_suffix ? " DEMO" : "";
+            char buf[16];
+            if (pct < 0) snprintf(buf, sizeof(buf), "-- %%%s", suffix);
+            else         snprintf(buf, sizeof(buf), "%d %%%s", pct, suffix);
+            lv_label_set_text(ui_LabelSoC, buf);
+        }
+    }
+
     if (ui_BarBatteryIndicator == nullptr) return;
 
     const int8_t bucket = _charging ? 3
@@ -185,10 +223,10 @@ void BatteryMonitor::render() {
     if (bucket == _last_bucket) return;
     _last_bucket = bucket;
 
-    const uint32_t color = (bucket == 3) ? COLOR_BLUE
-                         : (bucket == 2) ? COLOR_GREEN
-                         : (bucket == 1) ? COLOR_AMBER
-                                         : COLOR_RED;
+    const uint32_t color = (bucket == 3) ? (_night ? NIGHT_BLUE  : COLOR_BLUE)
+                         : (bucket == 2) ? (_night ? NIGHT_GREEN : COLOR_GREEN)
+                         : (bucket == 1) ? (_night ? NIGHT_AMBER : COLOR_AMBER)
+                                         : (_night ? NIGHT_RED   : COLOR_RED);
     lv_obj_set_style_bg_color(ui_BarBatteryIndicator, lv_color_hex(color),
                               LV_PART_INDICATOR | LV_STATE_DEFAULT);
 }

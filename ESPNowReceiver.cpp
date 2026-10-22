@@ -79,10 +79,49 @@ void ESPNowReceiver::updateStats() {
     _last_stats_millis = now;
 }
 
+// Demo mode switch. Both directions wipe every displayed source (timestamps and has-new
+// flags), so neither a real value can linger among the demo values nor a demo value pass
+// for a real one: the pages show their placeholders until the new source delivers. The
+// cached payloads themselves are left as they are — with a zero timestamp no page shows
+// them, and the next stored frame overwrites them.
+void ESPNowReceiver::setDemoMode(bool on) {
+    portENTER_CRITICAL(&s_spinlock);
+    if (s_demo_mode != on) {
+        s_demo_mode = on;
+        s_has_new_data = false;    s_last_rx_millis = 0;
+        s_has_new_weather = false; s_last_weather_millis = 0;
+        s_has_new_battery = false; s_last_battery_millis = 0;
+        s_has_new_gnss = false;    s_last_gnss_millis = 0;
+        s_has_new_engine = false;  s_last_engine_millis = 0;
+        s_has_new_tank = false;    s_last_tank_millis = 0;
+        s_has_new_water = false;   s_last_water_millis = 0;
+        s_has_new_depth = false;   s_last_depth_millis = 0;
+    }
+    portEXIT_CRITICAL(&s_spinlock);
+}
+
+// A demo frame enters through the very same parser and slots as a radio frame
+void ESPNowReceiver::injectFrame(const uint8_t* data, int data_len) {
+    dispatch(data, data_len, true);
+}
+
 // === P R I V A T E ===
 
-// Callback for data receive of ESP-NOW
+// Callback for data receive of ESP-NOW (WiFi task). Radio frames always go through the
+// same parser, demo mode or not, so the radio's cost is identical in both.
 void ESPNowReceiver::onDataRecv(const esp_now_recv_info_t* recv_info, const uint8_t* data, int data_len) {
+    dispatch(data, data_len, false);
+}
+
+// Store a frame's payload in its message type's single slot. No heap, no queue: each type
+// has exactly one fixed slot that every new frame overwrites, so nothing received ever
+// accumulates — a frame rejected here simply ceases to exist with the caller's buffer.
+//
+// Source gate (checked under the lock, so a mode switch cannot interleave with a store):
+// in demo mode only demo frames are stored; otherwise only radio frames. DATETIME_DELTA
+// is exempt — it only disciplines the system clock and is never shown as a field, so the
+// real time keeps flowing in demo mode too.
+void ESPNowReceiver::dispatch(const uint8_t* data, int data_len, bool from_demo) {
 
     // Minimum frame size check
     if (data_len < (int)sizeof(ESPNowHeader)) return;
@@ -107,10 +146,12 @@ void ESPNowReceiver::onDataRecv(const esp_now_recv_info_t* recv_info, const uint
             memcpy(&delta, payload, sizeof(HeadingDelta));
             HeadingData converted = convertDeltaToData(delta);
             portENTER_CRITICAL(&s_spinlock);
-            s_latest_data    = converted;
-            s_has_new_data   = true;
-            s_last_rx_millis = millis();
-            s_packet_count++;
+            if (acceptLocked(from_demo)) {
+                s_latest_data    = converted;
+                s_has_new_data   = true;
+                s_last_rx_millis = millis();
+                s_packet_count++;
+            }
             portEXIT_CRITICAL(&s_spinlock);
             break;
         }
@@ -120,9 +161,11 @@ void ESPNowReceiver::onDataRecv(const esp_now_recv_info_t* recv_info, const uint
             WeatherDelta weather;
             memcpy(&weather, payload, sizeof(WeatherDelta));
             portENTER_CRITICAL(&s_spinlock);
-            s_latest_weather  = weather;
-            s_has_new_weather = true;
-            s_last_weather_millis = millis();
+            if (acceptLocked(from_demo)) {
+                s_latest_weather  = weather;
+                s_has_new_weather = true;
+                s_last_weather_millis = millis();
+            }
             portEXIT_CRITICAL(&s_spinlock);
             break;
         }
@@ -132,9 +175,11 @@ void ESPNowReceiver::onDataRecv(const esp_now_recv_info_t* recv_info, const uint
             BatteryDelta battery;
             memcpy(&battery, payload, sizeof(BatteryDelta));
             portENTER_CRITICAL(&s_spinlock);
-            s_latest_battery  = battery;
-            s_has_new_battery = true;
-            s_last_battery_millis = millis();
+            if (acceptLocked(from_demo)) {
+                s_latest_battery  = battery;
+                s_has_new_battery = true;
+                s_last_battery_millis = millis();
+            }
             portEXIT_CRITICAL(&s_spinlock);
             break;
         }
@@ -145,9 +190,11 @@ void ESPNowReceiver::onDataRecv(const esp_now_recv_info_t* recv_info, const uint
             memcpy(&gnss, payload, sizeof(GnssDelta));
             GnssData converted = convertGnssDeltaToData(gnss);
             portENTER_CRITICAL(&s_spinlock);
-            s_latest_gnss  = converted;
-            s_has_new_gnss = true;
-            s_last_gnss_millis = millis();
+            if (acceptLocked(from_demo)) {
+                s_latest_gnss  = converted;
+                s_has_new_gnss = true;
+                s_last_gnss_millis = millis();
+            }
             portEXIT_CRITICAL(&s_spinlock);
             break;
         }
@@ -157,9 +204,11 @@ void ESPNowReceiver::onDataRecv(const esp_now_recv_info_t* recv_info, const uint
             HALMETEngineDelta eng;
             memcpy(&eng, payload, sizeof(HALMETEngineDelta));
             portENTER_CRITICAL(&s_spinlock);
-            s_latest_engine  = eng;
-            s_has_new_engine = true;
-            s_last_engine_millis = millis();
+            if (acceptLocked(from_demo)) {
+                s_latest_engine  = eng;
+                s_has_new_engine = true;
+                s_last_engine_millis = millis();
+            }
             portEXIT_CRITICAL(&s_spinlock);
             break;
         }
@@ -169,9 +218,11 @@ void ESPNowReceiver::onDataRecv(const esp_now_recv_info_t* recv_info, const uint
             HALMETTankDelta tank;
             memcpy(&tank, payload, sizeof(HALMETTankDelta));
             portENTER_CRITICAL(&s_spinlock);
-            s_latest_tank  = tank;
-            s_has_new_tank = true;
-            s_last_tank_millis = millis();
+            if (acceptLocked(from_demo)) {
+                s_latest_tank  = tank;
+                s_has_new_tank = true;
+                s_last_tank_millis = millis();
+            }
             portEXIT_CRITICAL(&s_spinlock);
             break;
         }
@@ -181,9 +232,11 @@ void ESPNowReceiver::onDataRecv(const esp_now_recv_info_t* recv_info, const uint
             HALMETWaterDelta water;
             memcpy(&water, payload, sizeof(HALMETWaterDelta));
             portENTER_CRITICAL(&s_spinlock);
-            s_latest_water  = water;
-            s_has_new_water = true;
-            s_last_water_millis = millis();
+            if (acceptLocked(from_demo)) {
+                s_latest_water  = water;
+                s_has_new_water = true;
+                s_last_water_millis = millis();
+            }
             portEXIT_CRITICAL(&s_spinlock);
             break;
         }
@@ -193,9 +246,11 @@ void ESPNowReceiver::onDataRecv(const esp_now_recv_info_t* recv_info, const uint
             DepthDelta depth;
             memcpy(&depth, payload, sizeof(DepthDelta));
             portENTER_CRITICAL(&s_spinlock);
-            s_latest_depth  = depth;
-            s_has_new_depth = true;
-            s_last_depth_millis = millis();
+            if (acceptLocked(from_demo)) {
+                s_latest_depth  = depth;
+                s_has_new_depth = true;
+                s_last_depth_millis = millis();
+            }
             portEXIT_CRITICAL(&s_spinlock);
             break;
         }

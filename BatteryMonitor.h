@@ -5,6 +5,7 @@
 #include <Wire.h>
 #include "ui.h"   // ui_BarBatteryIndicator (top status-bar gauge on ui_ScreenMain)
 #include "BatteryLevel.h"
+#include "NightPalette.h"
 
 class XPowersAXP2101;   // XPowersLib, included only in BatteryMonitor.cpp
 
@@ -15,7 +16,8 @@ class XPowersAXP2101;   // XPowersLib, included only in BatteryMonitor.cpp
 // - Reads the cell from the AXP2101 PMIC (XPowersLib) over the shared I2C bus:
 //   battery voltage (smoothed, EMA), the PMIC's fuel-gauge percentage (falls back to a
 //   LiPo resting curve if the gauge reports nothing), and VBUS presence. Fills the bar
-//   (0..100) and recolors it green/amber/red by charge level.
+//   (0..100) and recolors it green/amber/red by charge level. ui_LabelSoC beside it shows
+//   the same charge as a number (on USB: the gauge's live percentage while charging).
 // - Owns the PMIC driver object. beginPmu() once, early (Wire already begun); begin()
 //   once after ui_init(); update(now) each loop (self time-gates to SAMPLE_INTERVAL_MS).
 // - Owned by: WatchApplication.
@@ -52,6 +54,13 @@ public:
     // is forced back to OK whenever the watch is on USB power.
     Level level() const { return _level; }
 
+    // Demo mode marker on the top bar ("80 % DEMO"). The bar and the ladder keep using
+    // the real cell either way: demo data never reaches the power policy.
+    void setDemoSuffix(bool on);
+
+    // Night palette: the bar buckets switch to their explicit red shades.
+    void setNightMode(bool on);
+
 private:
 
     XPowersAXP2101* _pmu = nullptr;
@@ -67,6 +76,13 @@ private:
     static constexpr uint32_t COLOR_RED   = 0xF44336;  // SoC <= 20 %
     static constexpr uint32_t COLOR_BLUE  = 0x2196F3;  // on USB power (charging)
 
+    // Night: hue carries no meaning in red-only, so brightness does. Low and charging
+    // are the two states worth noticing, so they get the brightest red.
+    static constexpr uint32_t NIGHT_GREEN = NightPalette::RED_MID;
+    static constexpr uint32_t NIGHT_AMBER = NightPalette::RED_DARK;
+    static constexpr uint32_t NIGHT_RED   = NightPalette::RED_BRIGHT;
+    static constexpr uint32_t NIGHT_BLUE  = NightPalette::RED_BRIGHT;
+
     // --- Color-bucket thresholds (percent) ---
     static constexpr uint8_t GREEN_ABOVE = 40;
     static constexpr uint8_t AMBER_ABOVE = 20;
@@ -80,6 +96,10 @@ private:
     uint32_t _last_sample_ms = 0;
     uint8_t _soc         = 0;      // last SoC 0..100
     int8_t  _last_bucket = -1;     // last applied color bucket (-1 = none yet)
+    int16_t _label_pct   = -1;     // percentage on ui_LabelSoC (-1 = "--"), for change detection
+    bool    _label_dirty = true;   // force the next render() to rewrite the label
+    bool    _demo_suffix = false;
+    bool    _night       = false;
 
     // Ladder level. Only ever ESCALATES while awake, so EMA jitter under the active load cannot make the ladder flap across a threshold. A deep-sleep wake is
     // a full reboot, so every wake re-evaluates from scratch.
@@ -91,6 +111,7 @@ private:
     uint8_t  curveSoc(uint16_t cell_mv) const;     // LiPo resting-curve lookup
     Level    classify() const;                // current reading → Level (no hysteresis)
     void     escalateLevel();                 // apply classify() one-way (never de-escalates)
-    void     render();                        // push state to the bar (value + color)
+    void     render();                        // push state to the bar (value + color) and label
+    int16_t  labelPercent() const;            // what ui_LabelSoC shows (-1 = unknown)
 
 };

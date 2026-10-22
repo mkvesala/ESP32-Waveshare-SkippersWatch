@@ -40,7 +40,7 @@ Screens (carousel, plus a page menu for direct access):
 - **Engine** — exhaust temperature, fuel and fresh-water tank litres
 - **Attitude** — artificial horizon with pitch and roll
 - **Clock** — local date + weekday, local and UTC time (GNSS-disciplined, no RTC chip, no NTP)
-- **Setup** — display brightness and a prevent-sleep switch, both persisted to NVS
+- **Setup** — display brightness, wake time, prevent sleep, demo mode and night mode, all persisted to NVS
 
 Developed on:
 - [Waveshare ESP32-S3-Touch-AMOLED-2.06](https://docs.waveshare.com/ESP32-S3-Touch-AMOLED-2.06) (SKU 31957)
@@ -80,8 +80,8 @@ Port to the Waveshare AMOLED board: the full v1.0.0 feature set plus the page me
 <!-- TODO(diagram): add class / UML diagram here, e.g. <img src="docs/full_uml_diagram.jpeg" width="480"> -->
 
 **`WatchApplication`:**
-- Owns: `Arduino_ESP32QSPI`, `Arduino_CO5300`, `PanelBrightness`, `ESPNowReceiver`, `NavigationUI`, `BatteryUI`, `WeatherUI`, `EngineUI`, `AttitudeUI`, `ClockUI`, `SetupUI`, `MenuUI`, `TouchInput`, `ScreenManager`, `PowerManager`, `BatteryMonitor`
-- Responsible for: orchestrating everything within the main program, including the staggered wake sequence, gesture dispatch (carousel and page menu) and GNSS time discipline
+- Owns: `Arduino_ESP32QSPI`, `Arduino_CO5300`, `PanelBrightness`, `ESPNowReceiver`, `NavigationUI`, `BatteryUI`, `WeatherUI`, `EngineUI`, `AttitudeUI`, `ClockUI`, `SetupUI`, `MenuUI`, `TouchInput`, `ScreenManager`, `PowerManager`, `BatteryMonitor`, `DemoSource`, `ThemeController`
+- Responsible for: orchestrating everything within the main program, including the staggered wake sequence (with the startup screen on a true power-on), gesture dispatch (carousel and page menu), GNSS time discipline and applying Setup's demo and night switches
 
 **`PowerManager`:**
 - Uses: `BatteryMonitor` (read-only, for the low-charge ladder and the USB stay-awake rule), `PanelBrightness`, `TouchInput` (hibernate) and the panel (sleep) at sleep entry
@@ -104,6 +104,16 @@ Port to the Waveshare AMOLED board: the full v1.0.0 feature set plus the page me
 
 **`MenuUI`:**
 - Responsible for: the page menu overlay (`ui_ContainerMenu`, one image button per screen): show / hide and hit-testing a tap to a screen index. Not an `IScreenUI` page — never part of the carousel or the last-active store
+- Owned by: `WatchApplication`
+
+**`DemoSource`:**
+- Uses: `ESPNowReceiver`, `DemoValues` (pure value generator, host-tested)
+- Responsible for: demo mode's data — made-up but plausible values packed into real ESP-NOW frames and injected into the receiver, so the screens show them through their normal freshness logic
+- Owned by: `WatchApplication`
+
+**`ThemeController`:**
+- Uses: `NightPalette` (pure, host-tested), `BatteryMonitor`, `MenuUI`
+- Responsible for: switching the day / night palette — the theme's screen colors and inherited text color, the status-bar frame, and telling the other color owners (battery bar, menu icons) to repaint
 - Owned by: `WatchApplication`
 
 **`PanelBrightness`:**
@@ -132,14 +142,16 @@ Each screen is a container on a single LVGL screen. On wake, all cached values s
 
 ### Status bar
 
-Always visible above the screens: a bar showing the **watch's own LiPo** (distinct from the Batteries screen, which shows the boat's banks). Read from the AXP2101 PMIC every ~3 s: the cell voltage is EMA-smoothed, the state-of-charge comes from the PMIC's fuel gauge (a LiPo resting curve is the fallback, and both are logged so the gauge can be checked over a full discharge).
+Always visible above the screens: a bar and a percentage (`ui_LabelSoC`) showing the **watch's own LiPo** (distinct from the Batteries screen, which shows the boat's banks). Read from the AXP2101 PMIC every ~3 s: the cell voltage is EMA-smoothed, the state-of-charge comes from the PMIC's fuel gauge (a LiPo resting curve is the fallback, and both are logged so the gauge can be checked over a full discharge).
 
 | Indicator | Meaning |
 |---|---|
 | Green | above 40 % |
 | Amber | above 20 %, up to 40 % |
 | Red | 20 % or below — the low-charge ladder is active (see [Power guards](#power-guards)) |
-| Blue, full | on USB power (AXP2101 VBUS present); the charger-elevated cell voltage is meaningless for SoC, so it is not estimated while charging |
+| Blue, full | on USB power (AXP2101 VBUS present); the charger-elevated cell voltage is meaningless for SoC, so the bar is not estimated while charging. The percentage keeps showing the fuel gauge's live value, so charging progress is visible |
+
+In demo mode the percentage reads e.g. `80 % DEMO`. The bar, the percentage and the low-charge ladder always use the real cell, demo or not. In night mode the bar keeps its four states as shades of red (charging and ≤ 20 % brightest).
 
 ### Navigation screen
 
@@ -190,12 +202,13 @@ Always visible above the screens: a bar showing the **watch's own LiPo** (distin
 - Local and UTC time `HH:MM:SS` (24 h); a `PREV.`/`NEXT.` indicator appears under UTC when its calendar day differs from local
 - **Timekeeping is ESP32-internal POSIX time** (`time.h`), Finland timezone `EET-2EEST,M3.5.0/3,M10.5.0/4`, disciplined by GNSS UTC over ESP-NOW (`DateTimeDelta` → `settimeofday()`). Survives deep sleep for free via the RTC timer
 - Shows placeholders until synced (system year ≥ 2020) — a fabricated time is never displayed. No external RTC chip (PCF8563 deferred), no NTP (deliberately — no internet at anchor)
+- Demo mode is the only exception: with no synced time it shows a made-up time ticking from 10:10:00. The system clock is never changed by it, and real GNSS time keeps being applied in demo mode
 
 ### Setup screen
 
 <img src="docs/setup.png" width="240">
 
-**Touch-only**, like the rest of the UI. The slider position and the switch colour show the state directly, so the SquareLine value labels are hidden and never written.
+**Touch-only**, like the rest of the UI. Two sliders and three switches; every setting is saved to NVS (namespace `"display"`). The slider position and the switch colour show the state directly, so the SquareLine value labels are hidden and never written — except the wake time label, which reads `Wake time N s`. All three switches share the same look: red knob = off, green = on.
 
 **Display brightness** (`ui_SliderBrightness`) — drag the slider; applies instantly, saves to NVS on release. Range 2 %–100 % (the 2 % minimum keeps the screen from going fully dark); default 20 % (readable in daylight, low continuous draw), with the NVS-stored value always winning. Persistence: namespace `"display"`, key `"brightness"`. The AMOLED has no backlight: brightness is a panel command (CO5300 `0x51`, 0..255) sent by `PanelBrightness`.
 
@@ -210,6 +223,16 @@ Two limits still apply, deliberately:
 
 **Cost.** With the switch on, every wake runs the full 120 s instead of timing out — on the CrowPanel that was roughly **11× a normal glance**. It is a "keep it awake while I am actively using it" switch, not a set-and-forget setting. The figure for the AMOLED board follows from its own active-current measurement (still open).
 
+**Wake time** (`ui_SliderWaketime`) — how long the screen stays on after the last touch before the watch goes back to deep sleep: 2–20 s, default 10 s. Key `"waketime"`. The low-charge ladder still caps it (5 s at `WARN`, 3 s from `CRITICAL` down) but never lengthens a shorter choice. While prevent sleep is on there is no timeout to set, so the slider is greyed out and ignores touch.
+
+**Demo mode** (`ui_SwitchDemoMode`) — every screen shows made-up but plausible values instead of the ESP-NOW data, for showing the watch away from the boat. Key `"demo"`. The radio keeps listening and parsing exactly as normal, so battery behaviour is the same as with real data; received frames are simply not stored. The receiver keeps one fixed slot per message type with no queue or heap, so nothing received accumulates. Switching either way clears every source, so the screens show placeholders until the new source delivers: a demo value can never pass for a real one, or the other way round. The status bar shows `DEMO`.
+
+**Night mode** (`ui_SwitchNightMode`) — everything on the panel is drawn in shades of red to keep the eyes dark-adapted: text, the status bar, sliders, switches and the menu icons. Key `"night"`. Applied before the first frame of a wake, so a night wake never flashes white. Black stays true black. Colors are mapped by brightness (`NightPalette`); the ones whose meaning is their hue (battery-bar states, switch on/off) use explicit red shades so they stay distinguishable. On the AMOLED, red-only drives only the red subpixels, so night mode should also draw less current (to be measured).
+
+### Startup screen
+
+After a **true power-on** (the AXP2101 cut the power, e.g. after holding PWR for ~6 s, and a press brought it back) the watch shows its name and version (`ui_ContainerStartup`, `SW_VERSION` from `version.h`) for 3 s, then the last-active screen. A normal **deep-sleep wake opens the last screen directly**, so the startup screen tells at a glance that the watch was really off. The 3 s comes on top of the wake time: the display-on window starts only after it. The radio is already listening during it, so it doubles as the wake listen window.
+
 ## Input
 
 All interaction is by touch; the PWR button is the wake source.
@@ -222,7 +245,7 @@ All interaction is by touch; the PWR button is the wake source.
 | Close the page menu, back to the last screen | Swipe up |
 | Jump to a screen | Tap its icon in the page menu |
 | Screen action | Tap |
-| Adjust brightness / toggle prevent sleep | Drag the slider, tap the switch (Setup) |
+| Adjust brightness / wake time, toggle prevent sleep / demo / night | Drag a slider, tap a switch (Setup) |
 | Wake from deep sleep | Press the **PWR** button (GPIO10, `ext0`) |
 
 Screen carousel order:
@@ -245,9 +268,9 @@ The last-active screen is restored on **every** boot, not just a deep-sleep wake
 
 The whole architecture resolves one contradiction: **in deep sleep the radio is off, so no ESP-NOW packet can be received.** You cannot both deep-sleep and listen.
 
-**Model B (deep-sleep, wake-to-fetch).** Deep sleep is the resting default. A PWR-button press wakes the watch; only *then* does it bring the radio up, catch a broadcast, render, and — after a short display-on timeout (`DISPLAY_TIMEOUT_MS = 10 s`, shortened automatically as the cell empties) of no interaction — soft-ramp the brightness down and return to deep sleep. On sleep entry the AMOLED is switched off and put into sleep-in, the FT3168 into hibernate, the panel and touch reset lines are held high and the speaker amp enable (GPIO46) low through sleep; the PWR button (GPIO10, RTC-capable, **active-high**) is armed as the `ext0` wake source. The AXP2101 rails are left on for now: which load hangs on which rail is still to be traced, and cutting the wrong one could cut the SoC or the I2C pull-ups.
+**Model B (deep-sleep, wake-to-fetch).** Deep sleep is the resting default. A PWR-button press wakes the watch; only *then* does it bring the radio up, catch a broadcast, render, and — after a short display-on timeout (the Setup **wake time**, 2–20 s, default 10 s, shortened automatically as the cell empties) of no interaction — soft-ramp the brightness down and return to deep sleep. On sleep entry the AMOLED is switched off and put into sleep-in, the FT3168 into hibernate, the panel and touch reset lines are held high and the speaker amp enable (GPIO46) low through sleep; the PWR button (GPIO10, RTC-capable, **active-high**) is armed as the `ext0` wake source. The AXP2101 rails are left on for now: which load hangs on which rail is still to be traced, and cutting the wrong one could cut the SoC or the I2C pull-ups.
 
-**Staggered wake (spike discipline).** A wake from deep sleep is the worst-timed current spike — several loads want to turn on at once on a small, possibly-aged cell. The bring-up spreads the inrush in time: release GPIO holds → PMIC + panel init (panel stays dark) → low-battery check → radio up first into the dark, low-load moment → ~200 ms dark ESP-NOW listen window so the first *lit* frame shows real data, not a placeholder flash → render → **then** the brightness ramps up (soft-start in panel-command steps, never a hard step). The brownout detector is kept enabled — a trip means the sequence is too aggressive, not a reason to disable protection.
+**Staggered wake (spike discipline).** A wake from deep sleep is the worst-timed current spike — several loads want to turn on at once on a small, possibly-aged cell. The bring-up spreads the inrush in time: release GPIO holds → PMIC + panel init (panel stays dark) → low-battery check → radio up first into the dark, low-load moment → ~200 ms dark ESP-NOW listen window so the first *lit* frame shows real data, not a placeholder flash → render → **then** the brightness ramps up (soft-start in panel-command steps, never a hard step). On a true power-on the [startup screen](#startup-screen) is lit (with the same soft ramp) in place of the dark listen window. The brownout detector is kept enabled — a trip means the sequence is too aggressive, not a reason to disable protection.
 
 ### Power guards
 
@@ -387,18 +410,21 @@ struct DepthDelta {
 | `WatchApplication.h/.cpp` | Class `WatchApplication`, the "app" — owns all instances, display stack, staggered wake, gesture dispatch, GNSS time sync |
 | `PowerManager.h/.cpp` | Class `PowerManager` — Model B deep-sleep, display timeout, peripheral sleep, PWR-button wake arming, and the power guards (awake ceiling, watchdog, low-charge ladder, stuck-button guard) |
 | `BatteryMonitor.h/.cpp` | Class `BatteryMonitor` — AXP2101 battery voltage + fuel gauge, VBUS detection, status-bar indicator, charge-level classification |
-| `BatteryLevel.h` | Charge levels and the low-charge ladder thresholds (pure, host-tested) |
+| `BatteryLevel.h` | Charge levels, the low-charge ladder thresholds and the display-timeout cap (pure, host-tested) |
+| `DemoSource.h/.cpp`, `DemoValues.h` | Class `DemoSource` — demo-mode frames injected into the receiver; `DemoValues` is the pure value generator (host-tested) |
+| `ThemeController.h/.cpp`, `NightPalette.h` | Class `ThemeController` — day / night palette switch; `NightPalette` is the pure color mapping (host-tested) |
+| `version.h` | Firmware version (`SW_VERSION`), shown on the startup screen |
 | `PanelBrightness.h/.cpp` | Class `PanelBrightness` — AMOLED brightness as a panel command |
 | `espnow_protocol.h` | Shared fleet wire protocol (namespace `ESPNow`): header, packet, `ESPNowMsgType`, all deltas + receiver-side `GnssData`/`HeadingData` |
 | `IScreenUI.h` | Abstract base class for all UI adapter implementations (tap + touch-drag seam) |
-| `ESPNowReceiver.h/.cpp` | Class `ESPNowReceiver` — ESP-NOW receive (receive-only), per-source freshness |
+| `ESPNowReceiver.h/.cpp` | Class `ESPNowReceiver` — ESP-NOW receive (receive-only), per-source freshness, demo-frame injection |
 | `NavigationUI.h/.cpp` | Class `NavigationUI` — POS / HDG / COG / SOG / DPT, realizes `IScreenUI` |
 | `BatteryUI.h/.cpp` | Class `BatteryUI` — battery screen adapter, realizes `IScreenUI` |
 | `WeatherUI.h/.cpp` | Class `WeatherUI` — weather screen adapter, realizes `IScreenUI` |
 | `EngineUI.h/.cpp` | Class `EngineUI` — exhaust + fuel/water tanks, realizes `IScreenUI` |
 | `AttitudeUI.h/.cpp` | Class `AttitudeUI` — artificial horizon, realizes `IScreenUI` |
 | `ClockUI.h/.cpp` | Class `ClockUI` — system-clock reader + formatting, realizes `IScreenUI` |
-| `SetupUI.h/.cpp` | Class `SetupUI` — brightness slider + prevent-sleep switch (touch), realizes `IScreenUI` |
+| `SetupUI.h/.cpp` | Class `SetupUI` — brightness and wake-time sliders, prevent-sleep / demo / night switches (touch), realizes `IScreenUI` |
 | `MenuUI.h/.cpp` | Class `MenuUI` — page menu overlay and its hit-testing |
 | `TouchInput.h/.cpp` | Class `TouchInput` — touch polling, held/released state, drag points |
 | `GestureClassifier.h` | Software gesture rules (pure, host-tested) |

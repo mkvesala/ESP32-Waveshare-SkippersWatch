@@ -23,6 +23,18 @@ void MenuUI::hide() {
     _visible = false;
 }
 
+void MenuUI::setNightMode(bool on) {
+    lv_obj_t* const buttons[] = {
+        ui_ImgButtonNavigation, ui_ImgButtonBatteries, ui_ImgButtonWeather,
+        ui_ImgButtonEngine, ui_ImgButtonAttitude, ui_ImgButtonClock, ui_ImgButtonSetup,
+    };
+    for (lv_obj_t* btn : buttons) {
+        if (btn == nullptr) continue;
+        lv_obj_set_style_image_recolor(btn, lv_color_hex(NIGHT_ICON), LV_PART_MAIN);
+        lv_obj_set_style_image_recolor_opa(btn, on ? LV_OPA_COVER : LV_OPA_TRANSP, LV_PART_MAIN);
+    }
+}
+
 int8_t MenuUI::pageAt(int16_t x, int16_t y) const {
     if (!_initialized || !_visible) return -1;
 

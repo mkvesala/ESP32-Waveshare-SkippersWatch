@@ -52,13 +52,15 @@ static void lvglRounderCb(lv_event_t* e) {
 // === P U B L I C ===
 
 WatchApplication::WatchApplication()
-    : _navUI(_receiver)
+    : _demo(_receiver)
+    , _navUI(_receiver)
     , _batteryUI(_receiver)
     , _weatherUI(_receiver)
     , _engineUI(_receiver)
     , _attitudeUI(_receiver)
     , _setupUI(_brightness)
-    , _power(_brightness) {}
+    , _power(_brightness)
+    , _theme(_battery, _menu) {}
 
 void WatchApplication::begin() {
     // Read the wake cause once, up front: it decides both the stuck-button path and, at
@@ -110,6 +112,14 @@ void WatchApplication::begin() {
     // and ui_BarBatteryIndicator exists (ui_init). Seeds the bar with a real value now.
     _battery.begin();
 
+    lv_label_set_text(ui_LabelVersion, SW_VERSION);
+
+    // Palette and data source from the stored Setup choices, BEFORE the first frame is
+    // rendered: a night wake is red from its first lit frame, and in demo mode the
+    // receiver already holds demo values when the page is revealed.
+    _theme.begin();
+    this->applyModes();
+
     // Low-charge cutoff BEFORE the radio comes up: RF bring-up is the sharpest current
     // edge on the board and the last thing a near-empty cell should be asked for. Shows
     // the charge prompt and sleeps; never returns when it triggers.
@@ -128,6 +138,11 @@ void WatchApplication::begin() {
     // the page is revealed only once data has had a chance to arrive.
     const uint8_t start_page = this->resolveStartPage();
 
+    // A true power-on (power was cut, e.g. PWR held ~6 s) gets the startup screen; a deep-
+    // sleep wake goes straight to the page. RTC-domain resets other than POWERON (watchdog,
+    // panic, software) also go straight to the page.
+    const bool power_on = (esp_reset_reason() == ESP_RST_POWERON);
+
     // --- Staggered wake sequence (runs on every wake, cold boot included) ---
     // Panel is initialised DARK above and stays dark through the listen window
     // below. Bring the radio up FIRST — into that dark, low-load moment — then
@@ -137,14 +152,24 @@ void WatchApplication::begin() {
     _touch.begin();                   // capacitive touch (shared I2C) — polled while awake
     _receiver.begin(ESP_NOW_CHANNEL); // radio up first, panel still dark
 
-    // Dark ESP-NOW listen window: delay() yields to FreeRTOS so the receiver's
-    // RX callbacks can land a fresh packet before anything is shown. No LVGL
-    // render happens here — the panel stays black until lv_refr_now() below.
-    delay(ESPNOW_WAKE_LISTEN_MS);
+    if (power_on) {
+        // The startup screen is lit (with the normal soft ramp) while the radio listens,
+        // so it replaces the dark listen window; the page then appears at full brightness.
+        this->showStartupScreen();
+    } else {
+        // Dark ESP-NOW listen window: delay() yields to FreeRTOS so the receiver's
+        // RX callbacks can land a fresh packet before anything is shown. No LVGL
+        // render happens here — the panel stays black until lv_refr_now() below.
+        delay(ESPNOW_WAKE_LISTEN_MS);
+    }
 
     // Apply any GNSS datetime caught during the listen window BEFORE the first lit
     // frame, so the Clock page (if restored) shows the synced time immediately.
     this->handleTimeSync();
+
+    // Demo mode: a fresh set right before the reveal, so the first frame carries current
+    // values even after the 3 s startup screen.
+    if (_demo_active) _demo.sendAll(millis());
 
     // Reveal the last-active page (onEnter() sets "---"), then immediately
     // update() so any packet caught during the window repaints real values
@@ -155,10 +180,12 @@ void WatchApplication::begin() {
     if (screen) screen->update();
 
     lv_refr_now(_lvgl_disp);          // render the first frame into the dark panel
-    // Clamp the brightness for the current charge level BEFORE the ramp, so a low cell
-    // never flashes bright and then dims. 100 % (no clamp) in the normal case.
-    _setupUI.setBrightnessCeiling(PowerManager::backlightCeilingFor(_battery.level()));
-    _setupUI.rampBacklightUp();       // brightness soft-start — user sees real data
+    if (!power_on) {
+        // Clamp the brightness for the current charge level BEFORE the ramp, so a low cell
+        // never flashes bright and then dims. 100 % (no clamp) in the normal case.
+        _setupUI.setBrightnessCeiling(PowerManager::backlightCeilingFor(_battery.level()));
+        _setupUI.rampBacklightUp();   // brightness soft-start — user sees real data
+    }
 
     // Model B power owner — records wake cause, starts the display-on timer + the
     // absolute awake ceiling, and arms the task watchdog. The battery is attached first:
@@ -181,9 +208,14 @@ void WatchApplication::loop() {
     _battery.update(now);   // refresh the top battery bar (self-gated, ~3 s cadence)
     this->checkBatteryCutoff();   // near-empty cell → charge prompt + protective sleep
 
-    // User's prevent-sleep choice → power policy. PowerManager decides whether it may
-    // actually be honoured (the low-charge ladder overrides it from CRITICAL down).
+    // Demo / night switches → data source and palette (no-op unless one flipped)
+    this->applyModes();
+    if (_demo_active) _demo.update(now);
+
+    // User's prevent-sleep choice and wake time → power policy. PowerManager decides
+    // whether they may be honoured as such (the low-charge ladder overrides both).
     _power.setPreventSleep(_setupUI.preventSleep());
+    _power.setDisplayTimeout(_setupUI.waketimeMs());
 
     // Backlight clamp for the current power state: low-charge ladder on battery, idle
     // dim in either stay-awake mode. No-ops unless the ceiling actually moved.
@@ -433,6 +465,39 @@ void WatchApplication::handleTimeSync() {
     if (!dt.time_valid) return;
     struct timeval tv = { (time_t)dt.unix_utc, 0 };
     settimeofday(&tv, nullptr);
+}
+
+void WatchApplication::applyModes() {
+    const bool demo = _setupUI.demoMode();
+    if (demo != _demo_active) {
+        _demo_active = demo;
+        _receiver.setDemoMode(demo);   // clears every source both ways
+        _battery.setDemoSuffix(demo);
+        _clockUI.setDemo(demo);
+        if (demo) _demo.sendAll(millis());   // no placeholder gap after switching on
+        Serial.printf("[demo] %s\n", demo ? "ON (ESP-NOW data not shown)" : "OFF");
+    }
+    _theme.apply(_setupUI.nightMode());
+}
+
+// Lit startup screen during a power-on wake. Runs before PowerManager::begin(), so the
+// watchdog is not armed yet and the display-on window has not started; touch is not
+// polled, so nothing can act on a tap here.
+void WatchApplication::showStartupScreen() {
+    lv_obj_remove_flag(ui_ContainerStartup, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_move_foreground(ui_ContainerStartup);
+    lv_refr_now(_lvgl_disp);
+
+    _setupUI.setBrightnessCeiling(PowerManager::backlightCeilingFor(_battery.level()));
+    _setupUI.rampBacklightUp();
+
+    const uint32_t start = millis();
+    while (millis() - start < STARTUP_SCREEN_MS) {
+        lv_timer_handler();
+        this->handleTimeSync();
+        delay(10);
+    }
+    lv_obj_add_flag(ui_ContainerStartup, LV_OBJ_FLAG_HIDDEN);
 }
 
 // Periodic update of the active page only (~17 Hz). Skipped while the page menu covers

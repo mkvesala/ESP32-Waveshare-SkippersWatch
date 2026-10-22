@@ -119,14 +119,10 @@ void PowerManager::enterProtectiveSleep() {
     this->enterDeepSleep();   // does not return
 }
 
-// Display-on window for the current charge level (the CrowPanel's main lever; on the
-// AMOLED the balance between timeout and brightness is still to be measured).
+// Display-on window: the user's wake time, capped by the low-charge ladder (the CrowPanel's
+// main lever; on the AMOLED the balance between timeout and brightness is still [M]).
 uint32_t PowerManager::displayTimeoutMs() const {
-    switch (this->levelNow()) {
-        case BatteryMonitor::Level::CRITICAL: return TIMEOUT_CRITICAL_MS;
-        case BatteryMonitor::Level::WARN:     return TIMEOUT_WARN_MS;
-        default:                              return DISPLAY_TIMEOUT_MS;
-    }
+    return BatteryLadder::displayTimeoutMs(this->levelNow(), _user_timeout_ms);
 }
 
 // Two clamps can apply at once, and the LOWER always wins:

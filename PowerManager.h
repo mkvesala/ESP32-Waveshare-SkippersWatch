@@ -89,6 +89,10 @@ public:
     // Storing it is not the same as honouring it — see preventSleepActive().
     void setPreventSleep(bool on) { _prevent_sleep = on; }
 
+    // User's wake time (SetupUI slider), pushed in every loop by the app. The low-charge
+    // ladder may shorten it further — see displayTimeoutMs().
+    void setDisplayTimeout(uint32_t ms) { _user_timeout_ms = ms; }
+
     // Call once at end of app.begin(); records why we woke, starts the idle timer and
     // the awake ceiling, and subscribes the Arduino loop task to the task watchdog
     void begin(esp_sleep_wakeup_cause_t cause);
@@ -121,8 +125,8 @@ public:
     bool wokeFromButton() const { return _cause == ESP_SLEEP_WAKEUP_EXT0; }
     PowerState state() const { return _state; }
 
-    // Display-on window before returning to deep sleep (short for Model B endurance).
-    // This is the healthy-cell case; the ladder shortens it further — see displayTimeoutMs().
+    // Default display-on window before returning to deep sleep, used until the app pushes
+    // the user's wake time. The ladder shortens it further — see displayTimeoutMs().
     static constexpr uint32_t DISPLAY_TIMEOUT_MS = 10000;
 
     // Absolute ceiling on one awake session, battery only. notifyActivity() cannot
@@ -176,6 +180,7 @@ private:
     void*     _sleep_ctx  = nullptr;
 
     bool _prevent_sleep = false;   // user's SetupUI choice, pushed in every loop
+    uint32_t _user_timeout_ms = DISPLAY_TIMEOUT_MS;   // user's wake time, pushed in every loop
 
     esp_sleep_wakeup_cause_t _cause = ESP_SLEEP_WAKEUP_UNDEFINED;
     PowerState _state = PowerState::WAKING;
@@ -203,12 +208,6 @@ private:
     // Task watchdog on the Arduino loop task. Long enough that no legitimate blocking
     // stretch (LVGL render, NVS commit, backlight ramp) can trip it.
     static constexpr uint32_t WDT_TIMEOUT_MS = 30000;
-
-    // Display-on windows per charge level (ms). On CrowPanel shortening the window was the
-    // real lever (active baseline dominated the backlight). Whether that holds on the
-    // AMOLED is [M]; constants carried over unchanged until measured.
-    static constexpr uint32_t TIMEOUT_WARN_MS     = 5000;
-    static constexpr uint32_t TIMEOUT_CRITICAL_MS = 3000;
 
     // Brightness ceilings per charge level (percent). Small change, kept because it is free.
     static constexpr int8_t CEILING_NONE     = 100;

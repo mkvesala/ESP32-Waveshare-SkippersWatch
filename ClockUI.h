@@ -13,7 +13,9 @@
 //   sets the Finland TZ once. This adapter has NO ESPNowReceiver dependency — it only
 //   formats whatever the system clock currently holds.
 // - "Never show a fabricated time": until the clock has been set (system year < 2020)
-//   all fields show placeholders.
+//   all fields show placeholders. Demo mode is the one exception: with no real time
+//   known it shows a made-up time that ticks from 10:10:00 local. The system clock itself
+//   is never touched, so a real GNSS sync replaces the demo time the moment it lands.
 // - Realizes IScreenUI over container ui_ContainerClock
 // - Owned by: WatchApplication
 
@@ -29,9 +31,12 @@ public:
     void onLeave() override;
     void update() override;
 
+    void setDemo(bool on) { if (on != _demo) { _demo = on; _last_shown_sec = -1; } }
+
 private:
 
     bool _initialized = false;
+    bool _demo = false;
 
     // Epoch second last rendered — update() rewrites the labels only when the second
     // changes (it is polled ~17 Hz but the display ticks at 1 Hz). -1 forces a redraw.
@@ -42,5 +47,8 @@ private:
     // System clock is considered "set" only once GNSS has disciplined it. Before that
     // gettimeofday() returns ~1970, so a year threshold is a robust "have we synced?" test.
     static constexpr int MIN_VALID_YEAR = 2020;
+
+    // Demo time base: 2026-07-15 07:10:00 UTC = 10:10:00 local (EEST), plus uptime
+    static constexpr time_t DEMO_EPOCH_UTC = 1784099400;
 
 };
