@@ -75,6 +75,8 @@ extern lv_obj_t *ui_SwitchDemoMode;
 extern lv_obj_t *ui_LabelDemoMode;
 extern lv_obj_t *ui_SliderWaketime;
 extern lv_obj_t *ui_LabelWaketime;
+extern lv_obj_t *ui_SwitchNightMode;
+extern lv_obj_t *ui_LabelNightMode;
 extern lv_obj_t *ui_ContainerClock;
 extern lv_obj_t *ui_LabelTimeLocal;
 extern lv_obj_t *ui_LabelDay;
@@ -90,8 +92,8 @@ extern lv_obj_t *ui_ImgButtonSetup;
 extern lv_obj_t *ui_ImgButtonClock;
 extern lv_obj_t *ui_ImgButtonAttitude;
 extern lv_obj_t *ui_ContainerStartup;
-extern lv_obj_t *ui_LabelPOSValue1;
-extern lv_obj_t *ui_LabelPOSTitle1;
+extern lv_obj_t *ui_LabelSkippersWatch;
+extern lv_obj_t *ui_LabelVersion;
 // CUSTOM VARIABLES
 
 #ifdef __cplusplus
