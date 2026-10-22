@@ -410,7 +410,7 @@ struct DepthDelta {
 | `hardware_notes_waveshare.md` | Waveshare pin map, parts, build settings, open hardware questions |
 | `hardware_notes.md` | CrowPanel (v1.0.0) pin map and measurements, kept for reference |
 | `CHANGELOG.md` | Release history (Keep a Changelog / Semantic Versioning) |
-| `SLS_project_WS/`, `SLS_export/` | SquareLine Studio project (410×502) and export directory; `SLS_project/` is the v1.0.0 CrowPanel project |
+| `SLS_project_WS/`, `SLS_export/` | SquareLine Studio project (410×502) and export directory; the v1.0.0 CrowPanel project is on `legacy/crowpanel` |
 | `docs/` | Screenshots, diagrams, other documents |
 
 ## Hardware
