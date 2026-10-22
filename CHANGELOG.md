@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [2.0.0] - Unreleased
+## [2.0.0] - 2026-10-22
 
 Port to the **Waveshare ESP32-S3-Touch-AMOLED-2.06** (SKU 31957): 410×502 AMOLED, larger
 battery, factory case with an integrated strap. Breaking: the firmware no longer runs on the
@@ -67,7 +67,7 @@ policy. The only new UI feature is the page menu.
 
 ## [1.0.0] - 2026-10-04
 
-First release, on the **Elecrow CrowPanel 2.01" Watch Display**. Running on hardware on M/V Frida, with the power budget measured and closed. Maintained on the `legacy/crowpanel` branch.
+First release, on the **Elecrow CrowPanel 2.01" Watch Display**. Running on hardware on the vessel, with the power budget measured and closed. Maintained on the `legacy/crowpanel` branch.
 
 ### Added
 
@@ -83,7 +83,7 @@ First release, on the **Elecrow CrowPanel 2.01" Watch Display**. Running on hard
 - **Navigation** — position, true heading (HDG), COG, SOG and depth below surface. HDG is the true heading so it is directly comparable with the true COG beside it. Position-fix validity and course validity are kept distinct, so position and SOG stay visible at anchor where COG is undefined.
 - **Batteries** — house bank voltage, current and state-of-charge, plus starter battery voltage.
 - **Weather** — temperature, air pressure, relative humidity.
-- **Engine** — exhaust temperature, fuel and fresh-water tank litres (M/V Frida: fuel 400 L, water 80 L).
+- **Engine** — exhaust temperature, fuel and fresh-water tank litres (on the vessel: fuel 400 L, water 80 L).
 - **Attitude** — artificial horizon with pitch and roll.
 - **Clock** — local date and weekday, local and UTC time, with a previous/next-day indicator when the UTC calendar day differs.
 - **Setup** — touch-only: a backlight brightness slider and a **prevent-sleep switch**, both persisted to NVS. Prevent sleep keeps the watch awake on battery like it does on USB (no display timeout, dimmed to 5 % after 60 s idle), but the 120 s awake ceiling stays armed and the low-charge ladder overrides it from `CRITICAL` down without rewriting the stored setting.

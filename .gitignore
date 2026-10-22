@@ -7,3 +7,4 @@ secrets.h
 secrets*.h
 CLAUDE.md
 tests/host/test_runner
+PORTING.md

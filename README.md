@@ -25,7 +25,7 @@ A wrist-worn marine instrument for the [Waveshare ESP32-S3-Touch-AMOLED-2.06](ht
 
 Receives via ESP-NOW broadcast:
 - GNSS position, speed over ground (SOG), course over ground (COG) and **UTC date/time** from [UBLOX-ESP32-SignalK-gateway](https://github.com/mkvesala/UBLOX-ESP32-SignalK-gateway)
-- Water depth (below surface / transducer / keel), relayed from SignalK by [SignalK-ESP-NOW-gateway](https://github.com/mkvesala/SignalK-ESP-NOW-gateway)
+- Water depth (below surface / transducer / keel), relayed from SignalK by a temporary depth sender (private, not published)
 - Pitch and roll from [CMPS14-ESP32-SignalK-gateway](https://github.com/mkvesala/CMPS14-ESP32-SignalK-gateway)
 - House and starter battery from [VEDirect-ESP32-SignalK-gateway](https://github.com/mkvesala/VEDirect-ESP32-SignalK-gateway)
 - Temperature, air pressure and relative humidity from [BME280-ESP32-SignalK-gateway](https://github.com/mkvesala/BME280-ESP32-SignalK-gateway)
@@ -53,7 +53,7 @@ Developed on:
 
 Integrated via ESP-NOW with:
 - [UBLOX-ESP32-SignalK-gateway](https://github.com/mkvesala/UBLOX-ESP32-SignalK-gateway) — GNSS + UTC date/time sender
-- [SignalK-ESP-NOW-gateway](https://github.com/mkvesala/SignalK-ESP-NOW-gateway) — depth relay
+- A temporary, private depth sender — depth relay from SignalK (not published)
 - [CMPS14-ESP32-SignalK-gateway](https://github.com/mkvesala/CMPS14-ESP32-SignalK-gateway) — attitude sender
 - [VEDirect-ESP32-SignalK-gateway](https://github.com/mkvesala/VEDirect-ESP32-SignalK-gateway) — battery sender
 - [BME280-ESP32-SignalK-gateway](https://github.com/mkvesala/BME280-ESP32-SignalK-gateway) — weather sender
@@ -69,11 +69,11 @@ This is one of my individual digital boat projects. Use at your own risk. Not fo
 
 ## Project status
 
-**Version 2.0.0** (unreleased) — see [CHANGELOG.md](CHANGELOG.md).
+**Version 2.0.0** (2026-10-22) — see [CHANGELOG.md](CHANGELOG.md).
 
-Port to the Waveshare AMOLED board: the firmware compiles and carries the full v1.0.0 feature set plus the page menu. Hardware verification is in progress: first flash, touch orientation, the PWR-button wake and the board's own current measurements are still open. Until they are measured, no endurance figures are claimed for this board (see [Power management](#power-management)).
+Port to the Waveshare AMOLED board: the full v1.0.0 feature set plus the page menu, flashed and running correctly on the board. The board's own current measurements (sleep floor, active draw) are still open. Until they are measured, no endurance figures are claimed for this board (see [Power management](#power-management)).
 
-**Version 1.0.0** (CrowPanel 2.01") ran on hardware on M/V Frida with all seven screens, the GNSS-disciplined clock, the touch UI and a measured, closed power budget.
+**Version 1.0.0** (CrowPanel 2.01") ran on hardware on the vessel with all seven screens, the GNSS-disciplined clock, the touch UI and a measured, closed power budget.
 
 ## Classes
 
@@ -171,7 +171,7 @@ Always visible above the screens: a bar showing the **watch's own LiPo** (distin
 <img src="docs/engineroom.png" width="240">
 
 - Exhaust temperature (°C, converted from Kelvin)
-- Fuel tank litres and fresh-water tank litres (ratio × capacity; **M/V Frida: fuel 400 L, water 80 L**)
+- Fuel tank litres and fresh-water tank litres (ratio × capacity; tank capacities are constants in `EngineUI.h`, on the vessel: fuel 400 L, water 80 L)
 - Sources: `HALMETEngineDelta`, `HALMETTankDelta`, `HALMETWaterDelta`
 
 ### Attitude screen
@@ -409,7 +409,6 @@ struct DepthDelta {
 | `tests/host/` | Host unit tests for the pure logic (`make -C tests/host`); not part of the sketch |
 | `hardware_notes_waveshare.md` | Waveshare pin map, parts, build settings, open hardware questions |
 | `hardware_notes.md` | CrowPanel (v1.0.0) pin map and measurements, kept for reference |
-| `PORTING.md` | CrowPanel → Waveshare porting plan and open items |
 | `CHANGELOG.md` | Release history (Keep a Changelog / Semantic Versioning) |
 | `SLS_project_WS/`, `SLS_export/` | SquareLine Studio project (410×502) and export directory; `SLS_project/` is the v1.0.0 CrowPanel project |
 | `docs/` | Screenshots, diagrams, other documents |
@@ -491,7 +490,7 @@ This device receives data only via ESP-NOW broadcast on a local WiFi channel. Th
 
 Software and libraries used are documented in the sections above.
 
-Companion project to my always-on helm display [ESP32-Crowpanel-compass](https://github.com/mkvesala/ESP32-Crowpanel-compass), and to the ESP-NOW sender projects [UBLOX-ESP32-SignalK-gateway](https://github.com/mkvesala/UBLOX-ESP32-SignalK-gateway), [SignalK-ESP-NOW-gateway](https://github.com/mkvesala/SignalK-ESP-NOW-gateway), [CMPS14-ESP32-SignalK-gateway](https://github.com/mkvesala/CMPS14-ESP32-SignalK-gateway), [VEDirect-ESP32-SignalK-gateway](https://github.com/mkvesala/VEDirect-ESP32-SignalK-gateway), [BME280-ESP32-SignalK-gateway](https://github.com/mkvesala/BME280-ESP32-SignalK-gateway) and [HALMET-ESP32-SignalK-gateway](https://github.com/mkvesala/HALMET-ESP32-SignalK-gateway).
+Companion project to my always-on helm display [ESP32-Crowpanel-compass](https://github.com/mkvesala/ESP32-Crowpanel-compass), and to the ESP-NOW sender projects [UBLOX-ESP32-SignalK-gateway](https://github.com/mkvesala/UBLOX-ESP32-SignalK-gateway), [CMPS14-ESP32-SignalK-gateway](https://github.com/mkvesala/CMPS14-ESP32-SignalK-gateway), [VEDirect-ESP32-SignalK-gateway](https://github.com/mkvesala/VEDirect-ESP32-SignalK-gateway), [BME280-ESP32-SignalK-gateway](https://github.com/mkvesala/BME280-ESP32-SignalK-gateway) and [HALMET-ESP32-SignalK-gateway](https://github.com/mkvesala/HALMET-ESP32-SignalK-gateway).
 
 Board bring-up follows [Waveshare's example code](https://github.com/waveshareteam/ESP32-S3-Touch-AMOLED-2.06); the local `ft3168_touch` driver uses the register map of its `Arduino_FT3x68`. v1.0.0 was inspired by [example source code by Elecrow](https://github.com/Elecrow-RD/CrowPanel_2.01_inch-HMI_ESP32_Watch_Display_240_296).
 

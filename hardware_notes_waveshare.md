@@ -2,7 +2,7 @@
 
 Pin map, part list and build notes for the Waveshare ESP32-S3-Touch-AMOLED-2.06
 watch board (SKU 31957), the port target for SkippersWatch. Companion to
-`hardware_notes.md` (CrowPanel 2.01", the v1.0.0 board) and `PORTING.md`.
+`hardware_notes.md` (CrowPanel 2.01", the v1.0.0 board).
 
 Written 2026-10-04 from vendor documentation and example code, **before the board
 was on the bench**. Nothing here has been measured or run on hardware yet. Each fact
