@@ -15,6 +15,7 @@ extern void ui_ScreenMain_screen_init(void);
 extern void ui_ScreenMain_screen_destroy(void);
 extern lv_obj_t *ui_ScreenMain;
 extern lv_obj_t *ui_BarBatteryIndicator;
+extern lv_obj_t *ui_LabelSoC;
 extern lv_obj_t *ui_ContainerNavigation;
 extern lv_obj_t *ui_LabelCOGTitle;
 extern lv_obj_t *ui_LabelCOGValue;
@@ -70,6 +71,10 @@ extern lv_obj_t *ui_SliderBrightness;
 extern lv_obj_t *ui_SwitchPreventSleep;
 extern lv_obj_t *ui_LabelPreventSleepValue;
 extern lv_obj_t *ui_LabelPreventSleep;
+extern lv_obj_t *ui_SwitchDemoMode;
+extern lv_obj_t *ui_LabelDemoMode;
+extern lv_obj_t *ui_SliderWaketime;
+extern lv_obj_t *ui_LabelWaketime;
 extern lv_obj_t *ui_ContainerClock;
 extern lv_obj_t *ui_LabelTimeLocal;
 extern lv_obj_t *ui_LabelDay;
@@ -84,6 +89,9 @@ extern lv_obj_t *ui_ImgButtonWeather;
 extern lv_obj_t *ui_ImgButtonSetup;
 extern lv_obj_t *ui_ImgButtonClock;
 extern lv_obj_t *ui_ImgButtonAttitude;
+extern lv_obj_t *ui_ContainerStartup;
+extern lv_obj_t *ui_LabelPOSValue1;
+extern lv_obj_t *ui_LabelPOSTitle1;
 // CUSTOM VARIABLES
 
 #ifdef __cplusplus
