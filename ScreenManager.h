@@ -48,10 +48,13 @@ public:
 
     uint8_t screenCount() const { return _screen_count; }
 
+    // Hide every registered page container. Usable before begin() — the startup screen
+    // needs a clean screen, and the SquareLine export may leave a page visible.
+    void hideAll();
+
 private:
 
     void switchTo(uint8_t index);
-    void hideAll();
 
     uint8_t nextIdx() const { return (_current + 1) % _screen_count; }
     uint8_t previousIdx() const { return (_current + _screen_count - 1) % _screen_count; }

@@ -484,6 +484,7 @@ void WatchApplication::applyModes() {
 // watchdog is not armed yet and the display-on window has not started; touch is not
 // polled, so nothing can act on a tap here.
 void WatchApplication::showStartupScreen() {
+    _screenMgr.hideAll();   // the export may leave a page visible (it does: Setup)
     lv_obj_remove_flag(ui_ContainerStartup, LV_OBJ_FLAG_HIDDEN);
     lv_obj_move_foreground(ui_ContainerStartup);
     lv_refr_now(_lvgl_disp);

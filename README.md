@@ -113,7 +113,7 @@ Port to the Waveshare AMOLED board: the full v1.0.0 feature set plus the page me
 
 **`ThemeController`:**
 - Uses: `NightPalette` (pure, host-tested), `BatteryMonitor`, `MenuUI`
-- Responsible for: switching the day / night palette — the theme's screen colors and inherited text color, the status-bar frame, and telling the other color owners (battery bar, menu icons) to repaint
+- Responsible for: switching the day / night palette — the theme's screen colors and inherited text color, the status-bar frame, and telling the other color owners to repaint (battery bar) or swap artwork (menu icons)
 - Owned by: `WatchApplication`
 
 **`PanelBrightness`:**
@@ -227,7 +227,7 @@ Two limits still apply, deliberately:
 
 **Demo mode** (`ui_SwitchDemoMode`) — every screen shows made-up but plausible values instead of the ESP-NOW data, for showing the watch away from the boat. Key `"demo"`. The radio keeps listening and parsing exactly as normal, so battery behaviour is the same as with real data; received frames are simply not stored. The receiver keeps one fixed slot per message type with no queue or heap, so nothing received accumulates. Switching either way clears every source, so the screens show placeholders until the new source delivers: a demo value can never pass for a real one, or the other way round. The status bar shows `DEMO`.
 
-**Night mode** (`ui_SwitchNightMode`) — everything on the panel is drawn in shades of red to keep the eyes dark-adapted: text, the status bar, sliders, switches and the menu icons. Key `"night"`. Applied before the first frame of a wake, so a night wake never flashes white. Black stays true black. Colors are mapped by brightness (`NightPalette`); the ones whose meaning is their hue (battery-bar states, switch on/off) use explicit red shades so they stay distinguishable. On the AMOLED, red-only drives only the red subpixels, so night mode should also draw less current (to be measured).
+**Night mode** (`ui_SwitchNightMode`) — everything on the panel is drawn in shades of red to keep the eyes dark-adapted: text, the status bar, sliders and switches, and the menu shows a separate set of red icons drawn in SquareLine (`ui_ImgButton*Night`, stacked on the day icons; one set is visible at a time). Key `"night"`. Applied before the first frame of a wake, so a night wake never flashes white. Black stays true black. Colors are mapped by brightness (`NightPalette`); the ones whose meaning is their hue (battery-bar states, switch on/off) use explicit red shades so they stay distinguishable. On the AMOLED, red-only drives only the red subpixels, so night mode should also draw less current (to be measured).
 
 ### Startup screen
 
@@ -431,7 +431,7 @@ struct DepthDelta {
 | `ft3168_touch.h/.cpp` | Local FT3168 capacitive-touch driver (registers from Waveshare's `Arduino_FT3x68`) |
 | `ScreenManager.h/.cpp` | Class `ScreenManager` — scalable screen carousel (container visibility) + direct jumps |
 | `lv_conf.h` | LVGL configuration (project-local, `LV_COLOR_DEPTH 16`, `LV_MEM_SIZE` 96 kB) |
-| `ui.h/.c`, `ui_ScreenMain.h/.c`, `ui_helpers.h/.c`, `ui_font_*.c`, `ui_img_*.c` | SquareLine Studio generated — UI, fonts and menu icons |
+| `ui.h/.c`, `ui_ScreenMain.h/.c`, `ui_helpers.h/.c`, `ui_font_*.c`, `ui_img_*.c` | SquareLine Studio generated — UI, fonts and menu icons (day and night sets) |
 | `tests/host/` | Host unit tests for the pure logic (`make -C tests/host`); not part of the sketch |
 | `hardware_notes_waveshare.md` | Waveshare pin map, parts, build settings, open hardware questions |
 | `hardware_notes.md` | CrowPanel (v1.0.0) pin map and measurements, kept for reference |

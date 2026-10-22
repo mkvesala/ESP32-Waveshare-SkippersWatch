@@ -11,8 +11,9 @@
 // - Applies the day or the night palette to everything on ui_ScreenMain that no page
 //   adapter owns: the LVGL theme's screen colors (background, inherited text color, so
 //   every label follows) and the battery bar's frame. Then it tells the color owners to
-//   repaint: the battery bar buckets (BatteryMonitor) and the menu icons (MenuUI). The
-//   Setup page paints its own sliders and switches from the same stored choice.
+//   repaint: the battery bar buckets (BatteryMonitor) and the menu (MenuUI, which swaps to
+//   its red night icon set). The Setup page paints its own sliders and switches from the
+//   same stored choice.
 // - Theme colors are captured once from LVGL on begin() and mapped through NightPalette,
 //   so the day look is exactly what the theme + SquareLine produce, never a copy of it.
 // - Call begin() after ui_init() and apply() before the first rendered frame, so a night

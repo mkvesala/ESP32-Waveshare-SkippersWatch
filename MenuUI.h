@@ -2,11 +2,12 @@
 
 #include <Arduino.h>
 #include <lvgl.h>
-#include "NightPalette.h"
 
 // === C L A S S  M E N U U I ===
 //
-// - The page menu: SquareLine's ui_ContainerMenu with one image button per page.
+// - The page menu: SquareLine's ui_ContainerMenu with one image button per page, in two
+//   sets stacked on the same spots: full-color day icons and red night icons
+//   (ui_ImgButton*Night). Exactly one set is visible, chosen by setNightMode().
 //   NOT an IScreenUI page — it is an overlay that never enters the carousel and is
 //   never persisted as the last-active page.
 // - Driven by WatchApplication::handleTouch: swipe down on any page → show(), swipe up
@@ -20,15 +21,15 @@ class MenuUI {
 
 public:
 
-    // Hide the container (the export leaves it visible). Call after ui_init().
+    // Hide the container (the export leaves it visible) and show the day icon set.
+    // Call after ui_init().
     void begin();
 
     void show();
     void hide();
     bool isVisible() const { return _visible; }
 
-    // Night palette: the full-color icons are recolored to a flat red (alpha kept, so
-    // the icon shapes stay); off restores the original artwork.
+    // Show the night icon set (red artwork from SquareLine) instead of the day set
     void setNightMode(bool on);
 
     // Page index (carousel order) of the button under (x, y), or -1 for none.
@@ -47,12 +48,16 @@ public:
 
 private:
 
-    static constexpr uint32_t NIGHT_ICON = NightPalette::RED_BRIGHT;
-
     // Finger padding around each 96×96 button for hit-testing
     static constexpr int16_t TOUCH_PAD_PX = 8;
 
     bool _visible = false;
     bool _initialized = false;
+    bool _night = false;
+
+    // One menu entry: its page and both icon buttons (same position, one visible)
+    struct Button { lv_obj_t* day; lv_obj_t* night; int8_t page; };
+    static constexpr size_t BUTTON_COUNT = 7;
+    static void buttons(Button (&out)[BUTTON_COUNT]);
 
 };
