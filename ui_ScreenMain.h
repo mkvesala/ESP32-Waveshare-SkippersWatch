@@ -101,6 +101,11 @@ extern lv_obj_t *ui_ImgButtonAttitudeNight;
 extern lv_obj_t *ui_ContainerStartup;
 extern lv_obj_t *ui_LabelSkippersWatch;
 extern lv_obj_t *ui_LabelVersion;
+extern lv_obj_t *ui_ContainerStatus;
+extern lv_obj_t *ui_ContainerStatusInfo;
+extern lv_obj_t *ui_LabelInfo;
+extern lv_obj_t *ui_LabelInfo1;
+extern lv_obj_t *ui_LabelStatus;
 // CUSTOM VARIABLES
 
 #ifdef __cplusplus
