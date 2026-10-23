@@ -71,7 +71,7 @@ This is one of my individual digital boat projects. Use at your own risk. Not fo
 
 **Version 2.0.0** (2026-10-22) — see [CHANGELOG.md](CHANGELOG.md).
 
-Port to the Waveshare AMOLED board: the full v1.0.0 feature set plus the page menu, flashed and running correctly on the board. The board's own current measurements (sleep floor, active draw) are still open. Until they are measured, no endurance figures are claimed for this board (see [Power management](#power-management)).
+Port to the Waveshare AMOLED board: the full v1.0.0 feature set plus the [page menu](#input), the [status screen](#status-screen), the [startup screen](#startup-screen), [demo mode and night mode](#setup-screen) and an adjustable wake time, flashed and running correctly on the board. The board's own current measurements (sleep floor, active draw) are still open. Until they are measured, no endurance figures are claimed for this board (see [Power management](#power-management)).
 
 **Version 1.0.0** (CrowPanel 2.01") ran on hardware on the vessel with all seven screens, the GNSS-disciplined clock, the touch UI and a measured, closed power budget.
 
@@ -378,21 +378,23 @@ On the CrowPanel, Model B met the 24 h + nightly-charge requirement with a 2.7�
 All messages are wrapped in `ESPNowPacket`. The header carries a magic value identifying the fleet's own packets on the shared channel.
 
 ```cpp
+static constexpr uint32_t ESPNOW_MAGIC = 0x45534E57; // 'E''S''N''W'
+
+struct ESPNowHeader {
+    uint32_t magic;           // ESPNOW_MAGIC
+    uint8_t  msg_type;        // ESPNowMsgType
+    uint8_t  payload_len;     // payload length in bytes (max 250)
+    uint8_t  reserved[2];     // padding, set to zero
+} __attribute__((packed));
+
 template <typename TPayload>
 struct ESPNowPacket {
     ESPNowHeader hdr;
     TPayload payload;
 } __attribute__((packed));
-
-struct ESPNowHeader {
-    uint32_t magic;           // ESPNOW_MAGIC ('E''S''N''W' = 0x45534E57)
-    uint8_t  msg_type;        // ESPNowMsgType
-    uint8_t  payload_len;     // payload length in bytes (max 250)
-    uint8_t  reserved[2];     // padding, set to zero
-} __attribute__((packed));
 ```
 
-`espnow_protocol.h` is a single fleet-wide file, copied verbatim into every project (senders and receivers). `ESPNowMsgType` is one shared number space — the watch **receives** these types:
+`espnow_protocol.h` is a single fleet-wide file, copied verbatim into every project (senders and receivers). `ESPNowMsgType` is one shared number space. The watch **receives** types 1–9; type 10 (engine oil pressure) belongs to the fleet protocol but is not used by the watch, and frames of it are ignored:
 
 ```cpp
 enum class ESPNowMsgType : uint8_t {
@@ -405,6 +407,7 @@ enum class ESPNowMsgType : uint8_t {
     HALMET_WATER_DELTA   = 7,  // HALMET-ESP32-SignalK-gateway   (fresh water)
     DEPTH_DELTA          = 8,  // SignalK-ESP-NOW-gateway        (relayed depth)
     DATETIME_DELTA       = 9,  // UBLOX-ESP32-SignalK-gateway    (UTC → system clock)
+    HALMET_OIL_DELTA     = 10, // HALMET-ESP32-SignalK-gateway   (not used by the watch)
 };
 ```
 
@@ -415,18 +418,18 @@ struct GnssDelta {
     float lat_deg;        // Latitude, decimal degrees
     float lon_deg;        // Longitude, decimal degrees
     float sog_ms;         // Speed over ground, m/s
-    float cog_true_rad;   // Course over ground (true), radians — NaN when stationary
-    float mag_var_rad;    // Magnetic variation (WMM), radians — NaN until first fix
+    float cog_true_rad;   // Course over ground (true), radians (NAN when stationary)
+    float mag_var_rad;    // Magnetic variation (WMM), radians — NAN until first fix
     uint8_t satellites;   // SIV
     uint8_t fix_type;     // 0=no fix, 3=3D, 4=GNSS+DR
     uint8_t fix_ok;       // getGnssFixOk() ? 1 : 0
-    uint8_t reserved;
+    uint8_t reserved;     // padding
 };  // 24 bytes
 
 struct DateTimeDelta {
-    uint32_t unix_utc;    // seconds since 1970-01-01 UTC (leap-corrected by GNSS)
-    uint8_t  time_valid;  // 1 = u-blox reports confirmed valid UTC date+time
-    uint8_t  reserved[3]; // padding → 8 bytes
+    uint32_t unix_utc;     // seconds since 1970-01-01 00:00:00 UTC (leap-corrected by GNSS)
+    uint8_t  time_valid;   // 1 = u-blox reports confirmed valid UTC date+time
+    uint8_t  reserved[3];  // padding → 8 bytes
 };  // 8 bytes
 
 struct DepthDelta {

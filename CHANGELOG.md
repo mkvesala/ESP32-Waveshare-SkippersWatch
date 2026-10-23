@@ -39,7 +39,8 @@ night mode).
   radio keeps listening as usual (same battery behaviour), received frames are not stored,
   the status bar shows `DEMO`, and the watch's own battery stays real. Persisted to NVS.
 - **Night mode** switch in Setup: the whole UI in shades of red (`ThemeController`,
-  `NightPalette`), applied before the first frame of a wake. Persisted to NVS.
+  `NightPalette`), applied before the first frame of a wake. The page menu swaps to a
+  separate red icon set drawn in SquareLine (`ui_ImgButton*Night`). Persisted to NVS.
 - `PanelBrightness`: AMOLED brightness as a panel command (CO5300 `0x51`, 0..255), shared
   by `SetupUI` (ramp up, slider, ceiling) and `PowerManager` (ramp down).
 - `ft3168_touch`: small local FT3168 driver (I2C 0x38, RST=GPIO9), polled on the main loop;
@@ -49,8 +50,8 @@ night mode).
   presence for the USB stay-awake rule.
 - `GestureClassifier.h`, `BatteryLevel.h`, `NightPalette.h`, `DemoValues.h` and
   `StatusFormat.h`: the gesture rules, the low-charge ladder and display-timeout cap, the
-  night palette, the demo values and the status formatting as pure, Arduino-free code, with host unit tests in `tests/host`
-  (`make -C tests/host`).
+  night palette, the demo values and the status formatting as pure, Arduino-free code,
+  with host unit tests in `tests/host` (`make -C tests/host`).
 
 ### Changed
 
@@ -73,13 +74,19 @@ night mode).
 - `ScreenManager` gained `switchToIndex()`, `hideCurrent()` and `screenCount()`; the
   CW/CCW direction parameter is gone.
 - `LV_MEM_SIZE` 64 kB → 96 kB.
+- `espnow_protocol.h` (shared fleet file) gained `HALMET_OIL_DELTA = 10` /
+  `HALMETOilDelta` (engine oil pressure). The watch does not use it; its frames are ignored.
+- SquareLine Studio project is now `SLS_project_WS/` (410×502, fonts 14/24/32/48,
+  day and night menu icons).
+- README rewritten for the Waveshare board, with each screen shown as a SquareLine preview
+  and a photo of the watch.
 - Arduino IDE settings: **USB CDC On Boot: Enabled** (native USB, was a CH34x bridge),
   **Flash Size: 32MB**, Partition Scheme Huge APP. `Serial.setTxTimeoutMs(0)` so a missing
   USB host never blocks the wake path.
-- Power **policy** unchanged (10 s display timeout, 120 s awake ceiling, 30 s task watchdog,
-  stuck-button guard, low-charge ladder, USB stay-awake, prevent sleep). Its constants were
-  tuned on CrowPanel measurements; this board's sleep floor and active current are still to
-  be measured.
+- Power **policy** unchanged (120 s awake ceiling, 30 s task watchdog, stuck-button guard,
+  low-charge ladder, USB stay-awake, prevent sleep). The display timeout is now the Setup
+  wake time (2–20 s, default 10 s, was fixed 10 s). The constants were tuned on CrowPanel
+  measurements; this board's sleep floor and active current are still to be measured.
 
 ### Removed
 
@@ -87,6 +94,9 @@ night mode).
   different touch controller.
 - CrowPanel power mechanisms: LEDC backlight PWM (GPIO13), LCD rail (GPIO40), peripheral
   rail (GPIO47), battery ADC (GPIO1), USB-detect (GPIO17) and charge-status (GPIO15) pins.
+- The CrowPanel SquareLine project (`SLS_project/`, 240×296); it remains on
+  `legacy/crowpanel` and in tag `v1.0.0`.
+- `PORTING.md` (the porting work plan) is no longer tracked.
 
 ## [1.0.0] - 2026-10-04
 
