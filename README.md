@@ -146,7 +146,7 @@ Port to the Waveshare AMOLED board: the full v1.0.0 feature set plus the page me
 
 ## Features
 
-> Screenshots are SquareLine Studio previews of the 410×502 layout.
+> Each screen is shown as a pair: the SquareLine Studio preview of the 410×502 layout, and a photo of the watch running it.
 
 Each screen is a container on a single LVGL screen. On wake, all cached values start as placeholders (`---` / `--.-`) and fill in only when a fresh ESP-NOW broadcast arrives — **stale data is never shown as if current** (see [Freshness](#freshness)).
 
@@ -165,7 +165,7 @@ In demo mode the percentage reads e.g. `80 % DEMO`. The bar, the percentage and 
 
 ### Navigation screen
 
-<img src="docs/navigation.png" width="240">
+<img src="docs/navigation.png" height="260" alt="Navigation (SquareLine)"> <img src="docs/navigation.jpeg" height="260" alt="Navigation (on the watch)">
 
 - **POS** — latitude / longitude, shown only with a valid GNSS fix (blank until fix)
 - **HDG** — heading, **true** (`heading_true_x10` from the CMPS14 sender, which applies the variation). Deliberately true rather than magnetic so it is directly comparable with the true COG beside it — a magnetic HDG next to a true COG reads as a ~11° crab angle that is not there
@@ -175,7 +175,7 @@ In demo mode the percentage reads e.g. `80 % DEMO`. The bar, the percentage and 
 
 ### Batteries screen
 
-<img src="docs/batteries.png" width="240">
+<img src="docs/batteries.png" height="260" alt="Batteries (SquareLine)"> <img src="docs/batteries.jpeg" height="260" alt="Batteries (on the watch)">
 
 - House bank voltage, current (negative = charging) and state-of-charge
 - Starter battery voltage
@@ -183,14 +183,14 @@ In demo mode the percentage reads e.g. `80 % DEMO`. The bar, the percentage and 
 
 ### Weather screen
 
-<img src="docs/weather.png" width="240">
+<img src="docs/weather.png" height="260" alt="Weather (SquareLine)"> <img src="docs/weather.jpeg" height="260" alt="Weather (on the watch)">
 
 - Temperature (°C), air pressure (hPa), relative humidity (%)
 - Source: `WeatherDelta` from a BME280-based sender
 
 ### Engine screen
 
-<img src="docs/engineroom.png" width="240">
+<img src="docs/engineroom.png" height="260" alt="Engine (SquareLine)"> <img src="docs/engineroom.jpeg" height="260" alt="Engine (on the watch)">
 
 - Exhaust temperature (°C, converted from Kelvin)
 - Fuel tank litres and fresh-water tank litres (ratio × capacity; tank capacities are constants in `EngineUI.h`, on the vessel: fuel 400 L, water 80 L)
@@ -198,7 +198,7 @@ In demo mode the percentage reads e.g. `80 % DEMO`. The bar, the percentage and 
 
 ### Attitude screen
 
-<img src="docs/attitude.png" width="240">
+<img src="docs/attitude.png" height="260" alt="Attitude (SquareLine)"> <img src="docs/attitude.jpeg" height="260" alt="Attitude (on the watch)">
 
 - Artificial horizon plus pitch and roll value labels
 - Source: `HeadingDelta` (pitch/roll) from the CMPS14 compass sender
@@ -206,7 +206,7 @@ In demo mode the percentage reads e.g. `80 % DEMO`. The bar, the percentage and 
 
 ### Clock screen
 
-<img src="docs/clock.png" width="240">
+<img src="docs/clock.png" height="260" alt="Clock (SquareLine)"> <img src="docs/clock.jpeg" height="260" alt="Clock (on the watch)">
 
 - Local date `DD.MM.YYYY`, English 3-letter weekday
 - Local and UTC time `HH:MM:SS` (24 h); a `PREV.`/`NEXT.` indicator appears under UTC when its calendar day differs from local
@@ -216,7 +216,7 @@ In demo mode the percentage reads e.g. `80 % DEMO`. The bar, the percentage and 
 
 ### Setup screen
 
-<img src="docs/setup.png" width="240">
+<img src="docs/setup.png" height="260" alt="Setup (SquareLine)"> <img src="docs/setup.jpeg" height="260" alt="Setup (on the watch)">
 
 **Touch-only**, like the rest of the UI. Two sliders and three switches; every setting is saved to NVS (namespace `"display"`). The slider position and the switch colour show the state directly, so the SquareLine value labels are hidden and never written — except the wake time label, which reads `Wake time N s`. All three switches share the same look: red knob = off, green = on.
 
@@ -239,7 +239,11 @@ Two limits still apply, deliberately:
 
 **Night mode** (`ui_SwitchNightMode`) — everything on the panel is drawn in shades of red to keep the eyes dark-adapted: text, the status bar, sliders and switches, and the menu shows a separate set of red icons drawn in SquareLine (`ui_ImgButton*Night`, stacked on the day icons; one set is visible at a time). Key `"night"`. Applied before the first frame of a wake, so a night wake never flashes white. Black stays true black. Colors are mapped by brightness (`NightPalette`); the ones whose meaning is their hue (battery-bar states, switch on/off) use explicit red shades so they stay distinguishable. On the AMOLED, red-only drives only the red subpixels, so night mode should also draw less current (to be measured).
 
+<img src="docs/night_batteries.jpeg" height="260" alt="Night mode: Batteries"> <img src="docs/night_setup.jpeg" height="260" alt="Night mode: Setup"> <img src="docs/night_menu.jpeg" height="260" alt="Night mode: page menu">
+
 ### Startup screen
+
+<img src="docs/startup.png" height="260" alt="Startup screen (SquareLine)">
 
 After a **true power-on** (the AXP2101 cut the power, e.g. after holding PWR for ~6 s, and a press brought it back) the watch shows its name and version (`ui_ContainerStartup`, `SW_VERSION` from `version.h`) for 3 s, then the last-active screen. A normal **deep-sleep wake opens the last screen directly**, so the startup screen tells at a glance that the watch was really off. The 3 s comes on top of the wake time: the display-on window starts only after it. The radio is already listening during it, so it doubles as the wake listen window.
 
@@ -264,7 +268,7 @@ Screen carousel order:
 - **Swipe left:** Navigation → Batteries → Weather → Engine → Attitude → Clock → Setup → Navigation
 - **Swipe right:** the reverse
 
-<img src="docs/menu.png" width="240">
+<img src="docs/menu.png" height="260" alt="Page menu (SquareLine)"> <img src="docs/menu.jpeg" height="260" alt="Page menu (on the watch)">
 
 **Page menu.** A 3×3 grid of image buttons (`ui_ContainerMenu`), one per screen. It is an overlay, not a carousel page: opening it hides the current screen without leaving it, closing it brings that screen straight back, and it is never stored as the last-active screen. While it is open, swipes left / right and taps outside the icons do nothing, and no screen update runs underneath.
 
@@ -277,6 +281,8 @@ The last-active screen is restored on **every** boot, not just a deep-sleep wake
 **PWR button:** the same key is the AXP2101 power key. Holding it for about 6 s powers the board off in hardware, whatever the firmware does; a press then powers it on again as a cold boot.
 
 ### Status screen
+
+<img src="docs/status.png" height="260" alt="Status (SquareLine)"> <img src="docs/status.jpeg" height="260" alt="Status (on the watch)">
 
 Swipe up on any screen for a status overlay; swipe down returns to the screen you came from. Like the page menu it sits outside the carousel, is never stored as the last-active screen, and ignores taps and sideways swipes. Menu and status open only from a screen, never from each other. Values refresh once per second.
 
@@ -565,6 +571,26 @@ Developed by Matti Vesala in collaboration with Claude.
 
 <!-- TODO(images): add the UML diagram and a photo of the watch on the wrist here -->
 
+The watch running v2.0.0:
+
+| Navigation | Batteries | Weather |
+|---|---|---|
+| <img src="docs/navigation.jpeg" width="200"> | <img src="docs/batteries.jpeg" width="200"> | <img src="docs/weather.jpeg" width="200"> |
+
+| Engine | Attitude | Clock |
+|---|---|---|
+| <img src="docs/engineroom.jpeg" width="200"> | <img src="docs/attitude.jpeg" width="200"> | <img src="docs/clock.jpeg" width="200"> |
+
+| Setup | Page menu | Status |
+|---|---|---|
+| <img src="docs/setup.jpeg" width="200"> | <img src="docs/menu.jpeg" width="200"> | <img src="docs/status.jpeg" width="200"> |
+
+Night mode:
+
+| Batteries | Setup | Page menu |
+|---|---|---|
+| <img src="docs/night_batteries.jpeg" width="200"> | <img src="docs/night_setup.jpeg" width="200"> | <img src="docs/night_menu.jpeg" width="200"> |
+
 SquareLine Studio previews of the 410×502 layout:
 
 | Navigation | Batteries | Weather |
@@ -575,6 +601,6 @@ SquareLine Studio previews of the 410×502 layout:
 |---|---|---|
 | <img src="docs/engineroom.png" width="200"> | <img src="docs/attitude.png" width="200"> | <img src="docs/clock.png" width="200"> |
 
-| Setup | Page menu |
-|---|---|
-| <img src="docs/setup.png" width="200"> | <img src="docs/menu.png" width="200"> |
+| Setup | Page menu | Status | Startup |
+|---|---|---|---|
+| <img src="docs/setup.png" width="200"> | <img src="docs/menu.png" width="200"> | <img src="docs/status.png" width="200"> | <img src="docs/startup.png" width="200"> |
