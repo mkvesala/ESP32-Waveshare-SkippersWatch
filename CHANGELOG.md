@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [2.0.0] - 2026-10-22
+## [2.0.0] - 2026-10-23
 
 Port to the **Waveshare ESP32-S3-Touch-AMOLED-2.06** (SKU 31957): 410×502 AMOLED, larger
 battery, factory case with an integrated strap. Breaking: the firmware no longer runs on the
@@ -68,8 +68,10 @@ night mode).
 - **Sleep entry** puts the panel to sleep (display off + sleep-in) and the touch controller
   into hibernate, holds the panel/touch reset lines high and the speaker amp (GPIO46) off.
   The AXP2101 rails are deliberately left untouched until the rail-to-load map is traced.
-- `CrowPanelApplication` renamed to **`WatchApplication`**. The repository, sketch folder
-  and `.ino` keep their names.
+- `CrowPanelApplication` renamed to **`WatchApplication`**.
+- Repository renamed from `ESP32-Crowpanel-SkippersWatch` to
+  **`ESP32-Waveshare-SkippersWatch`**. GitHub redirects the old URLs; links in the
+  documentation point to the new name.
 - `IScreenUI` is touch-only: `onRotation()` and `interceptsRotation()` removed.
 - `ScreenManager` gained `switchToIndex()`, `hideCurrent()` and `screenCount()`; the
   CW/CCW direction parameter is gone.
@@ -157,5 +159,5 @@ First release, on the **Elecrow CrowPanel 2.01" Watch Display**. Running on hard
 - `hardware_notes.md` as the authoritative pin map, build/toolchain notes and power-guard reference.
 - Issue and pull-request templates, contribution guide, and third-party licence notes.
 
-[2.0.0]: https://github.com/mkvesala/ESP32-Crowpanel-SkippersWatch/compare/v1.0.0...v2.0.0
-[1.0.0]: https://github.com/mkvesala/ESP32-Crowpanel-SkippersWatch/releases/tag/v1.0.0
+[2.0.0]: https://github.com/mkvesala/ESP32-Waveshare-SkippersWatch/compare/v1.0.0...v2.0.0
+[1.0.0]: https://github.com/mkvesala/ESP32-Waveshare-SkippersWatch/releases/tag/v1.0.0

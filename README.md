@@ -21,7 +21,7 @@ You use this code entirely at your own risk. The author accepts no liability for
 
 A wrist-worn marine instrument for the [Waveshare ESP32-S3-Touch-AMOLED-2.06](https://docs.waveshare.com/ESP32-S3-Touch-AMOLED-2.06) watch board (SKU 31957: ESP32-S3, 410×502 AMOLED touchscreen, AXP2101 PMIC, LiPo, factory case with strap). It is the battery-powered sibling of my always-on [ESP32-Crowpanel-compass](https://github.com/mkvesala/ESP32-Crowpanel-compass) helm display — same receive-only ESP-NOW architecture, but rationed to run for a day or more on a small battery and charged nightly.
 
-> **v2.0.0 is the Waveshare port.** v1.0.0 ran on the [Elecrow CrowPanel 2.01" Watch Display](https://github.com/Elecrow-RD/CrowPanel_2.01_inch-HMI_ESP32_Watch_Display_240_296) (240×296 IPS, rotary knob); that build is kept as tag `v1.0.0` and on the `legacy/crowpanel` branch. The repository keeps its original name.
+> **v2.0.0 is the Waveshare port.** v1.0.0 ran on the [Elecrow CrowPanel 2.01" Watch Display](https://github.com/Elecrow-RD/CrowPanel_2.01_inch-HMI_ESP32_Watch_Display_240_296) (240×296 IPS, rotary knob); that build is kept as tag `v1.0.0` and on the `legacy/crowpanel` branch. The repository was renamed from `ESP32-Crowpanel-SkippersWatch` to `ESP32-Waveshare-SkippersWatch` after v2.0.0; GitHub redirects the old URLs.
 
 Receives via ESP-NOW broadcast:
 - GNSS position, speed over ground (SOG), course over ground (COG) and **UTC date/time** from [UBLOX-ESP32-SignalK-gateway](https://github.com/mkvesala/UBLOX-ESP32-SignalK-gateway)
@@ -69,7 +69,7 @@ This is one of my individual digital boat projects. Use at your own risk. Not fo
 
 ## Project status
 
-**Version 2.0.0** (2026-10-22) — see [CHANGELOG.md](CHANGELOG.md).
+**Version 2.0.0** (2026-10-23) — see [CHANGELOG.md](CHANGELOG.md).
 
 Port to the Waveshare AMOLED board: the full v1.0.0 feature set plus the [page menu](#input), the [status screen](#status-screen), the [startup screen](#startup-screen), [demo mode and night mode](#setup-screen) and an adjustable wake time, flashed and running correctly on the board. The board's own current measurements (sleep floor, active draw) are still open. Until they are measured, no endurance figures are claimed for this board (see [Power management](#power-management)).
 
@@ -515,7 +515,7 @@ struct DepthDelta {
 
 1. Clone the repo
    ```
-   git clone https://github.com/mkvesala/ESP32-Crowpanel-SkippersWatch.git
+   git clone https://github.com/mkvesala/ESP32-Waveshare-SkippersWatch.git
    ```
 2. Install the required libraries in Arduino IDE: LVGL, GFX Library for Arduino, XPowersLib (see [Software](#software))
 3. Set the ESP-NOW channel in `WatchApplication.h` to match your router:

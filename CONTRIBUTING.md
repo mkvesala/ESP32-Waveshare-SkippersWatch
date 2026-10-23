@@ -1,4 +1,4 @@
-# Contributing to ESP32-CrowPanel-SkippersWatch
+# Contributing to ESP32-Waveshare-SkippersWatch
 
 Thank you for considering contributing to this project! This document provides guidelines for contributing.
 
