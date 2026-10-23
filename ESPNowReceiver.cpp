@@ -100,6 +100,13 @@ void ESPNowReceiver::setDemoMode(bool on) {
     portEXIT_CRITICAL(&s_spinlock);
 }
 
+uint32_t ESPNowReceiver::radioFrameCount() {
+    portENTER_CRITICAL(&s_spinlock);
+    const uint32_t n = s_radio_frames;
+    portEXIT_CRITICAL(&s_spinlock);
+    return n;
+}
+
 // A demo frame enters through the very same parser and slots as a radio frame
 void ESPNowReceiver::injectFrame(const uint8_t* data, int data_len) {
     dispatch(data, data_len, true);
@@ -134,6 +141,14 @@ void ESPNowReceiver::dispatch(const uint8_t* data, int data_len, bool from_demo)
 
     // Frame integrity: buffer must hold header + declared payload
     if (data_len < (int)(sizeof(ESPNowHeader) + hdr.payload_len)) return;
+
+    // Status screen statistic: every valid radio frame, stored or not (demo mode drops
+    // them below, but the radio still received them). Demo frames are not counted.
+    if (!from_demo) {
+        portENTER_CRITICAL(&s_spinlock);
+        s_radio_frames++;
+        portEXIT_CRITICAL(&s_spinlock);
+    }
 
     const uint8_t* payload = data + sizeof(ESPNowHeader);
 

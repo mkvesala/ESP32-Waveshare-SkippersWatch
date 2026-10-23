@@ -5,7 +5,7 @@
 CXX      ?= c++
 CXXFLAGS ?= -std=c++17 -Wall -Wextra -Werror -I../..
 
-test_runner: test_main.cpp ../../GestureClassifier.h ../../BatteryLevel.h ../../NightPalette.h ../../DemoValues.h
+test_runner: test_main.cpp ../../GestureClassifier.h ../../BatteryLevel.h ../../NightPalette.h ../../DemoValues.h ../../StatusFormat.h
 	$(CXX) $(CXXFLAGS) -o $@ test_main.cpp
 
 .PHONY: run clean

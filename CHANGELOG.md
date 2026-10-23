@@ -10,7 +10,8 @@ Port to the **Waveshare ESP32-S3-Touch-AMOLED-2.06** (SKU 31957): 410×502 AMOLE
 battery, factory case with an integrated strap. Breaking: the firmware no longer runs on the
 Elecrow CrowPanel 2.01". The CrowPanel build stays available as `v1.0.0` and on the
 `legacy/crowpanel` branch. Same screens, same data, same power policy, plus a page menu,
-a startup screen and three new Setup controls (wake time, demo mode, night mode).
+a startup screen, a status screen and three new Setup controls (wake time, demo mode,
+night mode).
 
 ### Added
 
@@ -24,6 +25,12 @@ a startup screen and three new Setup controls (wake time, demo mode, night mode)
 - **Startup screen** (`ui_ContainerStartup`, version from `version.h`) for 3 s after a true
   power-on (AXP2101 power-off, then PWR). A deep-sleep wake opens the last screen directly,
   so the two are told apart at a glance. The 3 s does not count against the wake time.
+- **Status screen** (`StatusUI` over `ui_ContainerStatus`, data from `SystemStats`): swipe
+  up on any screen to open, swipe down to return. Uptime across deep sleep (RTC timer),
+  wake-ups, total wake and deep-sleep time, free / minimum heap, loop stack free, loop
+  avg / max time, ESP-NOW frames, unexpected resets, last reset reason, chip temperature
+  and battery voltage. Power-on counters live in `RTC_NOINIT` memory (no flash writes) and
+  start over on a true power-on.
 - **Wake time** slider in Setup: display-on window 2–20 s (default 10 s, was fixed 10 s),
   persisted to NVS. The low-charge ladder still caps it (5 s / 3 s). Disabled while prevent
   sleep is on.
@@ -40,9 +47,9 @@ a startup screen and three new Setup controls (wake time, demo mode, night mode)
 - AXP2101 PMIC support via **XPowersLib** in `BatteryMonitor`: battery voltage, the PMIC's
   fuel-gauge percentage (LiPo resting curve as fallback, both logged for comparison), VBUS
   presence for the USB stay-awake rule.
-- `GestureClassifier.h`, `BatteryLevel.h`, `NightPalette.h` and `DemoValues.h`: the gesture
-  rules, the low-charge ladder and display-timeout cap, the night palette and the demo
-  values as pure, Arduino-free code, with host unit tests in `tests/host`
+- `GestureClassifier.h`, `BatteryLevel.h`, `NightPalette.h`, `DemoValues.h` and
+  `StatusFormat.h`: the gesture rules, the low-charge ladder and display-timeout cap, the
+  night palette, the demo values and the status formatting as pure, Arduino-free code, with host unit tests in `tests/host`
   (`make -C tests/host`).
 
 ### Changed

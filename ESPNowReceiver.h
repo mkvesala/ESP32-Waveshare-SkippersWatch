@@ -69,6 +69,10 @@ public:
     void setDemoMode(bool on);
     void injectFrame(const uint8_t* data, int data_len);
 
+    // Valid radio frames received during this wake (demo frames excluded). Static: the
+    // receiver's state is static, and PowerManager reads it at sleep entry.
+    static uint32_t radioFrameCount();
+
 private:
 
     // Static callback for ESP-NOW
@@ -80,6 +84,7 @@ private:
     // Caller holds s_spinlock. True if a frame from this source may be stored now.
     static bool acceptLocked(bool from_demo) { return from_demo == s_demo_mode; }
     inline static volatile bool s_demo_mode = false;
+    inline static uint32_t s_radio_frames = 0;
 
     // Static data storage for ESP-NOW
     inline static portMUX_TYPE s_spinlock = portMUX_INITIALIZER_UNLOCKED;

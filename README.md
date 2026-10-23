@@ -31,7 +31,7 @@ Receives via ESP-NOW broadcast:
 - Temperature, air pressure and relative humidity from [BME280-ESP32-SignalK-gateway](https://github.com/mkvesala/BME280-ESP32-SignalK-gateway)
 - Engine exhaust temperature, fuel tank and fresh-water tank levels from [HALMET-ESP32-SignalK-gateway](https://github.com/mkvesala/HALMET-ESP32-SignalK-gateway)
 
-Values are shown on an LVGL UI. Interaction is by **capacitive touch**: swipe left / right through the screens, swipe down for a page menu, tap and slider drag. The **PWR button** wakes the watch from deep sleep (see [Input](#input)).
+Values are shown on an LVGL UI. Interaction is by **capacitive touch**: swipe left / right through the screens, swipe down for a page menu, swipe up for a status screen, tap and slider drag. The **PWR button** wakes the watch from deep sleep (see [Input](#input)).
 
 Screens (carousel, plus a page menu for direct access):
 - **Navigation** — POS (lat/lon), true heading (HDG), COG, SOG, depth below surface (DPT)
@@ -80,7 +80,7 @@ Port to the Waveshare AMOLED board: the full v1.0.0 feature set plus the page me
 <!-- TODO(diagram): add class / UML diagram here, e.g. <img src="docs/full_uml_diagram.jpeg" width="480"> -->
 
 **`WatchApplication`:**
-- Owns: `Arduino_ESP32QSPI`, `Arduino_CO5300`, `PanelBrightness`, `ESPNowReceiver`, `NavigationUI`, `BatteryUI`, `WeatherUI`, `EngineUI`, `AttitudeUI`, `ClockUI`, `SetupUI`, `MenuUI`, `TouchInput`, `ScreenManager`, `PowerManager`, `BatteryMonitor`, `DemoSource`, `ThemeController`
+- Owns: `Arduino_ESP32QSPI`, `Arduino_CO5300`, `PanelBrightness`, `ESPNowReceiver`, `NavigationUI`, `BatteryUI`, `WeatherUI`, `EngineUI`, `AttitudeUI`, `ClockUI`, `SetupUI`, `MenuUI`, `TouchInput`, `ScreenManager`, `PowerManager`, `BatteryMonitor`, `DemoSource`, `ThemeController`, `SystemStats`, `StatusUI`
 - Responsible for: orchestrating everything within the main program, including the staggered wake sequence (with the startup screen on a true power-on), gesture dispatch (carousel and page menu), GNSS time discipline and applying Setup's demo and night switches
 
 **`PowerManager`:**
@@ -114,6 +114,16 @@ Port to the Waveshare AMOLED board: the full v1.0.0 feature set plus the page me
 **`ThemeController`:**
 - Uses: `NightPalette` (pure, host-tested), `BatteryMonitor`, `MenuUI`
 - Responsible for: switching the day / night palette — the theme's screen colors and inherited text color, the status-bar frame, and telling the other color owners to repaint (battery bar) or swap artwork (menu icons)
+- Owned by: `WatchApplication`
+
+**`SystemStats`:**
+- Uses: `StatusFormat` (pure, host-tested)
+- Responsible for: the Status screen's data — uptime from the RTC timer, and power-on counters (wake-ups, total awake time, ESP-NOW frames, unexpected resets) in `RTC_NOINIT` memory, plus this wake's loop runtime
+- Owned by: `WatchApplication`
+
+**`StatusUI`:**
+- Uses: `SystemStats`, `BatteryMonitor`, `ESPNowReceiver` (frame count)
+- Responsible for: the Status overlay (`ui_ContainerStatus`): show / hide and a once-per-second refresh of its values. Not an `IScreenUI` page — never part of the carousel or the last-active store
 - Owned by: `WatchApplication`
 
 **`PanelBrightness`:**
@@ -243,6 +253,8 @@ All interaction is by touch; the PWR button is the wake source.
 | Previous screen | Swipe right |
 | Open the page menu | Swipe down (on any screen) |
 | Close the page menu, back to the last screen | Swipe up |
+| Open the status screen | Swipe up (on any screen) |
+| Close the status screen, back to the last screen | Swipe down |
 | Jump to a screen | Tap its icon in the page menu |
 | Screen action | Tap |
 | Adjust brightness / wake time, toggle prevent sleep / demo / night | Drag a slider, tap a switch (Setup) |
@@ -263,6 +275,27 @@ The last-active screen is restored on **every** boot, not just a deep-sleep wake
 **Why not touch-to-wake:** the FT3168 interrupt line is GPIO38, which is not an RTC-capable pin, so it cannot wake the ESP32-S3 from deep sleep. The touch controller is hibernated before sleep instead.
 
 **PWR button:** the same key is the AXP2101 power key. Holding it for about 6 s powers the board off in hardware, whatever the firmware does; a press then powers it on again as a cold boot.
+
+### Status screen
+
+Swipe up on any screen for a status overlay; swipe down returns to the screen you came from. Like the page menu it sits outside the carousel, is never stored as the last-active screen, and ignores taps and sideways swipes. Menu and status open only from a screen, never from each other. Values refresh once per second.
+
+| Row | Meaning | Source |
+|---|---|---|
+| Uptime | Time since the last true power-on, deep sleep included | ESP32 RTC timer (`esp_rtc_get_time_us()`), runs through deep sleep |
+| Wake-ups | PWR-button wakes since power-on (stuck-button timer rechecks are not counted) | `RTC_NOINIT` counter |
+| Wake time | Total awake time since power-on, the current wake included | `RTC_NOINIT` sum, added at every sleep entry, + `millis()` |
+| Deep sleep | Uptime − wake time | derived |
+| Free heap / Min free heap | Internal RAM free now / lowest during this wake | `heap_caps_*(MALLOC_CAP_INTERNAL)` |
+| Loop stack free | Loop task stack never used during this wake | `uxTaskGetStackHighWaterMark()` |
+| Loop avg / max | Main loop pass time during this wake (LVGL rendering included) | `micros()` per `loop()` |
+| ESP-NOW packets | Valid radio frames since power-on (also counted in demo mode, where they are not shown) | receiver frame counter, `RTC_NOINIT` total |
+| Resets | Watchdog, panic and brownout resets since power-on | `RTC_NOINIT` counter |
+| Last reset | Reset reason of this boot (`POWERON`, `DEEPSLEEP`, `WDT`, `PANIC`, `BROWNOUT`, `SW`, …) | `esp_reset_reason()` |
+| Chip temp | ESP32-S3 internal sensor (coarse) | `temperatureRead()` |
+| Battery voltage | Watch cell, EMA-smoothed (the charge voltage while on USB) | AXP2101 |
+
+All power-on counters survive deep sleep, watchdog, panic and software resets, and start over on a true power-on (AXP2101 power-off, flat or removed battery) — the same moment the RTC timer restarts and the [startup screen](#startup-screen) shows. Writing them costs no flash: they live in RTC RAM and are updated at sleep entry, the stuck-button recheck path included. Uptime and deep sleep follow the RTC slow clock, which can drift by roughly 1–2 %; wake time is `millis()`-exact. Over a battery cycle, wake time vs deep sleep gives the watch's actual duty cycle.
 
 ## Power management
 
@@ -414,6 +447,8 @@ struct DepthDelta {
 | `DemoSource.h/.cpp`, `DemoValues.h` | Class `DemoSource` — demo-mode frames injected into the receiver; `DemoValues` is the pure value generator (host-tested) |
 | `ThemeController.h/.cpp`, `NightPalette.h` | Class `ThemeController` — day / night palette switch; `NightPalette` is the pure color mapping (host-tested) |
 | `version.h` | Firmware version (`SW_VERSION`), shown on the startup screen |
+| `SystemStats.h/.cpp`, `StatusFormat.h` | Class `SystemStats` — uptime and power-on counters across deep sleep; `StatusFormat` is the pure formatting and reset rule (host-tested) |
+| `StatusUI.h/.cpp` | Class `StatusUI` — Status overlay and its once-per-second refresh |
 | `PanelBrightness.h/.cpp` | Class `PanelBrightness` — AMOLED brightness as a panel command |
 | `espnow_protocol.h` | Shared fleet wire protocol (namespace `ESPNow`): header, packet, `ESPNowMsgType`, all deltas + receiver-side `GnssData`/`HeadingData` |
 | `IScreenUI.h` | Abstract base class for all UI adapter implementations (tap + touch-drag seam) |

@@ -60,7 +60,8 @@ WatchApplication::WatchApplication()
     , _attitudeUI(_receiver)
     , _setupUI(_brightness)
     , _power(_brightness)
-    , _theme(_battery, _menu) {}
+    , _theme(_battery, _menu)
+    , _status(_stats, _battery) {}
 
 void WatchApplication::begin() {
     // Read the wake cause once, up front: it decides both the stuck-button path and, at
@@ -70,6 +71,10 @@ void WatchApplication::begin() {
     // FIRST: release the GPIO holds from the previous deep sleep (panel/touch reset lines,
     // amp enable), so the reset pulses below actually reach the chips.
     _power.releaseHolds();
+
+    // Status-screen counters, before the stuck-button recheck (which may sleep right
+    // away): a timer recheck is not counted as a wake-up, but its awake time is.
+    _stats.onBoot(cause, esp_reset_reason());
 
     // Speaker amp off from the first instant: audio is never used by the watch.
     pinMode(PIN_PA_CTRL, OUTPUT);
@@ -107,6 +112,7 @@ void WatchApplication::begin() {
     _clockUI.begin();
     _setupUI.begin();
     _menu.begin();           // hides ui_ContainerMenu (the export leaves it visible)
+    _status.begin();         // hides ui_ContainerStatus (likewise) and writes its titles
 
     // Watch's own battery gauge on the always-visible top bar. Safe here: the PMIC is up
     // and ui_BarBatteryIndicator exists (ui_init). Seeds the bar with a real value now.
@@ -200,6 +206,7 @@ void WatchApplication::begin() {
 }
 
 void WatchApplication::loop() {
+    const uint32_t loop_start_us = micros();
     const uint32_t now = millis();
     this->handleLvglTick(now);
     this->handleTouch(now);
@@ -220,6 +227,9 @@ void WatchApplication::loop() {
     // Backlight clamp for the current power state: low-charge ladder on battery, idle
     // dim in either stay-awake mode. No-ops unless the ceiling actually moved.
     _setupUI.setBrightnessCeiling(_power.brightnessCeiling());
+
+    // Loop runtime for the Status screen, measured before _power.loop(), which may sleep
+    _stats.onLoop(micros() - loop_start_us);
 
     _power.loop(now);   // may enter deep sleep after the display-on timeout (no return)
 }
@@ -357,7 +367,7 @@ void WatchApplication::handleTouch(const uint32_t now) {
     // Touch-down: decide whether the active page wants this touch as a drag.
     if (_touch.justPressed()) {
         _power.notifyActivity();
-        if (_menu.isVisible()) {
+        if (this->overlayVisible()) {
             _touch_dragging = false;
             return;
         }
@@ -398,7 +408,14 @@ void WatchApplication::handleTouch(const uint32_t now) {
 //         tap = the page's onButtonPress()
 //   menu: swipe up = close menu (last-active page returns), tap on a button = that page;
 //         everything else is ignored
+//   status: swipe down = close status (last-active page returns); everything else ignored
+//   page: swipe up = open status
 void WatchApplication::handleGesture(TouchGesture gesture) {
+    if (_status.isVisible()) {
+        if (gesture == TouchGesture::SWIPE_DOWN) this->closeStatus();
+        return;
+    }
+
     if (_menu.isVisible()) {
         if (gesture == TouchGesture::SWIPE_UP) {
             this->closeMenu();
@@ -427,8 +444,11 @@ void WatchApplication::handleGesture(TouchGesture gesture) {
         case TouchGesture::SWIPE_DOWN:
             this->openMenu();
             break;
+        case TouchGesture::SWIPE_UP:
+            this->openStatus();
+            break;
         default:
-            break;   // SWIPE_UP on a page, LONG_PRESS reserved, NONE ignored
+            break;   // LONG_PRESS reserved, NONE ignored
     }
 }
 
@@ -441,6 +461,17 @@ void WatchApplication::openMenu() {
 
 void WatchApplication::closeMenu() {
     _menu.hide();
+    _screenMgr.showCurrent();
+}
+
+// Status over the current page, the same way as the menu: the page is hidden, not left.
+void WatchApplication::openStatus() {
+    _screenMgr.hideCurrent();
+    _status.show();
+}
+
+void WatchApplication::closeStatus() {
+    _status.hide();
     _screenMgr.showCurrent();
 }
 
@@ -485,6 +516,7 @@ void WatchApplication::applyModes() {
 // polled, so nothing can act on a tap here.
 void WatchApplication::showStartupScreen() {
     _screenMgr.hideAll();   // the export may leave a page visible (it does: Setup)
+    lv_obj_add_flag(ui_ContainerStatus, LV_OBJ_FLAG_HIDDEN);   // and Status
     lv_obj_remove_flag(ui_ContainerStartup, LV_OBJ_FLAG_HIDDEN);
     lv_obj_move_foreground(ui_ContainerStartup);
     lv_refr_now(_lvgl_disp);
@@ -501,11 +533,13 @@ void WatchApplication::showStartupScreen() {
     lv_obj_add_flag(ui_ContainerStartup, LV_OBJ_FLAG_HIDDEN);
 }
 
-// Periodic update of the active page only (~17 Hz). Skipped while the page menu covers
-// it: the container is hidden, and the next update after closing repaints fresh values.
+// Periodic update of the active page only (~17 Hz). Skipped while an overlay covers it:
+// the container is hidden, and the next update after closing repaints fresh values. The
+// Status overlay refreshes itself (1 Hz) instead.
 void WatchApplication::handleUIUpdate(const uint32_t now) {
     if (now - _last_ui_update < UI_UPDATE_INTERVAL_MS) return;
     _last_ui_update = now;
+    if (_status.isVisible()) { _status.update(now); return; }
     if (_menu.isVisible()) return;
 
     IScreenUI* screen = _screenMgr.getCurrentScreen();

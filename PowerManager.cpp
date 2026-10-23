@@ -1,4 +1,6 @@
 #include "PowerManager.h"
+#include "SystemStats.h"
+#include "ESPNowReceiver.h"
 #include <driver/gpio.h>
 #include <driver/rtc_io.h>
 #include <esp_task_wdt.h>
@@ -155,6 +157,10 @@ int8_t PowerManager::backlightCeilingFor(BatteryMonitor::Level level) {
 void PowerManager::enterDeepSleep(bool ramp_brightness) {
     Serial.println("[power] entering deep sleep");
     Serial.flush();
+
+    // Status-screen totals. RTC RAM only, no flash, so it is safe on every path — the
+    // stuck-button recheck included, where it adds that visit's awake time too.
+    SystemStats::onSleepEntry(ESPNowReceiver::radioFrameCount());
 
     // Pre-sleep flush FIRST, while the radio is idle and no render is in flight: a flash
     // (NVS) write here is the only current spike in that instant. Null on the stuck-button

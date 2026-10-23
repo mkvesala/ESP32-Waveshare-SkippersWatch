@@ -7,6 +7,8 @@
 #include "BatteryLevel.h"
 #include "NightPalette.h"
 #include "DemoValues.h"
+#include "StatusFormat.h"
+#include <cstring>
 
 static int g_failed = 0;
 static int g_run = 0;
@@ -142,6 +144,48 @@ static void testDemoValues() {
     CHECK_EQ(a.lat_deg == b.lat_deg && a.lon_deg == b.lon_deg, true);
 }
 
+static bool fmtDuration(uint64_t s, const char* expected) {
+    char buf[24];
+    StatusFormat::duration(s, buf, sizeof(buf));
+    return std::strcmp(buf, expected) == 0;
+}
+
+static bool fmtKb(uint32_t bytes, const char* expected) {
+    char buf[16];
+    StatusFormat::kb(bytes, buf, sizeof(buf));
+    return std::strcmp(buf, expected) == 0;
+}
+
+static void testStatusFormat() {
+    using F = StatusFormat;
+    CHECK_EQ(fmtDuration(0, "00h 00m 00s"), true);
+    CHECK_EQ(fmtDuration(59, "00h 00m 59s"), true);
+    CHECK_EQ(fmtDuration(3600, "01h 00m 00s"), true);
+    CHECK_EQ(fmtDuration(24 * 3600, "24h 00m 00s"), true);
+    CHECK_EQ(fmtDuration(54 * 3600 + 2 * 60 + 30, "54h 02m 30s"), true);
+    CHECK_EQ(fmtDuration(123ull * 3600 + 5, "123h 00m 05s"), true);   // past 99 h
+
+    CHECK_EQ(fmtKb(196 * 1024, "196 KB"), true);
+    CHECK_EQ(fmtKb(5325, "5.2 KB"), true);
+    CHECK_EQ(fmtKb(0, "0.0 KB"), true);
+
+    CHECK_EQ(std::strcmp(F::resetReason(F::RST_POWERON), "POWERON"), 0);
+    CHECK_EQ(std::strcmp(F::resetReason(F::RST_DEEPSLEEP), "DEEPSLEEP"), 0);
+    CHECK_EQ(std::strcmp(F::resetReason(F::RST_TASK_WDT), "WDT"), 0);
+    CHECK_EQ(std::strcmp(F::resetReason(99), "OTHER"), 0);
+
+    CHECK_EQ(F::isUnexpected(F::RST_PANIC), true);
+    CHECK_EQ(F::isUnexpected(F::RST_BROWNOUT), true);
+    CHECK_EQ(F::isUnexpected(F::RST_DEEPSLEEP), false);
+    CHECK_EQ(F::isUnexpected(F::RST_SW), false);
+
+    // Counters start over on a true power-on or with untrusted RTC memory, nowhere else
+    CHECK_EQ(F::shouldReset(true, F::RST_POWERON), true);
+    CHECK_EQ(F::shouldReset(false, F::RST_DEEPSLEEP), true);
+    CHECK_EQ(F::shouldReset(true, F::RST_DEEPSLEEP), false);
+    CHECK_EQ(F::shouldReset(true, F::RST_TASK_WDT), false);
+}
+
 int main() {
     testTapAndLongPress();
     testFourSwipeDirections();
@@ -151,6 +195,7 @@ int main() {
     testDisplayTimeout();
     testNightPalette();
     testDemoValues();
+    testStatusFormat();
     std::printf("%d checks, %d failed\n", g_run, g_failed);
     return g_failed == 0 ? 0 : 1;
 }

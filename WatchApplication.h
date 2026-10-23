@@ -13,6 +13,8 @@
 #include "ClockUI.h"
 #include "SetupUI.h"
 #include "MenuUI.h"
+#include "StatusUI.h"
+#include "SystemStats.h"
 #include "TouchInput.h"
 #include "ScreenManager.h"
 #include "PowerManager.h"
@@ -31,6 +33,8 @@
 //   menu, TouchInput, ScreenManager, PowerManager, BatteryMonitor (+ the AXP2101)
 // - Input: touch only (no knob on this board). Swipe left/right steps the carousel, swipe
 //   down opens the page menu, swipe up closes it, tap goes to the page or a menu button.
+//   Swipe up on a page opens the Status screen, swipe down closes it. Menu and Status are
+//   both overlays opened from a page, never from each other.
 // - Page carousel: NAVIGATION(0) → BATTERIES(1) → WEATHER(2) → ENGINE(3) → ATTITUDE(4) → CLOCK(5) → SETUP(6)
 // - Pins/parts from Waveshare's examples — see hardware_notes_waveshare.md
 // - Model B power: deep sleep at rest, the PWR button wakes (see PowerManager).
@@ -120,6 +124,8 @@ private:
     PowerManager   _power;
     BatteryMonitor _battery;   // drives the top bar from the watch's own LiPo (AXP2101)
     ThemeController _theme;
+    SystemStats    _stats;
+    StatusUI       _status;
 
     // Demo mode as currently applied to the receiver (Setup holds the user's choice)
     bool _demo_active = false;
@@ -168,6 +174,11 @@ private:
     // Page menu (ui_ContainerMenu): open over the current page / close back to it / jump.
     void openMenu();
     void closeMenu();
+
+    // Status screen (ui_ContainerStatus): open over the current page / close back to it
+    void openStatus();
+    void closeStatus();
+    bool overlayVisible() const { return _menu.isVisible() || _status.isVisible(); }
     void jumpToPage(uint8_t index);
     void rememberPage();
 
