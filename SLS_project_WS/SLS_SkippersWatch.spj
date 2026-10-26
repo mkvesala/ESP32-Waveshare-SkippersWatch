@@ -15217,7 +15217,7 @@
                   {
                     "nid": 1030,
                     "strtype": "LABEL/Text",
-                    "strval": "Body\\n_____\\n\\nSun\\nMoon\\nSaturn\\nBetelg.\\nArctur.",
+                    "strval": "\\n\\nSun\\nMoon\\nSaturn\\nBetelg.\\nArctur.",
                     "InheritedType": 10
                   },
                   {
@@ -15377,7 +15377,7 @@
                   {
                     "nid": 1030,
                     "strtype": "LABEL/Text",
-                    "strval": "Hc\\n______\\n\\n59°59.9'\\n59°59.9'\\n59°59.9'\\n59°59.9'\\n59°59.9'",
+                    "strval": "Hc\\n\\n59°59.9'\\n59°59.9'\\n59°59.9'\\n59°59.9'\\n59°59.9'",
                     "InheritedType": 10
                   },
                   {
@@ -15537,7 +15537,7 @@
                   {
                     "nid": 1030,
                     "strtype": "LABEL/Text",
-                    "strval": "Zn\\n____\\n\\n359°\\n090°\\n234°\\n180°\\n045°",
+                    "strval": "Zn\\n\\n359°\\n090°\\n234°\\n180°\\n045°",
                     "InheritedType": 10
                   },
                   {
@@ -15572,7 +15572,7 @@
                   {
                     "nid": 10,
                     "strtype": "OBJECT/Name",
-                    "strval": "LabelCelestial1",
+                    "strval": "LabelVariables",
                     "InheritedType": 10
                   },
                   {
@@ -15697,7 +15697,7 @@
                   {
                     "nid": 1030,
                     "strtype": "LABEL/Text",
-                    "strval": "23:59:59 UTC\\n1025 mbar\\n19°C\\n60°25.5'N\\n025°34.5'E",
+                    "strval": "23:59:59 UTC\\n1025 mbar 19°C\\n60°25.5'N\\n025°34.5'E",
                     "InheritedType": 10
                   },
                   {
@@ -16043,7 +16043,7 @@
     "custom_variable_prefix": "uic",
     "separate_screen_save": false,
     "hierarchy_state_save": false,
-    "backup_cnt": 96,
+    "backup_cnt": 101,
     "autosave_cnt": 0,
     "group_color_cnt": 0,
     "imagebytearrayprefix": "",

@@ -106,6 +106,12 @@ extern lv_obj_t *ui_ContainerStatusInfo;
 extern lv_obj_t *ui_LabelInfo;
 extern lv_obj_t *ui_LabelInfo1;
 extern lv_obj_t *ui_LabelStatus;
+extern lv_obj_t *ui_ContainerCelestial;
+extern lv_obj_t *ui_LabelCelestial;
+extern lv_obj_t *ui_LabelBodies;
+extern lv_obj_t *ui_LabelHc;
+extern lv_obj_t *ui_LabelZn;
+extern lv_obj_t *ui_LabelVariables;
 // CUSTOM VARIABLES
 
 #ifdef __cplusplus
