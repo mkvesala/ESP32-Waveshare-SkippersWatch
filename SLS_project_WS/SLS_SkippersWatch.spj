@@ -11255,37 +11255,37 @@
                   {
                     "nid": 1030,
                     "strtype": "IMGBUTTON/Image_released",
-                    "strval": "assets/navigation_96x96.png",
+                    "strval": "assets/navigation.png",
                     "InheritedType": 5
                   },
                   {
                     "nid": 1040,
                     "strtype": "IMGBUTTON/Image_pressed",
-                    "strval": "-",
+                    "strval": "",
                     "InheritedType": 5
                   },
                   {
                     "nid": 1050,
                     "strtype": "IMGBUTTON/Image_disabled",
-                    "strval": "-",
+                    "strval": "",
                     "InheritedType": 5
                   },
                   {
                     "nid": 1060,
                     "strtype": "IMGBUTTON/Image_checked_released",
-                    "strval": "-",
+                    "strval": "",
                     "InheritedType": 5
                   },
                   {
                     "nid": 1070,
                     "strtype": "IMGBUTTON/Image_checked_pressed",
-                    "strval": "-",
+                    "strval": "",
                     "InheritedType": 5
                   },
                   {
                     "nid": 1080,
                     "strtype": "IMGBUTTON/Image_checked_disabled",
-                    "strval": "-",
+                    "strval": "",
                     "InheritedType": 5
                   },
                   {
@@ -11439,37 +11439,37 @@
                   {
                     "nid": 1030,
                     "strtype": "IMGBUTTON/Image_released",
-                    "strval": "assets/batteries_96x96.png",
+                    "strval": "assets/batteries.png",
                     "InheritedType": 5
                   },
                   {
                     "nid": 1040,
                     "strtype": "IMGBUTTON/Image_pressed",
-                    "strval": "-",
+                    "strval": "",
                     "InheritedType": 5
                   },
                   {
                     "nid": 1050,
                     "strtype": "IMGBUTTON/Image_disabled",
-                    "strval": "-",
+                    "strval": "",
                     "InheritedType": 5
                   },
                   {
                     "nid": 1060,
                     "strtype": "IMGBUTTON/Image_checked_released",
-                    "strval": "-",
+                    "strval": "",
                     "InheritedType": 5
                   },
                   {
                     "nid": 1070,
                     "strtype": "IMGBUTTON/Image_checked_pressed",
-                    "strval": "-",
+                    "strval": "",
                     "InheritedType": 5
                   },
                   {
                     "nid": 1080,
                     "strtype": "IMGBUTTON/Image_checked_disabled",
-                    "strval": "-",
+                    "strval": "",
                     "InheritedType": 5
                   },
                   {
@@ -11608,37 +11608,37 @@
                   {
                     "nid": 1030,
                     "strtype": "IMGBUTTON/Image_released",
-                    "strval": "assets/engine_room_96x96.png",
+                    "strval": "assets/engine.png",
                     "InheritedType": 5
                   },
                   {
                     "nid": 1040,
                     "strtype": "IMGBUTTON/Image_pressed",
-                    "strval": "-",
+                    "strval": "",
                     "InheritedType": 5
                   },
                   {
                     "nid": 1050,
                     "strtype": "IMGBUTTON/Image_disabled",
-                    "strval": "-",
+                    "strval": "",
                     "InheritedType": 5
                   },
                   {
                     "nid": 1060,
                     "strtype": "IMGBUTTON/Image_checked_released",
-                    "strval": "-",
+                    "strval": "",
                     "InheritedType": 5
                   },
                   {
                     "nid": 1070,
                     "strtype": "IMGBUTTON/Image_checked_pressed",
-                    "strval": "-",
+                    "strval": "",
                     "InheritedType": 5
                   },
                   {
                     "nid": 1080,
                     "strtype": "IMGBUTTON/Image_checked_disabled",
-                    "strval": "-",
+                    "strval": "",
                     "InheritedType": 5
                   },
                   {
@@ -11777,37 +11777,37 @@
                   {
                     "nid": 1030,
                     "strtype": "IMGBUTTON/Image_released",
-                    "strval": "assets/weather_96x96.png",
+                    "strval": "assets/weather.png",
                     "InheritedType": 5
                   },
                   {
                     "nid": 1040,
                     "strtype": "IMGBUTTON/Image_pressed",
-                    "strval": "-",
+                    "strval": "",
                     "InheritedType": 5
                   },
                   {
                     "nid": 1050,
                     "strtype": "IMGBUTTON/Image_disabled",
-                    "strval": "-",
+                    "strval": "",
                     "InheritedType": 5
                   },
                   {
                     "nid": 1060,
                     "strtype": "IMGBUTTON/Image_checked_released",
-                    "strval": "-",
+                    "strval": "",
                     "InheritedType": 5
                   },
                   {
                     "nid": 1070,
                     "strtype": "IMGBUTTON/Image_checked_pressed",
-                    "strval": "-",
+                    "strval": "",
                     "InheritedType": 5
                   },
                   {
                     "nid": 1080,
                     "strtype": "IMGBUTTON/Image_checked_disabled",
-                    "strval": "-",
+                    "strval": "",
                     "InheritedType": 5
                   },
                   {
@@ -11946,37 +11946,37 @@
                   {
                     "nid": 1030,
                     "strtype": "IMGBUTTON/Image_released",
-                    "strval": "assets/setup_96x96.png",
+                    "strval": "assets/setup.png",
                     "InheritedType": 5
                   },
                   {
                     "nid": 1040,
                     "strtype": "IMGBUTTON/Image_pressed",
-                    "strval": "-",
+                    "strval": "",
                     "InheritedType": 5
                   },
                   {
                     "nid": 1050,
                     "strtype": "IMGBUTTON/Image_disabled",
-                    "strval": "-",
+                    "strval": "",
                     "InheritedType": 5
                   },
                   {
                     "nid": 1060,
                     "strtype": "IMGBUTTON/Image_checked_released",
-                    "strval": "-",
+                    "strval": "",
                     "InheritedType": 5
                   },
                   {
                     "nid": 1070,
                     "strtype": "IMGBUTTON/Image_checked_pressed",
-                    "strval": "-",
+                    "strval": "",
                     "InheritedType": 5
                   },
                   {
                     "nid": 1080,
                     "strtype": "IMGBUTTON/Image_checked_disabled",
-                    "strval": "-",
+                    "strval": "",
                     "InheritedType": 5
                   },
                   {
@@ -12115,37 +12115,37 @@
                   {
                     "nid": 1030,
                     "strtype": "IMGBUTTON/Image_released",
-                    "strval": "assets/clock_96x96.png",
+                    "strval": "assets/clock.png",
                     "InheritedType": 5
                   },
                   {
                     "nid": 1040,
                     "strtype": "IMGBUTTON/Image_pressed",
-                    "strval": "-",
+                    "strval": "",
                     "InheritedType": 5
                   },
                   {
                     "nid": 1050,
                     "strtype": "IMGBUTTON/Image_disabled",
-                    "strval": "-",
+                    "strval": "",
                     "InheritedType": 5
                   },
                   {
                     "nid": 1060,
                     "strtype": "IMGBUTTON/Image_checked_released",
-                    "strval": "-",
+                    "strval": "",
                     "InheritedType": 5
                   },
                   {
                     "nid": 1070,
                     "strtype": "IMGBUTTON/Image_checked_pressed",
-                    "strval": "-",
+                    "strval": "",
                     "InheritedType": 5
                   },
                   {
                     "nid": 1080,
                     "strtype": "IMGBUTTON/Image_checked_disabled",
-                    "strval": "-",
+                    "strval": "",
                     "InheritedType": 5
                   },
                   {
@@ -12284,37 +12284,206 @@
                   {
                     "nid": 1030,
                     "strtype": "IMGBUTTON/Image_released",
-                    "strval": "assets/attitude_96x96.png",
+                    "strval": "assets/attitude.png",
                     "InheritedType": 5
                   },
                   {
                     "nid": 1040,
                     "strtype": "IMGBUTTON/Image_pressed",
-                    "strval": "-",
+                    "strval": "",
                     "InheritedType": 5
                   },
                   {
                     "nid": 1050,
                     "strtype": "IMGBUTTON/Image_disabled",
-                    "strval": "-",
+                    "strval": "",
                     "InheritedType": 5
                   },
                   {
                     "nid": 1060,
                     "strtype": "IMGBUTTON/Image_checked_released",
-                    "strval": "-",
+                    "strval": "",
                     "InheritedType": 5
                   },
                   {
                     "nid": 1070,
                     "strtype": "IMGBUTTON/Image_checked_pressed",
-                    "strval": "-",
+                    "strval": "",
                     "InheritedType": 5
                   },
                   {
                     "nid": 1080,
                     "strtype": "IMGBUTTON/Image_checked_disabled",
-                    "strval": "-",
+                    "strval": "",
+                    "InheritedType": 5
+                  },
+                  {
+                    "part": "lv.PART.MAIN",
+                    "childs": [],
+                    "nid": 1090,
+                    "strtype": "IMGBUTTON/Style_main",
+                    "strval": "lv.PART.MAIN, Rectangle, Image, Text, Transform",
+                    "InheritedType": 11
+                  }
+                ],
+                "saved_objtypeKey": "IMGBUTTON"
+              },
+              {
+                "guid": "GUID28919402-255844S1855301",
+                "properties": [
+                  {
+                    "nid": 10,
+                    "strtype": "OBJECT/Name",
+                    "strval": "ImgButtonCelestial",
+                    "InheritedType": 10
+                  },
+                  {
+                    "nid": 20,
+                    "strtype": "OBJECT/Layout",
+                    "InheritedType": 1
+                  },
+                  {
+                    "Flow": 0,
+                    "Wrap": false,
+                    "Reversed": false,
+                    "MainAlignment": 0,
+                    "CrossAlignment": 0,
+                    "TrackAlignment": 0,
+                    "LayoutType": 0,
+                    "nid": 30,
+                    "strtype": "OBJECT/Layout_type",
+                    "strval": "No_layout",
+                    "InheritedType": 13
+                  },
+                  {
+                    "nid": 40,
+                    "strtype": "OBJECT/Transform",
+                    "InheritedType": 1
+                  },
+                  {
+                    "nid": 50,
+                    "flags": 17,
+                    "strtype": "OBJECT/Position",
+                    "intarray": [
+                      0,
+                      0
+                    ],
+                    "InheritedType": 7
+                  },
+                  {
+                    "nid": 60,
+                    "flags": 17,
+                    "strtype": "OBJECT/Size",
+                    "intarray": [
+                      96,
+                      96
+                    ],
+                    "InheritedType": 7
+                  },
+                  {
+                    "nid": 70,
+                    "strtype": "OBJECT/Align",
+                    "strval": "BOTTOM_MID",
+                    "InheritedType": 3
+                  },
+                  {
+                    "nid": 75,
+                    "strtype": "OBJECT/Extend_click_area",
+                    "InheritedType": 6
+                  },
+                  {
+                    "nid": 90,
+                    "flags": 1048576,
+                    "strtype": "OBJECT/Flags",
+                    "InheritedType": 1
+                  },
+                  {
+                    "nid": 100,
+                    "strtype": "IMGBUTTON/Hidden",
+                    "strval": "False",
+                    "InheritedType": 2
+                  },
+                  {
+                    "nid": 225,
+                    "flags": 1048576,
+                    "strtype": "OBJECT/Scrolling",
+                    "InheritedType": 1
+                  },
+                  {
+                    "nid": 300,
+                    "strtype": "OBJECT/Scrollbar_mode",
+                    "strval": "AUTO",
+                    "InheritedType": 3
+                  },
+                  {
+                    "nid": 310,
+                    "strtype": "OBJECT/Scroll_direction",
+                    "strval": "ALL",
+                    "InheritedType": 3
+                  },
+                  {
+                    "nid": 314,
+                    "strtype": "OBJECT/Scroll_snap_x",
+                    "strval": "NONE",
+                    "InheritedType": 3
+                  },
+                  {
+                    "nid": 315,
+                    "strtype": "OBJECT/Scroll_snap_y",
+                    "strval": "NONE",
+                    "InheritedType": 3
+                  },
+                  {
+                    "nid": 320,
+                    "flags": 1048576,
+                    "strtype": "OBJECT/States",
+                    "InheritedType": 1
+                  },
+                  {
+                    "nid": 1010,
+                    "strtype": "IMGBUTTON/Images",
+                    "InheritedType": 1
+                  },
+                  {
+                    "nid": 1020,
+                    "strtype": "IMGBUTTON/Button_state",
+                    "strval": "RELEASED",
+                    "InheritedType": 3
+                  },
+                  {
+                    "nid": 1030,
+                    "strtype": "IMGBUTTON/Image_released",
+                    "strval": "assets/celestial.png",
+                    "InheritedType": 5
+                  },
+                  {
+                    "nid": 1040,
+                    "strtype": "IMGBUTTON/Image_pressed",
+                    "strval": "",
+                    "InheritedType": 5
+                  },
+                  {
+                    "nid": 1050,
+                    "strtype": "IMGBUTTON/Image_disabled",
+                    "strval": "",
+                    "InheritedType": 5
+                  },
+                  {
+                    "nid": 1060,
+                    "strtype": "IMGBUTTON/Image_checked_released",
+                    "strval": "",
+                    "InheritedType": 5
+                  },
+                  {
+                    "nid": 1070,
+                    "strtype": "IMGBUTTON/Image_checked_pressed",
+                    "strval": "",
+                    "InheritedType": 5
+                  },
+                  {
+                    "nid": 1080,
+                    "strtype": "IMGBUTTON/Image_checked_disabled",
+                    "strval": "",
                     "InheritedType": 5
                   },
                   {
@@ -12453,37 +12622,37 @@
                   {
                     "nid": 1030,
                     "strtype": "IMGBUTTON/Image_released",
-                    "strval": "assets/battery96night.png",
+                    "strval": "assets/nightbatteries.png",
                     "InheritedType": 5
                   },
                   {
                     "nid": 1040,
                     "strtype": "IMGBUTTON/Image_pressed",
-                    "strval": "-",
+                    "strval": "",
                     "InheritedType": 5
                   },
                   {
                     "nid": 1050,
                     "strtype": "IMGBUTTON/Image_disabled",
-                    "strval": "-",
+                    "strval": "",
                     "InheritedType": 5
                   },
                   {
                     "nid": 1060,
                     "strtype": "IMGBUTTON/Image_checked_released",
-                    "strval": "-",
+                    "strval": "",
                     "InheritedType": 5
                   },
                   {
                     "nid": 1070,
                     "strtype": "IMGBUTTON/Image_checked_pressed",
-                    "strval": "-",
+                    "strval": "",
                     "InheritedType": 5
                   },
                   {
                     "nid": 1080,
                     "strtype": "IMGBUTTON/Image_checked_disabled",
-                    "strval": "-",
+                    "strval": "",
                     "InheritedType": 5
                   },
                   {
@@ -12622,37 +12791,37 @@
                   {
                     "nid": 1030,
                     "strtype": "IMGBUTTON/Image_released",
-                    "strval": "assets/navigation96night.png",
+                    "strval": "assets/nightnavigation.png",
                     "InheritedType": 5
                   },
                   {
                     "nid": 1040,
                     "strtype": "IMGBUTTON/Image_pressed",
-                    "strval": "-",
+                    "strval": "",
                     "InheritedType": 5
                   },
                   {
                     "nid": 1050,
                     "strtype": "IMGBUTTON/Image_disabled",
-                    "strval": "-",
+                    "strval": "",
                     "InheritedType": 5
                   },
                   {
                     "nid": 1060,
                     "strtype": "IMGBUTTON/Image_checked_released",
-                    "strval": "-",
+                    "strval": "",
                     "InheritedType": 5
                   },
                   {
                     "nid": 1070,
                     "strtype": "IMGBUTTON/Image_checked_pressed",
-                    "strval": "-",
+                    "strval": "",
                     "InheritedType": 5
                   },
                   {
                     "nid": 1080,
                     "strtype": "IMGBUTTON/Image_checked_disabled",
-                    "strval": "-",
+                    "strval": "",
                     "InheritedType": 5
                   },
                   {
@@ -12806,37 +12975,37 @@
                   {
                     "nid": 1030,
                     "strtype": "IMGBUTTON/Image_released",
-                    "strval": "assets/engine96night.png",
+                    "strval": "assets/nightengine.png",
                     "InheritedType": 5
                   },
                   {
                     "nid": 1040,
                     "strtype": "IMGBUTTON/Image_pressed",
-                    "strval": "-",
+                    "strval": "",
                     "InheritedType": 5
                   },
                   {
                     "nid": 1050,
                     "strtype": "IMGBUTTON/Image_disabled",
-                    "strval": "-",
+                    "strval": "",
                     "InheritedType": 5
                   },
                   {
                     "nid": 1060,
                     "strtype": "IMGBUTTON/Image_checked_released",
-                    "strval": "-",
+                    "strval": "",
                     "InheritedType": 5
                   },
                   {
                     "nid": 1070,
                     "strtype": "IMGBUTTON/Image_checked_pressed",
-                    "strval": "-",
+                    "strval": "",
                     "InheritedType": 5
                   },
                   {
                     "nid": 1080,
                     "strtype": "IMGBUTTON/Image_checked_disabled",
-                    "strval": "-",
+                    "strval": "",
                     "InheritedType": 5
                   },
                   {
@@ -12975,37 +13144,37 @@
                   {
                     "nid": 1030,
                     "strtype": "IMGBUTTON/Image_released",
-                    "strval": "assets/weather96night.png",
+                    "strval": "assets/nightweather.png",
                     "InheritedType": 5
                   },
                   {
                     "nid": 1040,
                     "strtype": "IMGBUTTON/Image_pressed",
-                    "strval": "-",
+                    "strval": "",
                     "InheritedType": 5
                   },
                   {
                     "nid": 1050,
                     "strtype": "IMGBUTTON/Image_disabled",
-                    "strval": "-",
+                    "strval": "",
                     "InheritedType": 5
                   },
                   {
                     "nid": 1060,
                     "strtype": "IMGBUTTON/Image_checked_released",
-                    "strval": "-",
+                    "strval": "",
                     "InheritedType": 5
                   },
                   {
                     "nid": 1070,
                     "strtype": "IMGBUTTON/Image_checked_pressed",
-                    "strval": "-",
+                    "strval": "",
                     "InheritedType": 5
                   },
                   {
                     "nid": 1080,
                     "strtype": "IMGBUTTON/Image_checked_disabled",
-                    "strval": "-",
+                    "strval": "",
                     "InheritedType": 5
                   },
                   {
@@ -13144,37 +13313,37 @@
                   {
                     "nid": 1030,
                     "strtype": "IMGBUTTON/Image_released",
-                    "strval": "assets/setup96night.png",
+                    "strval": "assets/nightsetup.png",
                     "InheritedType": 5
                   },
                   {
                     "nid": 1040,
                     "strtype": "IMGBUTTON/Image_pressed",
-                    "strval": "-",
+                    "strval": "",
                     "InheritedType": 5
                   },
                   {
                     "nid": 1050,
                     "strtype": "IMGBUTTON/Image_disabled",
-                    "strval": "-",
+                    "strval": "",
                     "InheritedType": 5
                   },
                   {
                     "nid": 1060,
                     "strtype": "IMGBUTTON/Image_checked_released",
-                    "strval": "-",
+                    "strval": "",
                     "InheritedType": 5
                   },
                   {
                     "nid": 1070,
                     "strtype": "IMGBUTTON/Image_checked_pressed",
-                    "strval": "-",
+                    "strval": "",
                     "InheritedType": 5
                   },
                   {
                     "nid": 1080,
                     "strtype": "IMGBUTTON/Image_checked_disabled",
-                    "strval": "-",
+                    "strval": "",
                     "InheritedType": 5
                   },
                   {
@@ -13313,37 +13482,37 @@
                   {
                     "nid": 1030,
                     "strtype": "IMGBUTTON/Image_released",
-                    "strval": "assets/clock96night.png",
+                    "strval": "assets/nightclock.png",
                     "InheritedType": 5
                   },
                   {
                     "nid": 1040,
                     "strtype": "IMGBUTTON/Image_pressed",
-                    "strval": "-",
+                    "strval": "",
                     "InheritedType": 5
                   },
                   {
                     "nid": 1050,
                     "strtype": "IMGBUTTON/Image_disabled",
-                    "strval": "-",
+                    "strval": "",
                     "InheritedType": 5
                   },
                   {
                     "nid": 1060,
                     "strtype": "IMGBUTTON/Image_checked_released",
-                    "strval": "-",
+                    "strval": "",
                     "InheritedType": 5
                   },
                   {
                     "nid": 1070,
                     "strtype": "IMGBUTTON/Image_checked_pressed",
-                    "strval": "-",
+                    "strval": "",
                     "InheritedType": 5
                   },
                   {
                     "nid": 1080,
                     "strtype": "IMGBUTTON/Image_checked_disabled",
-                    "strval": "-",
+                    "strval": "",
                     "InheritedType": 5
                   },
                   {
@@ -13482,37 +13651,206 @@
                   {
                     "nid": 1030,
                     "strtype": "IMGBUTTON/Image_released",
-                    "strval": "assets/attitude96night.png",
+                    "strval": "assets/nightattitude.png",
                     "InheritedType": 5
                   },
                   {
                     "nid": 1040,
                     "strtype": "IMGBUTTON/Image_pressed",
-                    "strval": "-",
+                    "strval": "",
                     "InheritedType": 5
                   },
                   {
                     "nid": 1050,
                     "strtype": "IMGBUTTON/Image_disabled",
-                    "strval": "-",
+                    "strval": "",
                     "InheritedType": 5
                   },
                   {
                     "nid": 1060,
                     "strtype": "IMGBUTTON/Image_checked_released",
-                    "strval": "-",
+                    "strval": "",
                     "InheritedType": 5
                   },
                   {
                     "nid": 1070,
                     "strtype": "IMGBUTTON/Image_checked_pressed",
-                    "strval": "-",
+                    "strval": "",
                     "InheritedType": 5
                   },
                   {
                     "nid": 1080,
                     "strtype": "IMGBUTTON/Image_checked_disabled",
-                    "strval": "-",
+                    "strval": "",
+                    "InheritedType": 5
+                  },
+                  {
+                    "part": "lv.PART.MAIN",
+                    "childs": [],
+                    "nid": 1090,
+                    "strtype": "IMGBUTTON/Style_main",
+                    "strval": "lv.PART.MAIN, Rectangle, Image, Text, Transform",
+                    "InheritedType": 11
+                  }
+                ],
+                "saved_objtypeKey": "IMGBUTTON"
+              },
+              {
+                "guid": "GUID41674629-255845S805301",
+                "properties": [
+                  {
+                    "nid": 10,
+                    "strtype": "OBJECT/Name",
+                    "strval": "ImgButtonCelestialNight",
+                    "InheritedType": 10
+                  },
+                  {
+                    "nid": 20,
+                    "strtype": "OBJECT/Layout",
+                    "InheritedType": 1
+                  },
+                  {
+                    "Flow": 0,
+                    "Wrap": false,
+                    "Reversed": false,
+                    "MainAlignment": 0,
+                    "CrossAlignment": 0,
+                    "TrackAlignment": 0,
+                    "LayoutType": 0,
+                    "nid": 30,
+                    "strtype": "OBJECT/Layout_type",
+                    "strval": "No_layout",
+                    "InheritedType": 13
+                  },
+                  {
+                    "nid": 40,
+                    "strtype": "OBJECT/Transform",
+                    "InheritedType": 1
+                  },
+                  {
+                    "nid": 50,
+                    "flags": 17,
+                    "strtype": "OBJECT/Position",
+                    "intarray": [
+                      0,
+                      0
+                    ],
+                    "InheritedType": 7
+                  },
+                  {
+                    "nid": 60,
+                    "flags": 17,
+                    "strtype": "OBJECT/Size",
+                    "intarray": [
+                      96,
+                      96
+                    ],
+                    "InheritedType": 7
+                  },
+                  {
+                    "nid": 70,
+                    "strtype": "OBJECT/Align",
+                    "strval": "BOTTOM_MID",
+                    "InheritedType": 3
+                  },
+                  {
+                    "nid": 75,
+                    "strtype": "OBJECT/Extend_click_area",
+                    "InheritedType": 6
+                  },
+                  {
+                    "nid": 90,
+                    "flags": 1048576,
+                    "strtype": "OBJECT/Flags",
+                    "InheritedType": 1
+                  },
+                  {
+                    "nid": 100,
+                    "strtype": "IMGBUTTON/Hidden",
+                    "strval": "False",
+                    "InheritedType": 2
+                  },
+                  {
+                    "nid": 225,
+                    "flags": 1048576,
+                    "strtype": "OBJECT/Scrolling",
+                    "InheritedType": 1
+                  },
+                  {
+                    "nid": 300,
+                    "strtype": "OBJECT/Scrollbar_mode",
+                    "strval": "AUTO",
+                    "InheritedType": 3
+                  },
+                  {
+                    "nid": 310,
+                    "strtype": "OBJECT/Scroll_direction",
+                    "strval": "ALL",
+                    "InheritedType": 3
+                  },
+                  {
+                    "nid": 314,
+                    "strtype": "OBJECT/Scroll_snap_x",
+                    "strval": "NONE",
+                    "InheritedType": 3
+                  },
+                  {
+                    "nid": 315,
+                    "strtype": "OBJECT/Scroll_snap_y",
+                    "strval": "NONE",
+                    "InheritedType": 3
+                  },
+                  {
+                    "nid": 320,
+                    "flags": 1048576,
+                    "strtype": "OBJECT/States",
+                    "InheritedType": 1
+                  },
+                  {
+                    "nid": 1010,
+                    "strtype": "IMGBUTTON/Images",
+                    "InheritedType": 1
+                  },
+                  {
+                    "nid": 1020,
+                    "strtype": "IMGBUTTON/Button_state",
+                    "strval": "RELEASED",
+                    "InheritedType": 3
+                  },
+                  {
+                    "nid": 1030,
+                    "strtype": "IMGBUTTON/Image_released",
+                    "strval": "assets/nightcelestial.png",
+                    "InheritedType": 5
+                  },
+                  {
+                    "nid": 1040,
+                    "strtype": "IMGBUTTON/Image_pressed",
+                    "strval": "",
+                    "InheritedType": 5
+                  },
+                  {
+                    "nid": 1050,
+                    "strtype": "IMGBUTTON/Image_disabled",
+                    "strval": "",
+                    "InheritedType": 5
+                  },
+                  {
+                    "nid": 1060,
+                    "strtype": "IMGBUTTON/Image_checked_released",
+                    "strval": "",
+                    "InheritedType": 5
+                  },
+                  {
+                    "nid": 1070,
+                    "strtype": "IMGBUTTON/Image_checked_pressed",
+                    "strval": "",
+                    "InheritedType": 5
+                  },
+                  {
+                    "nid": 1080,
+                    "strtype": "IMGBUTTON/Image_checked_disabled",
+                    "strval": "",
                     "InheritedType": 5
                   },
                   {
@@ -13597,7 +13935,7 @@
               {
                 "nid": 100,
                 "strtype": "CONTAINER/Hidden",
-                "strval": "True",
+                "strval": "False",
                 "InheritedType": 2
               },
               {
@@ -15803,7 +16141,7 @@
               {
                 "nid": 100,
                 "strtype": "CONTAINER/Hidden",
-                "strval": "False",
+                "strval": "True",
                 "InheritedType": 2
               },
               {
@@ -16043,7 +16381,7 @@
     "custom_variable_prefix": "uic",
     "separate_screen_save": false,
     "hierarchy_state_save": false,
-    "backup_cnt": 101,
+    "backup_cnt": 107,
     "autosave_cnt": 0,
     "group_color_cnt": 0,
     "imagebytearrayprefix": "",

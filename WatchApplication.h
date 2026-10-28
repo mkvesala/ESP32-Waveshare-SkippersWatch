@@ -37,7 +37,7 @@
 //   Swipe up on a page opens the Status screen, swipe down closes it. Menu and Status are
 //   both overlays opened from a page, never from each other.
 // - Page carousel: NAVIGATION(0) → BATTERIES(1) → WEATHER(2) → ENGINE(3) → ATTITUDE(4) → CLOCK(5) → SETUP(6)
-//   → CELESTIAL(7). Celestial is reached by swiping only, until the page menu gets its button.
+//   → CELESTIAL(7)
 // - Pins/parts from Waveshare's examples — see hardware_notes_waveshare.md
 // - Model B power: deep sleep at rest, the PWR button wakes (see PowerManager).
 // - A true power-on (after the AXP2101 cut power) shows the startup screen for

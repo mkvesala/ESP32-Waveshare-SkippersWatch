@@ -273,7 +273,7 @@ A sight-reduction aid for sextant practice: the computed altitude **Hc** and tru
 - **Freshness:** time is trusted only while GNSS `DateTimeDelta` keeps arriving (≤ 10 s old) — the RTC drifts during deep sleep. Position needs a fresh GNSS fix (≤ 6 s). Without either the table shows `No time` / `No fix` instead of bodies; each variable is dashed on its own when stale. `Wait` is shown until the first computation lands (≤ 1 s), `No bodies` at night outside twilight
 - **Computation only while the screen is shown:** the astronomy runs on its own task (`CelestialEngine`, core 0), created on the first visit of a wake, computing once per second while the screen is open and updated. Leaving the screen, or covering it with the page menu or status screen, stops it; double precision is software-emulated on the ESP32-S3, so a full twilight selection pass takes a few hundred ms
 - **Demo mode:** the same real computation on demo inputs — the demo position and weather, and the Clock screen's demo time. The variables show those inputs as if they were real, so the table can be checked against an almanac for the shown time and position
-- Reached by swiping (last in the carousel, after Setup); the page menu has no icon for it yet
+- Last in the carousel, after Setup; the page menu has its own icon (day and night sets) in the bottom middle of the grid
 - Astronomy by [Astronomy Engine](https://github.com/cosinekitty/astronomy) (MIT), ported with the selection logic from [ESP32-Crowpanel-compass](https://github.com/mkvesala/ESP32-Crowpanel-compass), which draws the same bodies on a star chart relative to the heading
 
 ### Startup screen
@@ -575,7 +575,7 @@ struct DepthDelta {
    | PSRAM | OPI PSRAM |
    | Flash Mode | QIO 80MHz |
 
-   The sketch is ~1.82 MB (with the Celestial screen), under 60 % of the Huge APP slot; the default 1.2 MB app partition is too small.
+   The sketch is ~1.88 MB, under 60 % of the Huge APP slot; the default 1.2 MB app partition is too small.
 6. Point the ESP-NOW senders to the same WiFi channel
 
 **Note** that `lv_conf.h` is project-local. If you use LVGL elsewhere, a second `lv_conf.h` may live under `Arduino/libraries/` next to the `lvgl` folder — check both to avoid conflicts.

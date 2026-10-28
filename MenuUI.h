@@ -44,8 +44,7 @@ public:
         PAGE_ATTITUDE   = 4,
         PAGE_CLOCK      = 5,
         PAGE_SETUP      = 6,
-        // PAGE_CELESTIAL = 7: in the carousel, no menu button yet (add one in SLS, then
-        // a BUTTON_COUNT 8 entry in buttons())
+        PAGE_CELESTIAL  = 7,
     };
 
 private:
@@ -59,7 +58,7 @@ private:
 
     // One menu entry: its page and both icon buttons (same position, one visible)
     struct Button { lv_obj_t* day; lv_obj_t* night; int8_t page; };
-    static constexpr size_t BUTTON_COUNT = 7;
+    static constexpr size_t BUTTON_COUNT = 8;
     static void buttons(Button (&out)[BUTTON_COUNT]);
 
 };

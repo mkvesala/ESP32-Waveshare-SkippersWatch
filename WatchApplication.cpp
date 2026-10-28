@@ -141,7 +141,7 @@ void WatchApplication::begin() {
     _screenMgr.addScreen(&_attitudeUI);
     _screenMgr.addScreen(&_clockUI);
     _screenMgr.addScreen(&_setupUI);
-    _screenMgr.addScreen(&_celestialUI);   // carousel only until SLS has its menu button
+    _screenMgr.addScreen(&_celestialUI);
     // Restore the last-active page from RTC, else NVS, else Navigation. The actual
     // _screenMgr.begin(start_page) is deferred to after the dark listen window below, so
     // the page is revealed only once data has had a chance to arrive.

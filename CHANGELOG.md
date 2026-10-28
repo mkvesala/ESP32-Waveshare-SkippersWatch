@@ -19,9 +19,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
   without fresh GNSS time and position. In demo mode the same real computation runs on
   the demo position and time.
 - Host tests for the celestial code (`tests/celestial/`, JPL Horizons and SIMBAD fixtures).
+- **Celestial icon in the page menu** (`ui_ImgButtonCelestial` / `ui_ImgButtonCelestialNight`,
+  bottom middle of the grid).
 
 ### Changed
 
+- New artwork for all page-menu icons, day and night sets (SquareLine assets renamed, e.g.
+  `navigation.png` / `nightnavigation.png`; the old `*_96x96` / `*96night` images are gone).
 - GNSS time sync sets the system clock to the received second + 0.5 s: the sender truncates
   to whole seconds, so the clock is now within ±0.5 s instead of 0–1 s late.
 - The demo clock's epoch moved from `ClockUI` to `DemoValues::DEMO_EPOCH_UTC`, shared by the

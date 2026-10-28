@@ -34,20 +34,22 @@ extern "C" {
 extern lv_obj_t *ui____initial_actions0;
 
 // IMAGES AND IMAGE SETS
-LV_IMG_DECLARE( ui_img_navigation_96x96_png);   // assets/navigation_96x96.png
-LV_IMG_DECLARE( ui_img_batteries_96x96_png);   // assets/batteries_96x96.png
-LV_IMG_DECLARE( ui_img_engine_room_96x96_png);   // assets/engine_room_96x96.png
-LV_IMG_DECLARE( ui_img_weather_96x96_png);   // assets/weather_96x96.png
-LV_IMG_DECLARE( ui_img_setup_96x96_png);   // assets/setup_96x96.png
-LV_IMG_DECLARE( ui_img_clock_96x96_png);   // assets/clock_96x96.png
-LV_IMG_DECLARE( ui_img_attitude_96x96_png);   // assets/attitude_96x96.png
-LV_IMG_DECLARE( ui_img_battery96night_png);   // assets/battery96night.png
-LV_IMG_DECLARE( ui_img_navigation96night_png);   // assets/navigation96night.png
-LV_IMG_DECLARE( ui_img_engine96night_png);   // assets/engine96night.png
-LV_IMG_DECLARE( ui_img_weather96night_png);   // assets/weather96night.png
-LV_IMG_DECLARE( ui_img_setup96night_png);   // assets/setup96night.png
-LV_IMG_DECLARE( ui_img_clock96night_png);   // assets/clock96night.png
-LV_IMG_DECLARE( ui_img_attitude96night_png);   // assets/attitude96night.png
+LV_IMG_DECLARE( ui_img_navigation_png);   // assets/navigation.png
+LV_IMG_DECLARE( ui_img_batteries_png);   // assets/batteries.png
+LV_IMG_DECLARE( ui_img_engine_png);   // assets/engine.png
+LV_IMG_DECLARE( ui_img_weather_png);   // assets/weather.png
+LV_IMG_DECLARE( ui_img_setup_png);   // assets/setup.png
+LV_IMG_DECLARE( ui_img_clock_png);   // assets/clock.png
+LV_IMG_DECLARE( ui_img_attitude_png);   // assets/attitude.png
+LV_IMG_DECLARE( ui_img_celestial_png);   // assets/celestial.png
+LV_IMG_DECLARE( ui_img_nightbatteries_png);   // assets/nightbatteries.png
+LV_IMG_DECLARE( ui_img_nightnavigation_png);   // assets/nightnavigation.png
+LV_IMG_DECLARE( ui_img_nightengine_png);   // assets/nightengine.png
+LV_IMG_DECLARE( ui_img_nightweather_png);   // assets/nightweather.png
+LV_IMG_DECLARE( ui_img_nightsetup_png);   // assets/nightsetup.png
+LV_IMG_DECLARE( ui_img_nightclock_png);   // assets/nightclock.png
+LV_IMG_DECLARE( ui_img_nightattitude_png);   // assets/nightattitude.png
+LV_IMG_DECLARE( ui_img_nightcelestial_png);   // assets/nightcelestial.png
 
 // FONTS
 LV_FONT_DECLARE( ui_font_FontLabel14);
