@@ -1,5 +1,6 @@
 #include "ClockUI.h"
 #include "ui.h"
+#include "DemoValues.h"
 #include <time.h>
 
 // === P U B L I C ===
@@ -41,7 +42,7 @@ void ClockUI::update() {
             if (_last_shown_sec != -1) { this->showWaiting(); _last_shown_sec = -1; }
             return;
         }
-        t = DEMO_EPOCH_UTC + (time_t)(millis() / 1000);
+        t = (time_t)DemoValues::DEMO_EPOCH_UTC + (time_t)(millis() / 1000);
         localtime_r(&t, &lt);
     }
 

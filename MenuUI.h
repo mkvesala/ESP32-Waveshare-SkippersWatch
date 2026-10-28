@@ -44,6 +44,8 @@ public:
         PAGE_ATTITUDE   = 4,
         PAGE_CLOCK      = 5,
         PAGE_SETUP      = 6,
+        // PAGE_CELESTIAL = 7: in the carousel, no menu button yet (add one in SLS, then
+        // a BUTTON_COUNT 8 entry in buttons())
     };
 
 private:

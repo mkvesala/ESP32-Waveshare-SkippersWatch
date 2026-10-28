@@ -42,6 +42,11 @@ struct DemoValues {
     static constexpr float START_LON_DEG = 24.8333f;   // 024°50.0'E
     static constexpr float TRACK_LOOP_S  = 3600.0f;
 
+    // Demo clock while the system clock has no GNSS time: this epoch plus uptime.
+    // 2026-07-15 07:10:00 UTC = 10:10:00 local (EEST). Shared by the Clock page and the
+    // Celestial page, which computes real Hc/Zn for this time and the demo position.
+    static constexpr int64_t DEMO_EPOCH_UTC = 1784099400;
+
     static DemoSnapshot at(uint32_t ms) {
         const float t = ms / 1000.0f;
         DemoSnapshot d{};

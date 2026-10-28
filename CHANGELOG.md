@@ -4,6 +4,29 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.0] - 2026-10-27
+
+### Added
+
+- **Celestial screen** (`CelestialUI` over SquareLine's `ui_ContainerCelestial`), last in
+  the carousel after Setup: a sight-reduction aid listing body, geocentric **Hc** and
+  **Zn** — Sun and Moon between their rise and set, and in twilight (Sun Hc −3°…−12°) one
+  planet and two stars or three stars ~120° apart — plus UTC time, pressure, temperature
+  and position. Astronomy (Astronomy Engine, 57 Nautical Almanac stars, body selection)
+  ported from ESP32-Crowpanel-compass, as a table instead of a heading-relative star chart.
+  Computed on its own core-0 task only while the screen is open and not covered by the
+  menu or status overlay; the task is created on the first visit of a wake. No bodies
+  without fresh GNSS time and position. In demo mode the same real computation runs on
+  the demo position and time.
+- Host tests for the celestial code (`tests/celestial/`, JPL Horizons and SIMBAD fixtures).
+
+### Changed
+
+- GNSS time sync sets the system clock to the received second + 0.5 s: the sender truncates
+  to whole seconds, so the clock is now within ±0.5 s instead of 0–1 s late.
+- The demo clock's epoch moved from `ClockUI` to `DemoValues::DEMO_EPOCH_UTC`, shared by the
+  Clock and Celestial screens.
+
 ## [2.0.0] - 2026-10-23
 
 Port to the **Waveshare ESP32-S3-Touch-AMOLED-2.06** (SKU 31957): 410×502 AMOLED, larger
@@ -159,5 +182,6 @@ First release, on the **Elecrow CrowPanel 2.01" Watch Display**. Running on hard
 - `hardware_notes.md` as the authoritative pin map, build/toolchain notes and power-guard reference.
 - Issue and pull-request templates, contribution guide, and third-party licence notes.
 
+[2.1.0]: https://github.com/mkvesala/ESP32-Waveshare-SkippersWatch/compare/v2.0.0...v2.1.0
 [2.0.0]: https://github.com/mkvesala/ESP32-Waveshare-SkippersWatch/compare/v1.0.0...v2.0.0
 [1.0.0]: https://github.com/mkvesala/ESP32-Waveshare-SkippersWatch/releases/tag/v1.0.0

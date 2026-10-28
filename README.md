@@ -80,7 +80,7 @@ Port to the Waveshare AMOLED board: the full v1.0.0 feature set plus the [page m
 <!-- TODO(diagram): add class / UML diagram here, e.g. <img src="docs/full_uml_diagram.jpeg" width="480"> -->
 
 **`WatchApplication`:**
-- Owns: `Arduino_ESP32QSPI`, `Arduino_CO5300`, `PanelBrightness`, `ESPNowReceiver`, `NavigationUI`, `BatteryUI`, `WeatherUI`, `EngineUI`, `AttitudeUI`, `ClockUI`, `SetupUI`, `MenuUI`, `TouchInput`, `ScreenManager`, `PowerManager`, `BatteryMonitor`, `DemoSource`, `ThemeController`, `SystemStats`, `StatusUI`
+- Owns: `Arduino_ESP32QSPI`, `Arduino_CO5300`, `PanelBrightness`, `ESPNowReceiver`, `NavigationUI`, `BatteryUI`, `WeatherUI`, `EngineUI`, `AttitudeUI`, `ClockUI`, `SetupUI`, `CelestialUI`, `MenuUI`, `TouchInput`, `ScreenManager`, `PowerManager`, `BatteryMonitor`, `DemoSource`, `ThemeController`, `SystemStats`, `StatusUI`
 - Responsible for: orchestrating everything within the main program, including the staggered wake sequence (with the startup screen on a true power-on), gesture dispatch (carousel and page menu), GNSS time discipline and applying Setup's demo and night switches
 
 **`PowerManager`:**
@@ -138,6 +138,23 @@ Port to the Waveshare AMOLED board: the full v1.0.0 feature set plus the [page m
 - Use: `ESPNowReceiver` (all data screens); `ClockUI` reads the ESP32 system clock; `SetupUI` uses `Preferences` (NVS)
 - Responsible for: updating the LVGL objects of their container from the relevant data source, showing placeholders until a fresh packet arrives
 - Owned by: `WatchApplication`
+
+**`CelestialUI`:**
+- Realizes: `IScreenUI`
+- Owns: `CelestialEngine`
+- Uses: `ESPNowReceiver` (position, weather, time freshness), the ESP32 system clock, `CelestialFormat` (pure, host-tested)
+- Responsible for: the Celestial screen's table (body, Hc, Zn) and its variables (UTC, pressure, temperature, position), redrawn once per UTC second; no bodies without fresh time and position
+- Owned by: `WatchApplication`
+
+**`CelestialEngine`:**
+- Uses: `CelestialCalculator`, `CelestialSelector`, `NavStars`
+- Responsible for: the astronomy off the UI loop — a FreeRTOS task on core 0 that computes once per second, only while the Celestial screen is open and being updated; blocked on a notification otherwise. Inputs and results are exchanged under a spinlock
+- Owned by: `CelestialUI`
+
+**`CelestialCalculator` / `CelestialSelector`:**
+- Use: Astronomy Engine (`astronomy.c`), `NavStars` (the 57 Nautical Almanac stars, Hipparcos)
+- Responsible for: geocentric Hc / Zn of Sun, Moon, planets and stars (double precision, proper motion applied), rise / set and twilight tests; picking the twilight set (planet + two stars, or three stars, ~120° apart). Pure, host-tested against JPL Horizons and SIMBAD (`tests/celestial/`)
+- Owned by: `CelestialEngine`
 
 **`ScreenManager`:**
 - Depends on: `IScreenUI*`
@@ -241,6 +258,24 @@ Two limits still apply, deliberately:
 
 <img src="docs/night_batteries.jpeg" height="260" alt="Night mode: Batteries"> <img src="docs/night_setup.jpeg" height="260" alt="Night mode: Setup"> <img src="docs/night_menu.jpeg" height="260" alt="Night mode: page menu">
 
+### Celestial screen
+
+<!-- TODO(screenshot): docs/celestial.png (SquareLine) + docs/celestial.jpeg (on the watch) -->
+
+A sight-reduction aid for sextant practice: the computed altitude **Hc** and true azimuth **Zn** of the bodies worth shooting right now, plus the other inputs of a manual sight reduction.
+
+- **Table** (body / Hc `dd°mm.m'` / Zn `ddd°`, at most five rows):
+  - **Sun** and **Moon** between their rise and set (upper limb on the sea horizon with standard refraction, as almanac rise/set)
+  - **Twilight**, from the middle of civil twilight through the whole of nautical twilight (Sun Hc −3° … −12°): three more bodies, **one planet and two stars or three stars**, picked by `CelestialSelector` so their azimuths are ~120° apart, Hc 15°–65° preferred (10°–75° hard limits), brighter and away from the Moon preferred. The set is re-evaluated every 60 s with hysteresis, at once if a member leaves the window
+  - Star names are abbreviated to six letters (`Betelg.`, `Arctur.`)
+- **Variables** below the table: UTC time `HH:MM:SS UTC`, pressure (mbar) and air temperature, latitude and longitude — the values a sight reduction needs next to Hs
+- **Hc and Zn are geocentric**, as in the Nautical Almanac: apparent place of date from the Earth's centre, no refraction, no parallax, no semi-diameter, and **not related to the boat's heading**. Correct Hs → Ho yourself (dip, refraction with the shown pressure and temperature, SD, HP) as usual
+- **Freshness:** time is trusted only while GNSS `DateTimeDelta` keeps arriving (≤ 10 s old) — the RTC drifts during deep sleep. Position needs a fresh GNSS fix (≤ 6 s). Without either the table shows `No time` / `No fix` instead of bodies; each variable is dashed on its own when stale. `Wait` is shown until the first computation lands (≤ 1 s), `No bodies` at night outside twilight
+- **Computation only while the screen is shown:** the astronomy runs on its own task (`CelestialEngine`, core 0), created on the first visit of a wake, computing once per second while the screen is open and updated. Leaving the screen, or covering it with the page menu or status screen, stops it; double precision is software-emulated on the ESP32-S3, so a full twilight selection pass takes a few hundred ms
+- **Demo mode:** the same real computation on demo inputs — the demo position and weather, and the Clock screen's demo time. The variables show those inputs as if they were real, so the table can be checked against an almanac for the shown time and position
+- Reached by swiping (last in the carousel, after Setup); the page menu has no icon for it yet
+- Astronomy by [Astronomy Engine](https://github.com/cosinekitty/astronomy) (MIT), ported with the selection logic from [ESP32-Crowpanel-compass](https://github.com/mkvesala/ESP32-Crowpanel-compass), which draws the same bodies on a star chart relative to the heading
+
 ### Startup screen
 
 <img src="docs/startup.png" height="260" alt="Startup screen (SquareLine)">
@@ -265,7 +300,7 @@ All interaction is by touch; the PWR button is the wake source.
 | Wake from deep sleep | Press the **PWR** button (GPIO10, `ext0`) |
 
 Screen carousel order:
-- **Swipe left:** Navigation → Batteries → Weather → Engine → Attitude → Clock → Setup → Navigation
+- **Swipe left:** Navigation → Batteries → Weather → Engine → Attitude → Clock → Setup → Celestial → Navigation
 - **Swipe right:** the reverse
 
 <img src="docs/menu.png" height="260" alt="Page menu (SquareLine)"> <img src="docs/menu.jpeg" height="260" alt="Page menu (on the watch)">
@@ -468,6 +503,10 @@ struct DepthDelta {
 | `EngineUI.h/.cpp` | Class `EngineUI` — exhaust + fuel/water tanks, realizes `IScreenUI` |
 | `AttitudeUI.h/.cpp` | Class `AttitudeUI` — artificial horizon, realizes `IScreenUI` |
 | `ClockUI.h/.cpp` | Class `ClockUI` — system-clock reader + formatting, realizes `IScreenUI` |
+| `CelestialUI.h/.cpp`, `CelestialFormat.h` | Class `CelestialUI` — Celestial screen table and variables, realizes `IScreenUI`; `CelestialFormat` is the pure formatting (host-tested) |
+| `CelestialEngine.h/.cpp` | Class `CelestialEngine` — astronomy task on core 0, active only while the Celestial screen is |
+| `CelestialCalculator.h/.cpp`, `CelestialSelector.h/.cpp`, `NavStars.h/.cpp` | Geocentric Hc / Zn, rise / set and twilight; twilight body selection; the 57 navigational stars (pure, host-tested) |
+| `astronomy.h/.c` | Astronomy Engine 2.1.19 (C), copied unchanged from ESP32-Crowpanel-compass |
 | `SetupUI.h/.cpp` | Class `SetupUI` — brightness and wake-time sliders, prevent-sleep / demo / night switches (touch), realizes `IScreenUI` |
 | `MenuUI.h/.cpp` | Class `MenuUI` — page menu overlay and its hit-testing |
 | `TouchInput.h/.cpp` | Class `TouchInput` — touch polling, held/released state, drag points |
@@ -477,6 +516,7 @@ struct DepthDelta {
 | `lv_conf.h` | LVGL configuration (project-local, `LV_COLOR_DEPTH 16`, `LV_MEM_SIZE` 96 kB) |
 | `ui.h/.c`, `ui_ScreenMain.h/.c`, `ui_helpers.h/.c`, `ui_font_*.c`, `ui_img_*.c` | SquareLine Studio generated — UI, fonts and menu icons (day and night sets) |
 | `tests/host/` | Host unit tests for the pure logic (`make -C tests/host`); not part of the sketch |
+| `tests/celestial/` | Host tests for the celestial code against JPL Horizons and SIMBAD fixtures (`tests/celestial/run_tests.sh`) |
 | `hardware_notes_waveshare.md` | Waveshare pin map, parts, build settings, open hardware questions |
 | `hardware_notes.md` | CrowPanel (v1.0.0) pin map and measurements, kept for reference |
 | `CHANGELOG.md` | Release history (Keep a Changelog / Semantic Versioning) |
@@ -535,7 +575,7 @@ struct DepthDelta {
    | PSRAM | OPI PSRAM |
    | Flash Mode | QIO 80MHz |
 
-   The sketch is ~1.53 MB, about half of the Huge APP slot; the default 1.2 MB app partition is too small.
+   The sketch is ~1.82 MB (with the Celestial screen), under 60 % of the Huge APP slot; the default 1.2 MB app partition is too small.
 6. Point the ESP-NOW senders to the same WiFi channel
 
 **Note** that `lv_conf.h` is project-local. If you use LVGL elsewhere, a second `lv_conf.h` may live under `Arduino/libraries/` next to the `lvgl` folder — check both to avoid conflicts.

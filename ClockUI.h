@@ -48,7 +48,4 @@ private:
     // gettimeofday() returns ~1970, so a year threshold is a robust "have we synced?" test.
     static constexpr int MIN_VALID_YEAR = 2020;
 
-    // Demo time base: 2026-07-15 07:10:00 UTC = 10:10:00 local (EEST), plus uptime
-    static constexpr time_t DEMO_EPOCH_UTC = 1784099400;
-
 };

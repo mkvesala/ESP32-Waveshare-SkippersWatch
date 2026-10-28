@@ -58,6 +58,7 @@ WatchApplication::WatchApplication()
     , _weatherUI(_receiver)
     , _engineUI(_receiver)
     , _attitudeUI(_receiver)
+    , _celestialUI(_receiver)
     , _setupUI(_brightness)
     , _power(_brightness)
     , _theme(_battery, _menu)
@@ -111,6 +112,7 @@ void WatchApplication::begin() {
     _attitudeUI.begin();
     _clockUI.begin();
     _setupUI.begin();
+    _celestialUI.begin();
     _menu.begin();           // hides ui_ContainerMenu (the export leaves it visible)
     _status.begin();         // hides ui_ContainerStatus (likewise) and writes its titles
 
@@ -139,6 +141,7 @@ void WatchApplication::begin() {
     _screenMgr.addScreen(&_attitudeUI);
     _screenMgr.addScreen(&_clockUI);
     _screenMgr.addScreen(&_setupUI);
+    _screenMgr.addScreen(&_celestialUI);   // carousel only until SLS has its menu button
     // Restore the last-active page from RTC, else NVS, else Navigation. The actual
     // _screenMgr.begin(start_page) is deferred to after the dark listen window below, so
     // the page is revealed only once data has had a chance to arrive.
@@ -494,7 +497,9 @@ void WatchApplication::handleTimeSync() {
     if (!_receiver.hasNewDatetimeData()) return;
     DateTimeDelta dt = _receiver.getDatetimeData();
     if (!dt.time_valid) return;
-    struct timeval tv = { (time_t)dt.unix_utc, 0 };
+    // The sender truncates to whole seconds: +0.5 s centres the error (±0.5 s instead of
+    // 0..1 s late), which the Celestial page's Hc relies on (1 s ≈ 0.25' at most)
+    struct timeval tv = { (time_t)dt.unix_utc, 500000 };
     settimeofday(&tv, nullptr);
 }
 
@@ -505,6 +510,7 @@ void WatchApplication::applyModes() {
         _receiver.setDemoMode(demo);   // clears every source both ways
         _battery.setDemoSuffix(demo);
         _clockUI.setDemo(demo);
+        _celestialUI.setDemo(demo);
         if (demo) _demo.sendAll(millis());   // no placeholder gap after switching on
         Serial.printf("[demo] %s\n", demo ? "ON (ESP-NOW data not shown)" : "OFF");
     }
