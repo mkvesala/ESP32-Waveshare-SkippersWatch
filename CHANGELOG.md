@@ -24,6 +24,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### Changed
 
+- Built with **LVGL 9.6.0** (was 9.5.0) and **GFX Library for Arduino 1.6.9** (was 1.6.7).
+  No code changes needed. `lv_conf.h` rebuilt from the 9.6.0 template (the only project
+  changes stay: 96 kB `LV_MEM_SIZE`, NULL / malloc asserts on), so the deprecated
+  `LV_COLOR_DEPTH` is replaced by the template's `LV_COLOR_FORMAT_DEFAULT` RGB565 and 9.6's
+  new defaults apply (argument checks, style cache; sketch +21 kB).
 - New artwork for all page-menu icons, day and night sets (SquareLine assets renamed, e.g.
   `navigation.png` / `nightnavigation.png`; the old `*_96x96` / `*96night` images are gone).
 - GNSS time sync sets the system clock to the received second + 0.5 s: the sender truncates

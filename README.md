@@ -47,7 +47,7 @@ Developed on:
 - [ESP32 board package](https://github.com/espressif/arduino-esp32) (3.3.11)
 - [Arduino IDE](https://www.arduino.cc/en/software/) (2.3.x)
 - [LVGL](https://lvgl.io/) (9.5)
-- [Arduino GFX Library](https://github.com/moononournation/Arduino_GFX) (1.6.7, `Arduino_CO5300` driver)
+- [Arduino GFX Library](https://github.com/moononournation/Arduino_GFX) (1.6.9, `Arduino_CO5300` driver)
 - [XPowersLib](https://github.com/lewisxhe/XPowersLib) (0.3.3, AXP2101 PMIC)
 - [SquareLine Studio](https://squareline.io/) for UI design
 
@@ -513,7 +513,7 @@ struct DepthDelta {
 | `GestureClassifier.h` | Software gesture rules (pure, host-tested) |
 | `ft3168_touch.h/.cpp` | Local FT3168 capacitive-touch driver (registers from Waveshare's `Arduino_FT3x68`) |
 | `ScreenManager.h/.cpp` | Class `ScreenManager` — scalable screen carousel (container visibility) + direct jumps |
-| `lv_conf.h` | LVGL configuration (project-local, `LV_COLOR_DEPTH 16`, `LV_MEM_SIZE` 96 kB) |
+| `lv_conf.h` | LVGL configuration (project-local, from the 9.6.0 template: RGB565, `LV_MEM_SIZE` 96 kB) |
 | `ui.h/.c`, `ui_ScreenMain.h/.c`, `ui_helpers.h/.c`, `ui_font_*.c`, `ui_img_*.c` | SquareLine Studio generated — UI, fonts and menu icons (day and night sets) |
 | `tests/host/` | Host unit tests for the pure logic (`make -C tests/host`); not part of the sketch |
 | `tests/celestial/` | Host tests for the celestial code against JPL Horizons and SIMBAD fixtures (`tests/celestial/run_tests.sh`) |
@@ -545,8 +545,8 @@ struct DepthDelta {
 1. Arduino IDE 2.3.x
 2. Espressif Systems esp32 board package 3.x (developed on 3.3.11)
 3. Additional libraries:
-   - LVGL 9.x (with a project-local `lv_conf.h`, `LV_COLOR_DEPTH 16`)
-   - Arduino GFX Library 1.6.7 (contains `Arduino_CO5300`; no patch needed for this board — the `Arduino_GC9309` patch is only for the v1.0.0 CrowPanel build)
+   - LVGL 9.6.0 (with a project-local `lv_conf.h` built from its template; RGB565 colour format)
+   - Arduino GFX Library 1.6.9 (contains `Arduino_CO5300`; no patch needed for this board — the `Arduino_GC9309` patch is only for the v1.0.0 CrowPanel build)
    - XPowersLib 0.3.x (Lewis He) for the AXP2101
 4. SquareLine Studio for UI design and code generation
 5. The ESP-NOW sender projects (see above)
@@ -575,7 +575,7 @@ struct DepthDelta {
    | PSRAM | OPI PSRAM |
    | Flash Mode | QIO 80MHz |
 
-   The sketch is ~1.88 MB, under 60 % of the Huge APP slot; the default 1.2 MB app partition is too small.
+   The sketch is ~1.91 MB, about 60 % of the Huge APP slot; the default 1.2 MB app partition is too small.
 6. Point the ESP-NOW senders to the same WiFi channel
 
 **Note** that `lv_conf.h` is project-local. If you use LVGL elsewhere, a second `lv_conf.h` may live under `Arduino/libraries/` next to the `lvgl` folder — check both to avoid conflicts.

@@ -9,13 +9,13 @@ This project uses the following open-source libraries:
 - **Repository:** https://github.com/espressif/arduino-esp32
 
 ## LVGL
-- **Version:** 9.5.0
+- **Version:** 9.6.0
 - **Author:** LVGL
 - **License:** MIT
 - **Repository:** https://github.com/lvgl/lvgl
 
 ## Arduino GFX Library
-- **Version:** 1.6.7 (patched with Elecrow's `Arduino_GC9309` driver — mainline GFX has no GC9309; see README "Software")
+- **Version:** 1.6.9 (mainline; contains `Arduino_CO5300`. The v1.0.0 CrowPanel build needed 1.6.7 patched with Elecrow's `Arduino_GC9309` driver)
 - **Author:** Moon On Our Nation (moononournation)
 - **License:** BSD 3-Clause
 - **Repository:** https://github.com/moononournation/Arduino_GFX

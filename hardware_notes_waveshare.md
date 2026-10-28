@@ -175,10 +175,10 @@ used above and `XPOWERS_CHIP_AXP2101`.
 | PSRAM | OPI PSRAM (not used on the wake path) |
 | Flash Mode | QIO 80MHz |
 
-Libraries: GFX Library for Arduino 1.6.7 (the GC9309-patched install also contains
-`Arduino_CO5300` — confirmed), LVGL 9.5.0 with the project-local `lv_conf.h`,
+Libraries: GFX Library for Arduino 1.6.9 (mainline, contains `Arduino_CO5300`; 1.6.7
+GC9309-patched also worked), LVGL 9.6.0 with the project-local `lv_conf.h` (v9.6.0 template),
 **XPowersLib 0.3.3** (added for the port). No Arduino_DriveBus: the FT3168 is driven by
-the project's own `ft3168_touch.*`. Sketch: ~1.53 MB of the 3 MB app slot.
+the project's own `ft3168_touch.*`. Sketch: ~1.91 MB of the 3 MB app slot.
 
 CLI equivalent (the arduino-cli bundled with the IDE):
 `arduino-cli compile --fqbn esp32:esp32:esp32s3:CDCOnBoot=cdc,FlashSize=32M,PartitionScheme=huge_app,PSRAM=opi .`

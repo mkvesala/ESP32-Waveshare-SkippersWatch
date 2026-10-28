@@ -30,8 +30,8 @@ Please describe the tests that you ran to verify your changes.
 **Test Configuration**:
 - Arduino IDE: [e.g. 2.3.x]
 - ESP32 board package: [e.g. 3.3.8]
-- LVGL: [e.g. 9.5.0]
-- Arduino_GFX_Library: [e.g. 1.6.7 + GC9309 patch]
+- LVGL: [e.g. 9.6.0]
+- Arduino_GFX_Library: [e.g. 1.6.9]
 - SquareLine Studio: [e.g. 1.6.0]
 
 ## Checklist:
