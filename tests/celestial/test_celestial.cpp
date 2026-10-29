@@ -417,6 +417,30 @@ static void testFormat() {
     CHECK_STR(abbr("Al Na'ir"), "Al Na'.");
 }
 
+// --- date + stored position ----------------------------------------------
+
+static std::string fmtDate(double v) { char b[24]; CelestialFormat::formatDate(b, sizeof(b), v); return b; }
+static std::string marker(int64_t age) {
+    const char* m = CelestialFormat::storedPositionMarker(age);
+    return m ? m : "(none)";
+}
+
+static void testDateAndMarker() {
+    printf("date + stored position marker\n");
+    CHECK_STR(fmtDate(0.0), "01.01.1970");
+    CHECK_STR(fmtDate(1830297599.9), "31.12.2027");        // last second of 2027 (fraction dropped)
+    CHECK_STR(fmtDate(1830297600.0), "01.01.2028");
+    CHECK_STR(fmtDate(1835395200.0), "29.02.2028");        // leap day
+    CHECK_STR(fmtDate(1793232000.5), "29.10.2026");
+
+    CHECK_STR(marker(0), "*");
+    CHECK_STR(marker(900), "*");                           // 15 min: still "*"
+    CHECK_STR(marker(901), "**");
+    CHECK_STR(marker(3600), "**");                         // 1 h: still usable
+    CHECK_STR(marker(3601), "(none)");
+    CHECK_STR(marker(-1), "(none)");                       // clock behind the stamp
+}
+
 // --- freshness --------------------------------------------------------------
 
 static void testFreshness() {
@@ -446,6 +470,7 @@ int main() {
     testSelectorMoonPenalty();
     testSelectorHysteresis();
     testFormat();
+    testDateAndMarker();
     testFreshness();
 
     printf("\n%d checks, %d failures\n", s_checks, s_failures);

@@ -58,7 +58,7 @@ WatchApplication::WatchApplication()
     , _weatherUI(_receiver)
     , _engineUI(_receiver)
     , _attitudeUI(_receiver)
-    , _celestialUI(_receiver)
+    , _celestialUI(_receiver, _lastPosition)
     , _setupUI(_brightness)
     , _power(_brightness)
     , _theme(_battery, _menu)
@@ -297,12 +297,13 @@ void WatchApplication::savePageToNvs() {
     prefs.end();
 }
 
-// PowerManager pre-sleep hook: persist the page to flash on the way down. Runs before the
-// brightness ramp, with the radio idle and no render in flight, so this write is the only
-// load moving at that instant.
+// PowerManager pre-sleep hook: persist the page and Celestial's last known position to flash
+// on the way down. Runs before the brightness ramp, with the radio idle and no render in
+// flight, so these writes are the only load moving at that instant.
 void WatchApplication::preSleepFlush(void* ctx) {
     WatchApplication* self = static_cast<WatchApplication*>(ctx);
     if (self == nullptr) return;
+    self->_lastPosition.saveOnSleep();
     if (self->_nvs_page_written == s_last_page_index) return;   // nothing changed
     self->savePageToNvs();
     self->_nvs_page_written = s_last_page_index;
@@ -511,6 +512,7 @@ void WatchApplication::applyModes() {
         _battery.setDemoSuffix(demo);
         _clockUI.setDemo(demo);
         _celestialUI.setDemo(demo);
+        _lastPosition.setDemo(demo);
         if (demo) _demo.sendAll(millis());   // no placeholder gap after switching on
         Serial.printf("[demo] %s\n", demo ? "ON (ESP-NOW data not shown)" : "OFF");
     }
@@ -545,6 +547,8 @@ void WatchApplication::showStartupScreen() {
 void WatchApplication::handleUIUpdate(const uint32_t now) {
     if (now - _last_ui_update < UI_UPDATE_INTERVAL_MS) return;
     _last_ui_update = now;
+    // Celestial's last known position follows the live fix on every page, overlays included
+    _lastPosition.observe(_receiver.getGnssData(), _receiver.lastGnssRxMillis(), now);
     if (_status.isVisible()) { _status.update(now); return; }
     if (_menu.isVisible()) return;
 

@@ -4,10 +4,11 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
+#include <time.h>
 
 // === C E L E S T I A L  F O R M A T ===
 //
-// - Pure helpers for CelestialUI: label formatting and data freshness
+// - Pure helpers for CelestialUI: label formatting, data freshness and stored-position age
 // - No Arduino or LVGL dependencies — unit tested on the host (tests/celestial)
 // - Angles are rounded once to tenths of an arcminute, so 59.95' carries into the next degree
 // - Decimal point, not comma, as on the rest of the watch (NavigationUI POS)
@@ -15,6 +16,10 @@
 namespace CelestialFormat {
 
     static constexpr uint8_t NAME_MAX_CHARS = 6;     // longer names are shortened to 6 chars + "."
+
+    // Stored position (not live GNSS): up to 15 min "*", up to 1 h "**", older is not used
+    static constexpr int64_t STORED_POS_MARK1_S   = 15 * 60;
+    static constexpr int64_t STORED_POS_MAX_AGE_S = 60 * 60;
 
     // Split |deg| into whole degrees, whole minutes and tenths of a minute
     inline void splitDegMin(double deg, long& d, long& m, long& tenths) {
@@ -65,6 +70,21 @@ namespace CelestialFormat {
         size_t keep = NAME_MAX_CHARS;
         while (keep > 0 && name[keep - 1] == ' ') keep--;
         snprintf(buf, len, "%.*s.", (int)keep, name);
+    }
+
+    // UTC date as "dd.mm.yyyy"
+    inline void formatDate(char* buf, size_t len, double unix_utc) {
+        time_t t = (time_t)floor(unix_utc);
+        struct tm ut;
+        gmtime_r(&t, &ut);
+        snprintf(buf, len, "%02d.%02d.%04d", ut.tm_mday, ut.tm_mon + 1, ut.tm_year + 1900);
+    }
+
+    // Lat/lon suffix for a stored position of the given age: "*" / "**", or nullptr when it
+    // is too old (or from the future, i.e. the clock is off) to be used at all
+    inline const char* storedPositionMarker(int64_t age_s) {
+        if (age_s < 0 || age_s > STORED_POS_MAX_AGE_S) return nullptr;
+        return age_s <= STORED_POS_MARK1_S ? "*" : "**";
     }
 
     // True if a timestamp is set and younger than timeout (millis() wraparound safe)

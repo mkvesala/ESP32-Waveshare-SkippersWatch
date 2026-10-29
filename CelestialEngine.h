@@ -20,6 +20,8 @@
 //   planets + 57 stars → CelestialSelector (planet + 2 stars, or 3 stars).
 // - Inputs (time anchor + position) and the result are exchanged under a spinlock; the UI never
 //   touches Astronomy Engine, so the library is only ever used from this task.
+// - A new Inputs::source_tag (live GNSS <-> stored position) wakes the task for an immediate
+//   computation; the result echoes the tag so the UI can drop results of the old source.
 // - Uses: CelestialCalculator, CelestialSelector, NavStars
 // - Owned by: CelestialUI (Skipper's Watch; ported from ESP32-Crowpanel-compass)
 
@@ -32,7 +34,8 @@ public:
         uint32_t anchor_millis = 0;     // millis() at which unix_utc was true
         double   lat_deg       = 0.0;
         double   lon_deg       = 0.0;
-        bool     valid         = false; // position AND time fresh when the UI sampled them
+        bool     valid         = false; // position AND time usable when the UI sampled them
+        uint32_t source_tag    = 0;     // changed by the UI when the position source switches
     };
 
     struct Body {
@@ -54,6 +57,7 @@ public:
             CelestialSelector::NONE, CelestialSelector::NONE, CelestialSelector::NONE };
         Body     star_pos[CelestialSelector::MAX_STARS];
         uint32_t compute_us      = 0;
+        uint32_t source_tag      = 0;      // Inputs::source_tag this result was computed from
     };
 
     explicit CelestialEngine();

@@ -80,7 +80,7 @@ Port to the Waveshare AMOLED board: the full v1.0.0 feature set plus the [page m
 <!-- TODO(diagram): add class / UML diagram here, e.g. <img src="docs/full_uml_diagram.jpeg" width="480"> -->
 
 **`WatchApplication`:**
-- Owns: `Arduino_ESP32QSPI`, `Arduino_CO5300`, `PanelBrightness`, `ESPNowReceiver`, `NavigationUI`, `BatteryUI`, `WeatherUI`, `EngineUI`, `AttitudeUI`, `ClockUI`, `SetupUI`, `CelestialUI`, `MenuUI`, `TouchInput`, `ScreenManager`, `PowerManager`, `BatteryMonitor`, `DemoSource`, `ThemeController`, `SystemStats`, `StatusUI`
+- Owns: `Arduino_ESP32QSPI`, `Arduino_CO5300`, `PanelBrightness`, `ESPNowReceiver`, `NavigationUI`, `BatteryUI`, `WeatherUI`, `EngineUI`, `AttitudeUI`, `ClockUI`, `SetupUI`, `LastPosition`, `CelestialUI`, `MenuUI`, `TouchInput`, `ScreenManager`, `PowerManager`, `BatteryMonitor`, `DemoSource`, `ThemeController`, `SystemStats`, `StatusUI`
 - Responsible for: orchestrating everything within the main program, including the staggered wake sequence (with the startup screen on a true power-on), gesture dispatch (carousel and page menu), GNSS time discipline and applying Setup's demo and night switches
 
 **`PowerManager`:**
@@ -142,8 +142,12 @@ Port to the Waveshare AMOLED board: the full v1.0.0 feature set plus the [page m
 **`CelestialUI`:**
 - Realizes: `IScreenUI`
 - Owns: `CelestialEngine`
-- Uses: `ESPNowReceiver` (position, weather, time freshness), the ESP32 system clock, `CelestialFormat` (pure, host-tested)
-- Responsible for: the Celestial screen's table (body, Hc, Zn) and its variables (UTC, pressure, temperature, position), redrawn once per UTC second; no bodies without fresh time and position
+- Uses: `ESPNowReceiver` (position, weather, time freshness), `LastPosition` (fallback position), the ESP32 system clock, `CelestialFormat` (pure, host-tested)
+- Responsible for: the Celestial screen's table (body, Hc, Zn) and its variables (UTC date and time, pressure, temperature, position), redrawn once per UTC second; no bodies without fresh time and a live or ≤ 1 h old last known position
+
+**`LastPosition`:**
+- Responsible for: the Celestial screen's last known position — the latest fresh fix of the awake session (RAM), persisted to NVS in the pre-sleep flush and read back lazily on the first need of a wake; aged in UTC, usable for 1 h, expired records removed on sleep; nothing recorded in demo mode
+- Owned by: `WatchApplication`
 - Owned by: `WatchApplication`
 
 **`CelestialEngine`:**
@@ -268,9 +272,10 @@ A sight-reduction aid for sextant practice: the computed altitude **Hc** and tru
   - **Sun** and **Moon** between their rise and set (upper limb on the sea horizon with standard refraction, as almanac rise/set)
   - **Twilight**, from the middle of civil twilight through the whole of nautical twilight (Sun Hc −3° … −12°): three more bodies, **one planet and two stars or three stars**, picked by `CelestialSelector` so their azimuths are ~120° apart, Hc 15°–65° preferred (10°–75° hard limits), brighter and away from the Moon preferred. The set is re-evaluated every 60 s with hysteresis, at once if a member leaves the window
   - Star names are abbreviated to six letters (`Betelg.`, `Arctur.`)
-- **Variables** below the table: UTC time `HH:MM:SS UTC`, pressure (mbar) and air temperature, latitude and longitude — the values a sight reduction needs next to Hs
+- **Variables** below the table: UTC date `dd.mm.yyyy`, UTC time `HH:MM:SS UTC`, pressure (mbar) and air temperature, latitude and longitude — the values a sight reduction needs next to Hs
 - **Hc and Zn are geocentric**, as in the Nautical Almanac: apparent place of date from the Earth's centre, no refraction, no parallax, no semi-diameter, and **not related to the boat's heading**. Correct Hs → Ho yourself (dip, refraction with the shown pressure and temperature, SD, HP) as usual
-- **Freshness:** time is trusted only while GNSS `DateTimeDelta` keeps arriving (≤ 10 s old) — the RTC drifts during deep sleep. Position needs a fresh GNSS fix (≤ 6 s). Without either the table shows `No time` / `No fix` instead of bodies; each variable is dashed on its own when stale. `Wait` is shown until the first computation lands (≤ 1 s), `No bodies` at night outside twilight
+- **Freshness:** time is trusted only while GNSS `DateTimeDelta` keeps arriving (≤ 10 s old) — the RTC drifts during deep sleep. Position needs a fresh GNSS fix (≤ 6 s), or the last known position below. Without either the table shows `No time` / `No fix` instead of bodies; each variable is dashed on its own when stale. `Wait` is shown until the first computation lands (≤ 1 s), `No bodies` at night outside twilight
+- **Last known position:** without a live fix the screen uses the last one known — from this awake session, or stored to NVS on the way into the previous deep sleep (`LastPosition`). The latitude and longitude then carry `*` (up to 15 min old) or `**` (up to 1 h) after the hemisphere letter; an older position is not used and is removed from NVS on the next sleep. A live fix replaces it the moment it arrives (`Wait` until the table is recomputed, well under a second). The stored position is for the Celestial screen only — Navigation never shows it
 - **Computation only while the screen is shown:** the astronomy runs on its own task (`CelestialEngine`, core 0), created on the first visit of a wake, computing once per second while the screen is open and updated. Leaving the screen, or covering it with the page menu or status screen, stops it; double precision is software-emulated on the ESP32-S3, so a full twilight selection pass takes a few hundred ms
 - **Demo mode:** the same real computation on demo inputs — the demo position and weather, and the Clock screen's demo time. The variables show those inputs as if they were real, so the table can be checked against an almanac for the shown time and position
 - Last in the carousel, after Setup; the page menu has its own icon (day and night sets) in the bottom middle of the grid
@@ -504,6 +509,7 @@ struct DepthDelta {
 | `AttitudeUI.h/.cpp` | Class `AttitudeUI` — artificial horizon, realizes `IScreenUI` |
 | `ClockUI.h/.cpp` | Class `ClockUI` — system-clock reader + formatting, realizes `IScreenUI` |
 | `CelestialUI.h/.cpp`, `CelestialFormat.h` | Class `CelestialUI` — Celestial screen table and variables, realizes `IScreenUI`; `CelestialFormat` is the pure formatting (host-tested) |
+| `LastPosition.h/.cpp` | Class `LastPosition` — Celestial's last known position, session RAM + NVS on sleep |
 | `CelestialEngine.h/.cpp` | Class `CelestialEngine` — astronomy task on core 0, active only while the Celestial screen is |
 | `CelestialCalculator.h/.cpp`, `CelestialSelector.h/.cpp`, `NavStars.h/.cpp` | Geocentric Hc / Zn, rise / set and twilight; twilight body selection; the 57 navigational stars (pure, host-tested) |
 | `astronomy.h/.c` | Astronomy Engine 2.1.19 (C), copied unchanged from ESP32-Crowpanel-compass |

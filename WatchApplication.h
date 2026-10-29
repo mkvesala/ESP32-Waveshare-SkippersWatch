@@ -13,6 +13,7 @@
 #include "ClockUI.h"
 #include "SetupUI.h"
 #include "CelestialUI.h"
+#include "LastPosition.h"
 #include "MenuUI.h"
 #include "StatusUI.h"
 #include "SystemStats.h"
@@ -120,6 +121,7 @@ private:
     AttitudeUI     _attitudeUI;
     ClockUI        _clockUI;
     SetupUI        _setupUI;
+    LastPosition   _lastPosition;   // Celestial's fallback when no live fix (before _celestialUI)
     CelestialUI    _celestialUI;
     MenuUI         _menu;
     TouchInput     _touch;

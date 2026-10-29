@@ -18,6 +18,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
   menu or status overlay; the task is created on the first visit of a wake. No bodies
   without fresh GNSS time and position. In demo mode the same real computation runs on
   the demo position and time.
+- **Celestial: UTC date** (`dd.mm.yyyy`) as the first row of the variables.
+- **Celestial: last known position** (`LastPosition`) when GNSS has no fix: this awake
+  session's last fix, or the one stored to NVS (`watch/lastpos`) on the way into the previous
+  deep sleep. Used for up to 1 h and marked after the hemisphere letters — `*` up to 15 min
+  old, `**` up to 1 h; older is not used (`No fix`) and is removed from NVS on the next sleep.
+  A live fix takes over the moment it arrives. Celestial only — Navigation never shows it;
+  demo positions are never stored.
 - Host tests for the celestial code (`tests/celestial/`, JPL Horizons and SIMBAD fixtures).
 - **Celestial icon in the page menu** (`ui_ImgButtonCelestial` / `ui_ImgButtonCelestialNight`,
   bottom middle of the grid).

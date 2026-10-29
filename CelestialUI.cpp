@@ -7,8 +7,8 @@
 
 // === P U B L I C ===
 
-CelestialUI::CelestialUI(ESPNowReceiver& receiver)
-    : _receiver(receiver) {}
+CelestialUI::CelestialUI(ESPNowReceiver& receiver, LastPosition& last_position)
+    : _receiver(receiver), _last_position(last_position) {}
 
 lv_obj_t* CelestialUI::getLvglScreen() const {
     return ui_ContainerCelestial;
@@ -19,7 +19,7 @@ lv_obj_t* CelestialUI::getLvglScreen() const {
 void CelestialUI::begin() {
     if (_initialized) return;
     this->showNote("");
-    lv_label_set_text(ui_LabelVariables, "--:--:-- UTC\n---- mbar --°C\n--°--.-'\n---°--.-'");
+    lv_label_set_text(ui_LabelVariables, "--.--.----\n--:--:-- UTC\n---- mbar --°C\n--°--.-'\n---°--.-'");
     _initialized = true;
 }
 
@@ -43,23 +43,31 @@ void CelestialUI::update() {
 
     const uint32_t now = millis();
     const double utc = this->utcNow(now);
-    const GnssData gnss = _receiver.getGnssData();
     const bool time_ok = !isnan(utc);
-    const bool position_ok = this->positionFresh(gnss, now);
+    const Position pos = this->choosePosition(now, utc);
+
+    // Live GNSS <-> stored position: recompute and redraw at once, not on the next second
+    const bool stored = pos.ok && pos.marker[0] != '\0';
+    if (stored != _using_stored) {
+        _using_stored = stored;
+        _source_tag++;
+        _refresh_key = INT64_MIN;
+    }
 
     CelestialEngine::Inputs in;
     in.unix_utc      = time_ok ? utc : 0.0;
     in.anchor_millis = now;
-    in.lat_deg       = gnss.lat_deg;
-    in.lon_deg       = gnss.lon_deg;
-    in.valid         = time_ok && position_ok;
+    in.lat_deg       = pos.lat_deg;
+    in.lon_deg       = pos.lon_deg;
+    in.valid         = time_ok && pos.ok;
+    in.source_tag    = _source_tag;
     _engine.setInputs(in);
 
     const int64_t key = time_ok ? (int64_t)floor(utc)
                                 : -1 - (int64_t)(now / REFRESH_INTERVAL_MS);
     if (key == _refresh_key) return;
     _refresh_key = key;
-    this->refresh(now, utc, gnss, position_ok);
+    this->refresh(now, utc, pos);
 }
 
 // === P R I V A T E ===
@@ -89,24 +97,48 @@ bool CelestialUI::positionFresh(const GnssData& gnss, uint32_t now) const {
            CelestialFormat::isFresh(now, _receiver.lastGnssRxMillis(), GNSS_TIMEOUT_MS);
 }
 
+// Live GNSS whenever it is fresh. Otherwise the last known position (this session's last fix,
+// else the one stored at the previous sleep) while it is at most 1 h old — never in demo mode,
+// and only with trusted time, since its age is measured in UTC.
+CelestialUI::Position CelestialUI::choosePosition(uint32_t now, double utc) {
+    Position pos;
+    const GnssData gnss = _receiver.getGnssData();
+    if (this->positionFresh(gnss, now)) {
+        pos.ok      = true;
+        pos.lat_deg = gnss.lat_deg;
+        pos.lon_deg = gnss.lon_deg;
+        pos.marker  = "";
+        return pos;
+    }
+    LastPosition::Fix fix;
+    if (_demo || isnan(utc) || !_last_position.lookup(utc, now, fix)) return pos;
+    pos.ok      = true;
+    pos.lat_deg = fix.lat_deg;
+    pos.lon_deg = fix.lon_deg;
+    pos.marker  = CelestialFormat::storedPositionMarker(fix.age_s);
+    return pos;
+}
+
 bool CelestialUI::weatherFresh(uint32_t now) const {
     return CelestialFormat::isFresh(now, _receiver.lastWeatherRxMillis(), WEATHER_TIMEOUT_MS);
 }
 
-void CelestialUI::refresh(uint32_t now, double utc, const GnssData& gnss, bool position_ok) {
+void CelestialUI::refresh(uint32_t now, double utc, const Position& pos) {
     const bool time_ok = !isnan(utc);
-    this->updateTable(now, time_ok, position_ok);
-    this->updateVariables(utc, gnss, position_ok, this->weatherFresh(now));
+    this->updateTable(now, time_ok, pos.ok);
+    this->updateVariables(utc, pos, this->weatherFresh(now));
 }
 
 // Bodies of the latest engine result. Without fresh inputs (or a fresh result) the table shows
-// only a note — never positions computed for an old time or place.
+// only a note — never positions computed for an old time or place, nor for the position
+// source (live / stored) that was in use before the latest switch.
 void CelestialUI::updateTable(uint32_t now, bool time_ok, bool position_ok) {
     if (!time_ok)     { this->showNote("No\ntime"); return; }
     if (!position_ok) { this->showNote("No\nfix"); return; }
 
     const CelestialEngine::Result r = _engine.getResult();
-    if (r.seq == 0 || !r.valid || (uint32_t)(now - r.computed_millis) >= RESULT_MAX_AGE_MS) {
+    if (r.seq == 0 || !r.valid || r.source_tag != _source_tag ||
+        (uint32_t)(now - r.computed_millis) >= RESULT_MAX_AGE_MS) {
         this->showNote("Wait");
         return;
     }
@@ -146,15 +178,18 @@ void CelestialUI::updateTable(uint32_t now, bool time_ok, bool position_ok) {
     lv_label_set_text(ui_LabelZn, zns);
 }
 
-// "HH:MM:SS UTC" / "PPPP mbar TT°C" / latitude / longitude, each dashed on its own when stale
-void CelestialUI::updateVariables(double utc, const GnssData& gnss, bool position_ok, bool weather_ok) {
-    char time_s[16], wx_s[24], lat_s[16], lon_s[16];
+// "dd.mm.yyyy" / "HH:MM:SS UTC" / "PPPP mbar TT°C" / latitude / longitude, each dashed on its
+// own when stale. A stored position carries "*" (≤ 15 min old) or "**" (≤ 1 h) after N/S, E/W.
+void CelestialUI::updateVariables(double utc, const Position& pos, bool weather_ok) {
+    char date_s[16], time_s[16], wx_s[24], lat_s[20], lon_s[20];
 
     if (!isnan(utc)) {
+        CelestialFormat::formatDate(date_s, sizeof(date_s), utc);
         const uint32_t sod = (uint32_t)((int64_t)floor(utc) % 86400);
         snprintf(time_s, sizeof(time_s), "%02lu:%02lu:%02lu",
                  (unsigned long)(sod / 3600), (unsigned long)((sod / 60) % 60), (unsigned long)(sod % 60));
     } else {
+        snprintf(date_s, sizeof(date_s), "--.--.----");
         snprintf(time_s, sizeof(time_s), "--:--:--");
     }
 
@@ -166,16 +201,18 @@ void CelestialUI::updateVariables(double utc, const GnssData& gnss, bool positio
     else                                       snprintf(temp, sizeof(temp), "--");
     snprintf(wx_s, sizeof(wx_s), "%s mbar %s°C", pres, temp);
 
-    if (position_ok) {
-        CelestialFormat::formatLatitude(lat_s, sizeof(lat_s), gnss.lat_deg);
-        CelestialFormat::formatLongitude(lon_s, sizeof(lon_s), gnss.lon_deg);
+    if (pos.ok) {
+        CelestialFormat::formatLatitude(lat_s, sizeof(lat_s), pos.lat_deg);
+        CelestialFormat::formatLongitude(lon_s, sizeof(lon_s), pos.lon_deg);
+        strlcat(lat_s, pos.marker, sizeof(lat_s));
+        strlcat(lon_s, pos.marker, sizeof(lon_s));
     } else {
         snprintf(lat_s, sizeof(lat_s), "--°--.-'");
         snprintf(lon_s, sizeof(lon_s), "---°--.-'");
     }
 
-    char buf[80];
-    snprintf(buf, sizeof(buf), "%s UTC\n%s\n%s\n%s", time_s, wx_s, lat_s, lon_s);
+    char buf[112];
+    snprintf(buf, sizeof(buf), "%s\n%s UTC\n%s\n%s\n%s", date_s, time_s, wx_s, lat_s, lon_s);
     lv_label_set_text(ui_LabelVariables, buf);
 }
 

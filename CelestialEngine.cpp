@@ -27,12 +27,14 @@ void CelestialEngine::setActive(bool active) {
     if (active && _task) xTaskNotifyGive(_task);
 }
 
-// Latest time anchor and position from the UI
+// Latest time anchor and position from the UI. A switched position source computes at once.
 void CelestialEngine::setInputs(const Inputs& inputs) {
     portENTER_CRITICAL(&_spinlock);
+    const bool source_changed = inputs.source_tag != _inputs.source_tag;
     _inputs = inputs;
     _inputs_millis = millis();
     portEXIT_CRITICAL(&_spinlock);
+    if (source_changed && _task) xTaskNotifyGive(_task);
 }
 
 // Copy of the latest result
@@ -95,6 +97,7 @@ void CelestialEngine::run() {
         r.seq = ++_seq;
         r.computed_millis = start_ms;
         r.valid = in.valid;
+        r.source_tag = in.source_tag;
         r.compute_us = micros() - t0;
 
         portENTER_CRITICAL(&_spinlock);
