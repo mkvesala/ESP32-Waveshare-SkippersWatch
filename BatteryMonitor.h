@@ -33,9 +33,13 @@ public:
     // aligned with the color buckets below, so the red bar IS the WARN indicator.
     using Level = BatteryLevel;
 
-    // Bring up the AXP2101 on the shared bus and enable its ADC channels. Touches no
-    // power rails. False if the PMIC does not ACK (the bar then shows charging/100).
+    // Bring up the AXP2101 on the shared bus. Touches no power rails or ADC channels —
+    // PmuRails does, through pmu(). False if the PMIC does not ACK (the bar then shows
+    // charging/100).
     bool beginPmu(TwoWire& wire, int sda, int scl);
+
+    // The PMIC driver for PmuRails (null if beginPmu() failed). Ownership stays here.
+    XPowersAXP2101* pmu() const { return _pmu; }
 
     void begin();
     void update(uint32_t now);

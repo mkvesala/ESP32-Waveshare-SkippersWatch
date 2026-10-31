@@ -45,6 +45,29 @@ struct StatusFormat {
         }
     }
 
+    // Average battery drain since the drain baseline, from the gauge's percentage drop:
+    // "7.6 mA/36h". The gauge counts in 1 % steps (4 mAh on a 400 mAh cell), so under
+    // DRAIN_MIN_S the figure would be mostly rounding — show "-- mA/<1h" until then. A
+    // gauge that has crept UP (it re-estimates) reads as 0, never a negative drain.
+    static constexpr uint64_t DRAIN_MIN_S = 3600;
+    static void drain(bool valid, uint8_t base_pct, uint8_t now_pct, uint64_t elapsed_s,
+                      uint16_t capacity_mah, char* out, size_t len) {
+        if (!valid) {
+            snprintf(out, len, "-- (USB)");
+            return;
+        }
+        if (elapsed_s < DRAIN_MIN_S) {
+            snprintf(out, len, "-- mA/<1h");
+            return;
+        }
+        const unsigned drop = (now_pct < base_pct) ? (unsigned)(base_pct - now_pct) : 0u;
+        // mA × 10, rounded: drop % × capacity / 100 over elapsed hours
+        const uint64_t tenths = ((uint64_t)drop * capacity_mah * 36u * 10u + elapsed_s / 2u)
+                              / elapsed_s;
+        snprintf(out, len, "%u.%u mA/%lluh", (unsigned)(tenths / 10u), (unsigned)(tenths % 10u),
+                 (unsigned long long)(elapsed_s / 3600u));
+    }
+
     static const char* resetReason(int reason) {
         switch (reason) {
             case RST_POWERON:   return "POWERON";

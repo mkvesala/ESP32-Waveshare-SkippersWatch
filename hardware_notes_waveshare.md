@@ -106,11 +106,29 @@ Update the marks as the port progresses.
   | BLDO2 | VL 2.8 V |
   | CPUSLDO | 1.2 V |
 
-  **Which load is on which rail is [M].** Trace it on the schematic before disabling
-  any rail: cutting the rail that feeds the SoC or the I2C pull-ups leaves no way to
-  re-enable it from firmware.
-- The schematic has an `AXP_IRQ` net; it is **not** in Waveshare's GPIO table, so do
-  not assume the PMIC interrupt reaches the ESP32. [M]
+- **Rail-to-load map** traced on the schematic V1.0 (2026-10-31) [V]:
+
+  | Rail | Loads | Firmware (`PmuRails`) |
+  |---|---|---|
+  | DCDC1 = VCC3V3 | ESP32-S3, flash, AMOLED VCI/VDDIO (J3 pins 23/25/29/30), touch, QMI8658, ES8311 PVDD/DVDD, NS4150B, SD card + 10k pull-ups, I2C 2.2k pull-ups, BOOT/PWR pull-ups | never touched |
+  | ALDO1 = A3V3 | ES7210 (all supplies), ES8311 AVDD | left on; codecs powered down by register |
+  | ALDO2 | only `DSI_PWR_EN` (R10 10k pull-up) = the AMOLED module's own supply enable | off in deep sleep, on before panel init |
+  | ALDO3 | vibration-motor pad P1 (0R); no motor fitted | off |
+  | ALDO4, BLDO1/2, CPUSLDO, DLDO1/2 | no load (BLDOIN, CPUSLDO, DLDO pins unconnected) | off |
+  | DCDC2–4 | VIN/LX pins unconnected | not touched |
+  | DCDC5 | shares the `Vsys/DCDC5` node | not touched |
+  | RTCLDO = VCC-RTC | PCF85063 | — |
+
+  Cutting DCDC1 would cut the SoC and the I2C pull-ups, leaving no way back short of a
+  PMIC power cycle (PWR held ~6 s).
+- `AXP_IRQ` goes to VCC-RTC through a 10k pull-up and to an "EXIO5" label, **not** to an
+  ESP32 GPIO. It cannot wake the SoC. [V]
+- **PWR key circuit** [V]: PWRON (AXP2101) → 510R → key to GND; PWRON also drives the
+  gate of T1 (BSS138) through 1k. At rest T1 conducts and pulls SYS_OUT (GPIO10) low
+  against R11 (10k to VCC3V3), so R11 draws **~0.33 mA continuously** — a fixed part of
+  the sleep floor that firmware cannot remove. On a press T1 opens and R11 pulls GPIO10
+  high. The line is actively driven both ways, so no internal pull is needed for wake.
+- Battery TS pin has a 10k thermistor to GND (RP2).
 
 ## Audio (unused — default off)
 - ES8311 codec, ES7210 dual-mic ADC, NS4150B amplifier. [V]
@@ -125,7 +143,7 @@ Update the marks as the port progresses.
 ## Deep-sleep wake summary (Model B)
 | Source | GPIO | RTC-capable | Polarity | Use |
 |---|---|---|---|---|
-| PWR button | 10 | yes [D] | high = pressed | **primary candidate**, replaces encoder button GPIO18 |
+| PWR button | 10 | yes [D] | high = pressed | **in use** (ext1 ANY_HIGH), replaces encoder button GPIO18 |
 | BOOT button | 0 | yes [D] | low = pressed | secondary |
 | IMU INT1 | 21 | yes [D] | set in QMI8658 | wrist-raise, if ever wanted |
 | Timer | — | — | — | stuck-button recheck |
@@ -182,6 +200,19 @@ the project's own `ft3168_touch.*`. Sketch: ~1.91 MB of the 3 MB app slot.
 
 CLI equivalent (the arduino-cli bundled with the IDE):
 `arduino-cli compile --fqbn esp32:esp32:esp32s3:CDCOnBoot=cdc,FlashSize=32M,PartitionScheme=huge_app,PSRAM=opi .`
+
+## Deep-sleep floor
+
+First field test (2026-10-29…31, firmware before `PmuRails`): fully charged 400 mAh
+cell, demo mode, 1–2 wakes, < 1 min awake. Gauge 100 → 54 % (3.750 V) in 25 h and
+→ 23 % (3.683 V) in 36 h: **~7–8.5 mA average deep-sleep draw** [measured, from the
+gauge]. Target ≤ 2 mA (~200 h on 400 mAh).
+
+Measures added in v2.2.0, each behind its own switch in `PowerManager.h` for bisecting:
+ALDO2 off in sleep (`SLEEP_CUT_PANEL_POWER`), panel QSPI and I2S pads held at a defined
+level (`SLEEP_DEFINE_PADS`), unused LDOs off (`UNUSED_RAILS_OFF`), ES7210/ES8311
+power-down (`AUDIO_CODECS_OFF`), ext1 instead of ext0 (`WAKE_ON_EXT1`). Their effect is
+[M]: read the Status screen's **Avg drain** row after a night on battery.
 
 ## To measure first on the bench [M]
 1. Deep-sleep floor on battery only, with display off and everything default-off.

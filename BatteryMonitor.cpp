@@ -27,14 +27,10 @@ bool BatteryMonitor::beginPmu(TwoWire& wire, int sda, int scl) {
         return false;
     }
     // As in Waveshare's 05_LVGL_AXP2101_ADC_Data: IRQs off and cleared, 4.2 V charge
-    // target, ADC channels on. No rail is switched here (rail-to-load map is [M]).
+    // target. Rails and the ADC channels are PmuRails' job (beginAwake() runs next).
     pmu->disableIRQ(XPOWERS_AXP2101_ALL_IRQ);
     pmu->clearIrqStatus();
     pmu->setChargeTargetVoltage(XPOWERS_AXP2101_CHG_VOL_4V2);
-    pmu->enableBattDetection();
-    pmu->enableVbusVoltageMeasure();
-    pmu->enableBattVoltageMeasure();
-    pmu->enableSystemVoltageMeasure();
     _pmu = pmu;
     return true;
 }

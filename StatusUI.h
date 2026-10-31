@@ -4,6 +4,7 @@
 #include <lvgl.h>
 #include "SystemStats.h"
 #include "BatteryMonitor.h"
+#include "PmuRails.h"
 
 // === C L A S S  S T A T U S U I ===
 //
@@ -21,8 +22,8 @@ class StatusUI {
 
 public:
 
-    StatusUI(const SystemStats& stats, const BatteryMonitor& battery)
-        : _stats(stats), _battery(battery) {}
+    StatusUI(const SystemStats& stats, const BatteryMonitor& battery, const PmuRails& rails)
+        : _stats(stats), _battery(battery), _rails(rails) {}
 
     // Hide the container (the export leaves it visible) and write the titles
     void begin();
@@ -37,8 +38,12 @@ private:
 
     static constexpr uint32_t REFRESH_MS = 1000;
 
+    // Fitted cell, for the "Avg drain" estimate (gauge % → mAh)
+    static constexpr uint16_t BATTERY_CAPACITY_MAH = 400;
+
     const SystemStats& _stats;
     const BatteryMonitor& _battery;
+    const PmuRails& _rails;
     bool _visible = false;
     bool _initialized = false;
     uint32_t _last_refresh_ms = 0;

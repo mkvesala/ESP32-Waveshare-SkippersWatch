@@ -62,7 +62,7 @@ WatchApplication::WatchApplication()
     , _setupUI(_brightness)
     , _power(_brightness)
     , _theme(_battery, _menu)
-    , _status(_stats, _battery) {}
+    , _status(_stats, _battery, _rails) {}
 
 void WatchApplication::begin() {
     // Read the wake cause once, up front: it decides both the stuck-button path and, at
@@ -96,10 +96,15 @@ void WatchApplication::begin() {
     // below whether the radio is brought up at all.
     Wire.begin(PIN_I2C_SDA, PIN_I2C_SCL);
     _battery.beginPmu(Wire, PIN_I2C_SDA, PIN_I2C_SCL);
+    // Awake rail state BEFORE the panel init: the last sleep cut the AMOLED module's
+    // supply enable (ALDO2), and the codecs are powered down here, not later.
+    _rails.attach(_battery.pmu(), &Wire);
+    _rails.beginAwake();
 
     this->initDisplay();     // panel initialised DARK (brightness 0)
     this->initLvgl();
     _power.attachPeripherals(s_gfx, &_touch);
+    _power.attachRails(&_rails);
 
     // SquareLine UI (creates ui_ScreenMain + all containers, loads the screen)
     ui_init();
@@ -217,6 +222,15 @@ void WatchApplication::loop() {
     this->handleUIUpdate(now);
     _battery.update(now);   // refresh the top battery bar (self-gated, ~3 s cadence)
     this->checkBatteryCutoff();   // near-empty cell → charge prompt + protective sleep
+    _stats.trackDrain(_battery.charging(), _battery.soc());   // Status "Avg drain" baseline
+
+    // Rail dump once per USB session, after the host has had time to open the port
+    if (!_battery.charging()) {
+        _rails_logged = false;
+    } else if (!_rails_logged && now >= RAILS_LOG_DELAY_MS) {
+        _rails.logState();
+        _rails_logged = true;
+    }
 
     // Demo / night switches → data source and palette (no-op unless one flipped)
     this->applyModes();

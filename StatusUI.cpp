@@ -18,7 +18,9 @@ static const char* const kTitles =
     "Resets\n"
     "Last reset\n"
     "Chip temp\n"
-    "Battery voltage";
+    "Battery voltage\n"
+    "Avg drain\n"
+    "PMU rails";
 
 // === P U B L I C ===
 
@@ -66,9 +68,16 @@ void StatusUI::render() {
 
     const uint16_t mv = _battery.cellMillivolts();
 
-    char buf[400];
+    // Average drain since the battery-powered stretch began (baseline in SystemStats)
+    char drain[24], rails[24];
+    StatusFormat::drain(_stats.drainValid() && !_battery.charging(), _stats.drainBasePct(),
+                        _battery.soc(), _stats.drainElapsedS(), BATTERY_CAPACITY_MAH,
+                        drain, sizeof(drain));
+    _rails.summary(rails, sizeof(rails));
+
+    char buf[448];
     snprintf(buf, sizeof(buf),
-             "%s\n%lu\n%s\n%s\n%s\n%s\n%s\n%.1f / %.0f ms\n%lu\n%lu\n%s\n%.0f °C\n%u.%03u V",
+             "%s\n%lu\n%s\n%s\n%s\n%s\n%s\n%.1f / %.0f ms\n%lu\n%lu\n%s\n%.0f °C\n%u.%03u V\n%s\n%s",
              up,
              (unsigned long)_stats.wakeups(),
              awake,
@@ -81,6 +90,8 @@ void StatusUI::render() {
              (unsigned long)_stats.unexpectedResets(),
              StatusFormat::resetReason(_stats.lastResetReason()),
              temperatureRead(),
-             mv / 1000u, mv % 1000u);
+             mv / 1000u, mv % 1000u,
+             drain,
+             rails);
     lv_label_set_text(ui_LabelInfo1, buf);
 }

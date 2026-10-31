@@ -7,6 +7,8 @@
 #include "PanelBrightness.h"
 #include "TouchInput.h"
 
+class PmuRails;
+
 // === C L A S S  P O W E R M A N A G E R ===
 //
 // - Model B (deep-sleep wake-to-fetch) power owner for the SkippersWatch.
@@ -35,7 +37,7 @@
 //   3. Low-charge ladder — BatteryMonitor::Level shortens the display timeout, clamps
 //      the backlight, and finally forces a protective sleep before the cell reaches
 //      its own protection cutoff.
-//   4. Stuck wake-button guard — ext0 is LEVEL-triggered, so a button held down at
+//   4. Stuck wake-button guard — ext0/ext1 are LEVEL-triggered, so a button held down at
 //      sleep entry (strap/sleeve pressure on the PWR key) would wake the watch instantly, over
 //      and over. armWakeSource() then arms a timer instead and rechecks cheaply.
 //
@@ -62,6 +64,11 @@ public:
         _panel = panel;
         _touch = touch;
     }
+
+    // AXP2101 rail mechanism, switched to its sleep state at sleep entry. Null on the
+    // stuck-button timer path, which sleeps before the PMIC is brought up — the rails
+    // then simply stay in the state the previous sleep left them in.
+    void attachRails(PmuRails* rails) { _rails = rails; }
 
     // Stuck-wake-button recheck. Call immediately after releaseHolds(), before ANY rail,
     // display, UI or radio init. On a timer wake it re-reads the wake button and goes
@@ -122,7 +129,9 @@ public:
     // backlight ramps straight to the clamped target instead of flashing bright first
     static int8_t backlightCeilingFor(BatteryMonitor::Level level);
 
-    bool wokeFromButton() const { return _cause == ESP_SLEEP_WAKEUP_EXT0; }
+    bool wokeFromButton() const {
+        return _cause == ESP_SLEEP_WAKEUP_EXT0 || _cause == ESP_SLEEP_WAKEUP_EXT1;
+    }
     PowerState state() const { return _state; }
 
     // Default display-on window before returning to deep sleep, used until the app pushes
@@ -145,6 +154,25 @@ public:
     static constexpr uint32_t STAYAWAKE_DIM_IDLE_MS = 60000;
     static constexpr int8_t   STAYAWAKE_DIM_PERCENT = 5;
 
+    // --- Deep-sleep floor measures (2026-10-31) ---
+    // The first battery test drained ~7-8 mA in deep sleep (400 mAh, 100 -> 54 % in
+    // 25 h) against a ~2 mA target. Each measure has its own switch so the floor can be
+    // bisected over nights with the Status screen's "Avg drain" row, the only meter
+    // available. Expected effect per measure is [M] until that row says otherwise.
+    //
+    // ALDO2 off in sleep → DSI_PWR_EN low, the AMOLED module's own converter off (PmuRails)
+    static constexpr bool SLEEP_CUT_PANEL_POWER = true;
+    // QSPI and I2S pads driven to a defined level and held, instead of floating into
+    // inputs that are still powered (panel VDDIO and ES8311 sit on VCC3V3)
+    static constexpr bool SLEEP_DEFINE_PADS = true;
+    // Rails with no load (ALDO3/4, BLDO1/2, CPUSLDO, DLDO1/2) off on every wake (PmuRails)
+    static constexpr bool UNUSED_RAILS_OFF = true;
+    // ES7210 + ES8311 into their drivers' power-down state on every wake (PmuRails)
+    static constexpr bool AUDIO_CODECS_OFF = true;
+    // Wake on ext1 (RTC controller) instead of ext0, which keeps the RTC_PERIPH domain
+    // powered. GPIO10 is driven by T1/R11, so no internal pull is needed.
+    static constexpr bool WAKE_ON_EXT1 = true;
+
 private:
 
     // ramp_brightness=false for sleep paths that run before the panel is initialised
@@ -152,6 +180,7 @@ private:
     void enterDeepSleep(bool ramp_brightness = true);
     void rampBrightnessDown();
     void gatePeripherals();
+    void definePads();
     void armWakeSource();
     void initWatchdog();
 
@@ -173,6 +202,7 @@ private:
     PanelBrightness& _brightness;
     Arduino_OLED* _panel = nullptr;
     TouchInput*   _touch = nullptr;
+    PmuRails*     _rails = nullptr;
 
     const BatteryMonitor* _battery = nullptr;
 
@@ -190,7 +220,7 @@ private:
     bool _wdt_armed = false;
 
     // PWR button state line (SYS_OUT) — RTC-capable, ACTIVE-HIGH (high = pressed), the
-    // deep-sleep wake source (ext0, level 1). Touch cannot wake from deep sleep on this
+    // deep-sleep wake source (ext1 ANY_HIGH, or ext0 level 1 — see WAKE_ON_EXT1). Touch cannot wake from deep sleep on this
     // board: the FT3168 INT is GPIO38, not an RTC pin. The same key is the AXP2101 power
     // key: ~6 s held cuts power in hardware, whatever the firmware does.
     static constexpr uint8_t WAKE_BUTTON_PIN = 10;
@@ -201,6 +231,18 @@ private:
     static constexpr uint8_t PIN_LCD_RST  = 8;
     static constexpr uint8_t PIN_TP_RST   = TouchInput::TOUCH_RST_PIN;
     static constexpr uint8_t PIN_PA_CTRL  = 46;
+
+    // Pads latched through deep sleep when SLEEP_DEFINE_PADS is on. RTC pads (GPIO0-21)
+    // need gpio_hold_en() each; digital pads are covered by gpio_deep_sleep_hold_en().
+    // Panel QSPI: CS idle high, clock and data low.
+    static constexpr uint8_t PIN_LCD_CS   = 12;
+    static constexpr uint8_t PIN_LCD_SCK  = 11;
+    static constexpr uint8_t PIN_LCD_SIO[4] = { 4, 5, 6, 7 };
+    // I2S outputs towards the ES8311 (MCLK is an RTC pad, the rest are digital), driven
+    // low. ASDOUT (GPIO42) is an ES7210 OUTPUT, so it gets a pull-down, never a driver.
+    static constexpr uint8_t PIN_I2S_MCLK  = 16;
+    static constexpr uint8_t PIN_I2S_OUT[3] = { 40 /*DSDIN*/, 41 /*SCLK*/, 45 /*LRCK*/ };
+    static constexpr uint8_t PIN_I2S_ASDOUT = 42;
 
     // Stuck-button guard: how long to sleep before rechecking a held wake button
     static constexpr uint64_t STUCK_BUTTON_RECHECK_US = 30ULL * 1000ULL * 1000ULL;

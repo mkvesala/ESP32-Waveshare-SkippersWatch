@@ -13,6 +13,9 @@
 //       resets, and start over on a true power-on — exactly when the RTC timer does.
 //     * this wake: loop runtime (average and max).
 // - Deep sleep time is derived: uptime − awake time.
+// - Battery drain estimate: a baseline (gauge % + uptime) taken when a battery-powered
+//   stretch begins; the Status screen turns the drop since then into average mA. With
+//   no meter on the battery lead, this is how the sleep floor gets measured.
 // - onSleepEntry() is static and writes RTC RAM only (no flash), so PowerManager calls
 //   it on every sleep path, the stuck-button timer path included.
 // - Owned by: WatchApplication.
@@ -29,6 +32,14 @@ public:
 
     // Fold this wake's awake time and radio frame count into the power-on totals
     static void onSleepEntry(uint32_t radio_frames_this_wake);
+
+    // Call each loop after BatteryMonitor::update(). On USB the baseline is dropped; the
+    // first call on battery takes a new one, so it always starts at an unplug or a
+    // power-on on battery.
+    void trackDrain(bool on_usb, uint8_t soc);
+    bool     drainValid() const;
+    uint8_t  drainBasePct() const;
+    uint64_t drainElapsedS() const;
 
     uint64_t uptimeS() const;
     uint64_t awakeS() const;                 // power-on total incl. the current wake

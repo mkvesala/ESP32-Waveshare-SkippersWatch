@@ -13,9 +13,14 @@ namespace {
         uint64_t awake_ms;        // completed wakes only; the current one is millis()
         uint64_t radio_frames;    // completed wakes only
         uint32_t unexpected_resets;
+        // Drain baseline: gauge % and uptime when the current battery-powered stretch
+        // began (first loop off USB). Cleared while on USB.
+        uint32_t drain_valid;
+        uint32_t drain_base_pct;
+        uint64_t drain_base_s;
     };
     RTC_NOINIT_ATTR PowerOnStats s_stats;
-    constexpr uint32_t STATS_MAGIC = 0x57A75C01;
+    constexpr uint32_t STATS_MAGIC = 0x57A75C02;
 }
 
 // === P U B L I C ===
@@ -27,7 +32,7 @@ void SystemStats::onBoot(esp_sleep_wakeup_cause_t cause, esp_reset_reason_t reas
         s_stats.magic = STATS_MAGIC;
     }
     // A user wake is the PWR button; the stuck-button guard's timer wakes are not
-    if (cause == ESP_SLEEP_WAKEUP_EXT0) s_stats.wakeups++;
+    if (cause == ESP_SLEEP_WAKEUP_EXT0 || cause == ESP_SLEEP_WAKEUP_EXT1) s_stats.wakeups++;
     if (StatusFormat::isUnexpected((int)reason)) s_stats.unexpected_resets++;
 }
 
@@ -45,6 +50,31 @@ void SystemStats::onSleepEntry(uint32_t radio_frames_this_wake) {
     if (s_stats.magic != STATS_MAGIC) return;
     s_stats.awake_ms += millis();
     s_stats.radio_frames += radio_frames_this_wake;
+}
+
+void SystemStats::trackDrain(bool on_usb, uint8_t soc) {
+    if (s_stats.magic != STATS_MAGIC) return;
+    if (on_usb) {
+        s_stats.drain_valid = 0;
+        return;
+    }
+    if (s_stats.drain_valid) return;
+    s_stats.drain_valid    = 1;
+    s_stats.drain_base_pct = soc;
+    s_stats.drain_base_s   = this->uptimeS();
+}
+
+bool SystemStats::drainValid() const {
+    return s_stats.magic == STATS_MAGIC && s_stats.drain_valid != 0;
+}
+
+uint8_t SystemStats::drainBasePct() const {
+    return (uint8_t)s_stats.drain_base_pct;
+}
+
+uint64_t SystemStats::drainElapsedS() const {
+    const uint64_t up = this->uptimeS();
+    return up > s_stats.drain_base_s ? up - s_stats.drain_base_s : 0;
 }
 
 uint64_t SystemStats::uptimeS() const {

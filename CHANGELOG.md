@@ -4,6 +4,29 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- **Status: Avg drain** — average battery drain in mA since the battery-powered stretch
+  began (unplug or power-on on battery), from the AXP2101 gauge's percentage drop and the
+  RTC uptime, for a 400 mAh cell. Shows `-- mA/<1h` for the first hour (1 % = 4 mAh) and
+  `-- (USB)` on external power. The way to measure the sleep floor without a meter.
+- **Status: PMU rails** — AXP2101 rail enable registers (0x80, 0x90, 0x91) as raw hex. A
+  full decoded rail/ADC dump goes to Serial once per USB session.
+
+### Changed
+
+- **Deep-sleep floor** (first field test: ~7–8 mA against a 2 mA target). New `PmuRails`
+  owns the AXP2101 rail state from the traced rail-to-load map: ALDO2 (the AMOLED
+  module's `DSI_PWR_EN`) is cut in deep sleep and restored before the panel init, unused
+  LDOs are switched off, and the ES7210/ES8311 codecs are put into their drivers' power-down
+  state. Panel QSPI and I2S pads are held at defined levels through sleep. The PWR button
+  wakes via ext1 instead of ext0, so the RTC_PERIPH domain can power down. Each measure
+  has its own switch in `PowerManager.h`.
+- `BatteryMonitor::beginPmu()` no longer enables the VBUS/system ADC channels; `PmuRails`
+  turns them on while awake and off in sleep.
+
 ## [2.1.0] - 2026-10-27
 
 ### Added

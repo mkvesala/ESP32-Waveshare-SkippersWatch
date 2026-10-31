@@ -156,6 +156,12 @@ static bool fmtKb(uint32_t bytes, const char* expected) {
     return std::strcmp(buf, expected) == 0;
 }
 
+static bool fmtDrain(bool valid, uint8_t base, uint8_t now, uint64_t s, const char* expected) {
+    char buf[24];
+    StatusFormat::drain(valid, base, now, s, 400, buf, sizeof(buf));
+    return std::strcmp(buf, expected) == 0;
+}
+
 static void testStatusFormat() {
     using F = StatusFormat;
     CHECK_EQ(fmtDuration(0, "00h 00m 00s"), true);
@@ -184,6 +190,14 @@ static void testStatusFormat() {
     CHECK_EQ(F::shouldReset(false, F::RST_DEEPSLEEP), true);
     CHECK_EQ(F::shouldReset(true, F::RST_DEEPSLEEP), false);
     CHECK_EQ(F::shouldReset(true, F::RST_TASK_WDT), false);
+
+    // Drain: the field test (100 -> 54 % of 400 mAh in 25 h) reads as 7.4 mA
+    CHECK_EQ(fmtDrain(true, 100, 54, 25ull * 3600, "7.4 mA/25h"), true);
+    CHECK_EQ(fmtDrain(true, 100, 92, 16ull * 3600, "2.0 mA/16h"), true);   // the target
+    CHECK_EQ(fmtDrain(true, 80, 80, 10ull * 3600, "0.0 mA/10h"), true);
+    CHECK_EQ(fmtDrain(true, 80, 81, 10ull * 3600, "0.0 mA/10h"), true);    // gauge crept up
+    CHECK_EQ(fmtDrain(true, 80, 70, 3599, "-- mA/<1h"), true);
+    CHECK_EQ(fmtDrain(false, 80, 70, 99999, "-- (USB)"), true);
 }
 
 int main() {

@@ -21,6 +21,7 @@
 #include "ScreenManager.h"
 #include "PowerManager.h"
 #include "BatteryMonitor.h"
+#include "PmuRails.h"
 #include "PanelBrightness.h"
 #include "DemoSource.h"
 #include "ThemeController.h"
@@ -128,9 +129,15 @@ private:
     ScreenManager  _screenMgr;
     PowerManager   _power;
     BatteryMonitor _battery;   // drives the top bar from the watch's own LiPo (AXP2101)
+    PmuRails       _rails;     // AXP2101 rail state awake / asleep (driver owned by _battery)
     ThemeController _theme;
     SystemStats    _stats;
     StatusUI       _status;
+
+    // Full rail dump to Serial once per USB session: the native USB port only exists
+    // while plugged in, and enumerates too late for a dump at boot.
+    bool _rails_logged = false;
+    static constexpr uint32_t RAILS_LOG_DELAY_MS = 3000;
 
     // Demo mode as currently applied to the receiver (Setup holds the user's choice)
     bool _demo_active = false;
