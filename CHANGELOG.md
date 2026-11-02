@@ -18,12 +18,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 ### Changed
 
 - **Deep-sleep floor** (first field test: ~7–8 mA against a 2 mA target). New `PmuRails`
-  owns the AXP2101 rail state from the traced rail-to-load map: ALDO2 (the AMOLED
-  module's `DSI_PWR_EN`) is cut in deep sleep and restored before the panel init, unused
-  LDOs are switched off, and the ES7210/ES8311 codecs are put into their drivers' power-down
-  state. Panel QSPI and I2S pads are held at defined levels through sleep. The PWR button
-  wakes via ext1 instead of ext0, so the RTC_PERIPH domain can power down. Each measure
-  has its own switch in `PowerManager.h`.
+  owns the AXP2101 rail state from the traced rail-to-load map: unused LDOs are switched
+  off, and the ES7210/ES8311 codecs are put into their drivers' power-down state. Panel
+  QSPI and I2S pads are held at defined levels through sleep, the CO5300 enters deep
+  standby (0x4F) after sleep-in, and the PWR button wakes via ext1 instead of ext0. Each
+  measure has its own switch in `PowerManager.h`. Cutting ALDO2 (the AMOLED module's
+  `DSI_PWR_EN`) in sleep was measured at +30–40 mA and is switched off. The bisection
+  results are in `hardware_notes_waveshare.md`.
+- **Avg drain** restarts its baseline when the AXP2101 gauge reads above it. The gauge
+  climbs for an hour or more after a USB unplug or a power cycle.
 - `BatteryMonitor::beginPmu()` no longer enables the VBUS/system ADC channels; `PmuRails`
   turns them on while awake and off in sleep.
 

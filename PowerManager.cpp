@@ -207,6 +207,12 @@ void PowerManager::gatePeripherals() {
     if (_panel != nullptr) {
         _brightness.set(0);
         _panel->displayOff();
+        if (PANEL_DEEP_STANDBY && _panel_bus != nullptr) {
+            _panel_bus->beginWrite();
+            _panel_bus->writeC8D8(PANEL_CMD_DEEP_STANDBY, 0x01);
+            _panel_bus->endWrite();
+            delay(PANEL_DEEP_STANDBY_MS);
+        }
     }
     if (_touch != nullptr) _touch->hibernate();
     if (_rails != nullptr) _rails->enterSleep();   // last I2C traffic of this wake

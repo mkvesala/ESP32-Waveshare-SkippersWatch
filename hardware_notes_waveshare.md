@@ -112,7 +112,7 @@ Update the marks as the port progresses.
   |---|---|---|
   | DCDC1 = VCC3V3 | ESP32-S3, flash, AMOLED VCI/VDDIO (J3 pins 23/25/29/30), touch, QMI8658, ES8311 PVDD/DVDD, NS4150B, SD card + 10k pull-ups, I2C 2.2k pull-ups, BOOT/PWR pull-ups | never touched |
   | ALDO1 = A3V3 | ES7210 (all supplies), ES8311 AVDD | left on; codecs powered down by register |
-  | ALDO2 | only `DSI_PWR_EN` (R10 10k pull-up) = the AMOLED module's own supply enable | off in deep sleep, on before panel init |
+  | ALDO2 | only `DSI_PWR_EN` (R10 10k pull-up) = the AMOLED module's own supply enable | stays on: cutting it in sleep measured +30–40 mA |
   | ALDO3 | vibration-motor pad P1 (0R); no motor fitted | off |
   | ALDO4, BLDO1/2, CPUSLDO, DLDO1/2 | no load (BLDOIN, CPUSLDO, DLDO pins unconnected) | off |
   | DCDC2–4 | VIN/LX pins unconnected | not touched |
@@ -208,11 +208,26 @@ cell, demo mode, 1–2 wakes, < 1 min awake. Gauge 100 → 54 % (3.750 V) in 25 
 → 23 % (3.683 V) in 36 h: **~7–8.5 mA average deep-sleep draw** [measured, from the
 gauge]. Target ≤ 2 mA (~200 h on 400 mAh).
 
-Measures added in v2.2.0, each behind its own switch in `PowerManager.h` for bisecting:
-ALDO2 off in sleep (`SLEEP_CUT_PANEL_POWER`), panel QSPI and I2S pads held at a defined
-level (`SLEEP_DEFINE_PADS`), unused LDOs off (`UNUSED_RAILS_OFF`), ES7210/ES8311
-power-down (`AUDIO_CODECS_OFF`), ext1 instead of ext0 (`WAKE_ON_EXT1`). Their effect is
-[M]: read the Status screen's **Avg drain** row after a night on battery.
+Measures added in v2.2.0, each behind its own switch in `PowerManager.h` for bisecting.
+Results from the Status screen's **Avg drain** row on battery (2026-10-31…11-02):
+
+| Test | Switches | Drain |
+|---|---|---|
+| all on | ALDO2 cut + pads + rails + codecs + ext1 | **36.0 mA** / 10 h |
+| A | rails + codecs + ext1 | 7.9 mA / 8 h — no gain over baseline |
+| B | A + ALDO2 cut | **49.6 mA** / 4 h |
+| C | A + pads held | ~8.4 mA / 14 h — no gain |
+| D | C + CO5300 deep standby (`PANEL_DEEP_STANDBY`) | [M], running |
+
+- **Cutting ALDO2 (`DSI_PWR_EN`) in sleep is harmful** [measured]: +30–40 mA. The AMOLED
+  module draws more with its supply enable low while its logic stays on VCC3V3.
+  `SLEEP_CUT_PANEL_POWER` stays false.
+- The unused LDOs, codec power-down, ext1 wake and held pads are each below the gauge's
+  resolution over one night. They stay on as harmless.
+- **Gauge caveat** [measured]: after a USB unplug or a PWR power cycle the AXP2101 gauge
+  re-estimates *upwards* for an hour or more (57 → 62 %, 50 → 80 %). The drain baseline
+  therefore restarts whenever the gauge reads above it. Start a test by unplugging USB
+  only.
 
 ## To measure first on the bench [M]
 1. Deep-sleep floor on battery only, with display off and everything default-off.

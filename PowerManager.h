@@ -60,8 +60,9 @@ public:
 
     // Hand over the peripherals put to sleep at sleep entry. Until attached (the stuck-
     // button timer path), sleep entry only latches the pins.
-    void attachPeripherals(Arduino_OLED* panel, TouchInput* touch) {
+    void attachPeripherals(Arduino_OLED* panel, Arduino_DataBus* panel_bus, TouchInput* touch) {
         _panel = panel;
+        _panel_bus = panel_bus;
         _touch = touch;
     }
 
@@ -161,10 +162,10 @@ public:
     // available. Expected effect per measure is [M] until that row says otherwise.
     //
     // ALDO2 off in sleep → DSI_PWR_EN low, the AMOLED module's own converter off (PmuRails)
-    static constexpr bool SLEEP_CUT_PANEL_POWER = true;
+    static constexpr bool SLEEP_CUT_PANEL_POWER = false;   // MEASURED HARMFUL: 49.6 mA alone, 36 mA with pads
     // QSPI and I2S pads driven to a defined level and held, instead of floating into
     // inputs that are still powered (panel VDDIO and ES8311 sit on VCC3V3)
-    static constexpr bool SLEEP_DEFINE_PADS = true;
+    static constexpr bool SLEEP_DEFINE_PADS = true;        // bisect C (panel stays powered)
     // Rails with no load (ALDO3/4, BLDO1/2, CPUSLDO, DLDO1/2) off on every wake (PmuRails)
     static constexpr bool UNUSED_RAILS_OFF = true;
     // ES7210 + ES8311 into their drivers' power-down state on every wake (PmuRails)
@@ -172,6 +173,10 @@ public:
     // Wake on ext1 (RTC controller) instead of ext0, which keeps the RTC_PERIPH domain
     // powered. GPIO10 is driven by T1/R11, so no internal pull is needed.
     static constexpr bool WAKE_ON_EXT1 = true;
+    // CO5300 deep standby (0x4F = 0x01) after sleep-in. Left commented out in GFX's own
+    // Arduino_CO5300::displayOff(). Exit needs a hardware reset, which every wake's panel
+    // init already does.
+    static constexpr bool PANEL_DEEP_STANDBY = true;    // bisect D (C: 8.4 mA)
 
 private:
 
@@ -201,6 +206,7 @@ private:
 
     PanelBrightness& _brightness;
     Arduino_OLED* _panel = nullptr;
+    Arduino_DataBus* _panel_bus = nullptr;   // raw commands the driver does not expose
     TouchInput*   _touch = nullptr;
     PmuRails*     _rails = nullptr;
 
@@ -231,6 +237,10 @@ private:
     static constexpr uint8_t PIN_LCD_RST  = 8;
     static constexpr uint8_t PIN_TP_RST   = TouchInput::TOUCH_RST_PIN;
     static constexpr uint8_t PIN_PA_CTRL  = 46;
+
+    // CO5300 Deep Standby Mode register (GFX CO5300_W_DEEPSTMODE) and a settle time [M]
+    static constexpr uint8_t PANEL_CMD_DEEP_STANDBY = 0x4F;
+    static constexpr uint32_t PANEL_DEEP_STANDBY_MS = 10;
 
     // Pads latched through deep sleep when SLEEP_DEFINE_PADS is on. RTC pads (GPIO0-21)
     // need gpio_hold_en() each; digital pads are covered by gpio_deep_sleep_hold_en().

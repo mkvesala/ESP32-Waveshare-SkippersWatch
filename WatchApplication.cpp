@@ -103,7 +103,7 @@ void WatchApplication::begin() {
 
     this->initDisplay();     // panel initialised DARK (brightness 0)
     this->initLvgl();
-    _power.attachPeripherals(s_gfx, &_touch);
+    _power.attachPeripherals(s_gfx, s_bus, &_touch);
     _power.attachRails(&_rails);
 
     // SquareLine UI (creates ui_ScreenMain + all containers, loads the screen)

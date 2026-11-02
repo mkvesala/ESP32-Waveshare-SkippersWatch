@@ -18,7 +18,8 @@ class XPowersAXP2101;   // XPowersLib, included only in the .cpp files
 //                     ES7210's I2C pins sit on 3.3 V pull-ups would back-power it through
 //                     its ESD diodes. The codecs are powered down by register instead.
 //     ALDO2           only DSI_PWR_EN (10k pull-up): the AMOLED module's own supply
-//                     enable. Cut in deep sleep, restored before the panel init.
+//                     enable. Left ON: cutting it in sleep measured +30-40 mA
+//                     (SLEEP_CUT_PANEL_POWER, off). Always restored before the panel init.
 //     ALDO3           vibration-motor pad (0R); no motor on this board.
 //     ALDO4, BLDO1/2, DLDO1/2, CPUSLDO   no load. Off.
 //     DCDC2..5        not touched (pins unconnected; DCDC5 shares the VSYS node).

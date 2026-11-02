@@ -35,7 +35,7 @@ public:
 
     // Call each loop after BatteryMonitor::update(). On USB the baseline is dropped; the
     // first call on battery takes a new one, so it always starts at an unplug or a
-    // power-on on battery.
+    // power-on on battery. A gauge reading above the baseline restarts it there.
     void trackDrain(bool on_usb, uint8_t soc);
     bool     drainValid() const;
     uint8_t  drainBasePct() const;

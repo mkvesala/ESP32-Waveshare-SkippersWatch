@@ -58,7 +58,10 @@ void SystemStats::trackDrain(bool on_usb, uint8_t soc) {
         s_stats.drain_valid = 0;
         return;
     }
-    if (s_stats.drain_valid) return;
+    // The AXP2101 gauge re-estimates upwards for hours after a USB unplug or a PMIC power
+    // cycle (measured: 50 → 80 %, 57 → 62 %). A reading above the baseline means the
+    // baseline was too low, so restart from the higher reading instead of reporting 0.
+    if (s_stats.drain_valid && soc <= s_stats.drain_base_pct) return;
     s_stats.drain_valid    = 1;
     s_stats.drain_base_pct = soc;
     s_stats.drain_base_s   = this->uptimeS();
