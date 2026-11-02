@@ -20,7 +20,8 @@ static const char* const kTitles =
     "Chip temp\n"
     "Battery voltage\n"
     "Avg drain\n"
-    "PMU rails";
+    "PMU rails\n"
+    "Sleep lines";
 
 // === P U B L I C ===
 
@@ -77,7 +78,7 @@ void StatusUI::render() {
 
     char buf[448];
     snprintf(buf, sizeof(buf),
-             "%s\n%lu\n%s\n%s\n%s\n%s\n%s\n%.1f / %.0f ms\n%lu\n%lu\n%s\n%.0f °C\n%u.%03u V\n%s\n%s",
+             "%s\n%lu\n%s\n%s\n%s\n%s\n%s\n%.1f / %.0f ms\n%lu\n%lu\n%s\n%.0f °C\n%u.%03u V\n%s\n%s\n%s",
              up,
              (unsigned long)_stats.wakeups(),
              awake,
@@ -92,6 +93,7 @@ void StatusUI::render() {
              temperatureRead(),
              mv / 1000u, mv % 1000u,
              drain,
-             rails);
+             rails,
+             _stats.sleepLines());
     lv_label_set_text(ui_LabelInfo1, buf);
 }

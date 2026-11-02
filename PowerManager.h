@@ -162,7 +162,7 @@ public:
     // available. Expected effect per measure is [M] until that row says otherwise.
     //
     // ALDO2 off in sleep → DSI_PWR_EN low, the AMOLED module's own converter off (PmuRails)
-    static constexpr bool SLEEP_CUT_PANEL_POWER = false;   // MEASURED HARMFUL: 49.6 mA alone, 36 mA with pads
+    static constexpr bool SLEEP_CUT_PANEL_POWER = true;    // bisect E, with deep standby (without it: 49.6 mA alone, 36 mA with pads)
     // QSPI and I2S pads driven to a defined level and held, instead of floating into
     // inputs that are still powered (panel VDDIO and ES8311 sit on VCC3V3)
     static constexpr bool SLEEP_DEFINE_PADS = true;        // bisect C (panel stays powered)
@@ -176,7 +176,7 @@ public:
     // CO5300 deep standby (0x4F = 0x01) after sleep-in. Left commented out in GFX's own
     // Arduino_CO5300::displayOff(). Exit needs a hardware reset, which every wake's panel
     // init already does.
-    static constexpr bool PANEL_DEEP_STANDBY = true;    // bisect D (C: 8.4 mA)
+    static constexpr bool PANEL_DEEP_STANDBY = true;    // bisect D: 6.3 mA (C: 8.4 mA)
 
 private:
 
@@ -186,6 +186,7 @@ private:
     void rampBrightnessDown();
     void gatePeripherals();
     void definePads();
+    void probeSleepLines();
     void armWakeSource();
     void initWatchdog();
 
@@ -241,6 +242,12 @@ private:
     // CO5300 Deep Standby Mode register (GFX CO5300_W_DEEPSTMODE) and a settle time [M]
     static constexpr uint8_t PANEL_CMD_DEEP_STANDBY = 0x4F;
     static constexpr uint32_t PANEL_DEEP_STANDBY_MS = 10;
+
+    // Sleep-line probe (diagnostic, see probeSleepLines): I2C SCL/SDA (14/15) | touch,
+    // RTC and IMU interrupts (38/39/21) | panel TE (13), shown on Status as "HH HFL L".
+    static constexpr bool PROBE_SLEEP_LINES = true;
+    static constexpr uint8_t PROBE_PINS[6] = { 14, 15, 38, 39, 21, 13 };
+    static constexpr uint32_t PROBE_SETTLE_US = 50;
 
     // Pads latched through deep sleep when SLEEP_DEFINE_PADS is on. RTC pads (GPIO0-21)
     // need gpio_hold_en() each; digital pads are covered by gpio_deep_sleep_hold_en().

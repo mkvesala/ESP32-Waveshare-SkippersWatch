@@ -18,9 +18,10 @@ namespace {
         uint32_t drain_valid;
         uint32_t drain_base_pct;
         uint64_t drain_base_s;
+        char     sleep_lines[12];   // PowerManager's probe at the last sleep entry
     };
     RTC_NOINIT_ATTR PowerOnStats s_stats;
-    constexpr uint32_t STATS_MAGIC = 0x57A75C02;
+    constexpr uint32_t STATS_MAGIC = 0x57A75C03;
 }
 
 // === P U B L I C ===
@@ -50,6 +51,16 @@ void SystemStats::onSleepEntry(uint32_t radio_frames_this_wake) {
     if (s_stats.magic != STATS_MAGIC) return;
     s_stats.awake_ms += millis();
     s_stats.radio_frames += radio_frames_this_wake;
+}
+
+void SystemStats::recordSleepLines(const char* lines) {
+    if (s_stats.magic != STATS_MAGIC) return;
+    strlcpy(s_stats.sleep_lines, lines, sizeof(s_stats.sleep_lines));
+}
+
+const char* SystemStats::sleepLines() const {
+    if (s_stats.magic != STATS_MAGIC || s_stats.sleep_lines[0] == '\0') return "--";
+    return s_stats.sleep_lines;
 }
 
 void SystemStats::trackDrain(bool on_usb, uint8_t soc) {

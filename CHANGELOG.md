@@ -14,6 +14,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
   `-- (USB)` on external power. The way to measure the sleep floor without a meter.
 - **Status: PMU rails** — AXP2101 rail enable registers (0x80, 0x90, 0x91) as raw hex. A
   full decoded rail/ADC dump goes to Serial once per USB session.
+- **Status: Sleep lines** — levels of I2C SCL/SDA, the touch, RTC and IMU interrupts
+  and panel TE, probed at each sleep entry with the internal pull-down and then pull-up
+  (`H`/`L`/`F` = high, low, floating). Shows whether any line sits low against a pull-up
+  through sleep. First reading: `HH HFF L`, no leak.
 
 ### Changed
 
@@ -23,8 +27,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
   QSPI and I2S pads are held at defined levels through sleep, the CO5300 enters deep
   standby (0x4F) after sleep-in, and the PWR button wakes via ext1 instead of ext0. Each
   measure has its own switch in `PowerManager.h`. Cutting ALDO2 (the AMOLED module's
-  `DSI_PWR_EN`) in sleep was measured at +30–40 mA and is switched off. The bisection
-  results are in `hardware_notes_waveshare.md`.
+  `DSI_PWR_EN`) in sleep measured +30–40 mA without deep standby; with deep standby
+  (6.3 mA) it is being retried as bisect E. The bisection results are in
+  `hardware_notes_waveshare.md`.
 - **Avg drain** restarts its baseline when the AXP2101 gauge reads above it. The gauge
   climbs for an hour or more after a USB unplug or a power cycle.
 - `BatteryMonitor::beginPmu()` no longer enables the VBUS/system ADC channels; `PmuRails`

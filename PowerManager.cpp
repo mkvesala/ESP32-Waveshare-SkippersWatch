@@ -1,6 +1,7 @@
 #include "PowerManager.h"
 #include "PmuRails.h"
 #include "SystemStats.h"
+#include "StatusFormat.h"
 #include "ESPNowReceiver.h"
 #include <driver/gpio.h>
 #include <driver/rtc_io.h>
@@ -216,6 +217,7 @@ void PowerManager::gatePeripherals() {
     }
     if (_touch != nullptr) _touch->hibernate();
     if (_rails != nullptr) _rails->enterSleep();   // last I2C traffic of this wake
+    if (PROBE_SLEEP_LINES) this->probeSleepLines();
     if (SLEEP_DEFINE_PADS) this->definePads();
 
     pinMode(PIN_LCD_RST, OUTPUT);
@@ -236,6 +238,32 @@ void PowerManager::gatePeripherals() {
 // powered CMOS input left halfway — a classic source of a few hundred µA each. The
 // QSPI bus driver is not torn down first: the pins are simply reclaimed as GPIOs, and
 // the next boot builds the bus from scratch after releaseHolds().
+// Sleep-floor diagnostic: with every peripheral asleep, each line that an external chip
+// drives or a resistor pulls is read with the internal pull-down, then the pull-up.
+// "L" on a line with an external pull-up means current through that resistor all
+// night (2.2k on I2C: ~1.5 mA); "F" means it floats. The pads are left disabled, as
+// they were. Shown on the next wake's Status screen.
+void PowerManager::probeSleepLines() {
+    char out[sizeof(PROBE_PINS) + 3];
+    size_t n = 0;
+    for (size_t i = 0; i < sizeof(PROBE_PINS); i++) {
+        const gpio_num_t pin = (gpio_num_t)PROBE_PINS[i];
+        gpio_set_direction(pin, GPIO_MODE_INPUT);
+        gpio_set_pull_mode(pin, GPIO_PULLDOWN_ONLY);
+        delayMicroseconds(PROBE_SETTLE_US);
+        const bool low_pull = gpio_get_level(pin);
+        gpio_set_pull_mode(pin, GPIO_PULLUP_ONLY);
+        delayMicroseconds(PROBE_SETTLE_US);
+        const bool high_pull = gpio_get_level(pin);
+        gpio_set_pull_mode(pin, GPIO_FLOATING);
+        gpio_set_direction(pin, GPIO_MODE_DISABLE);
+        if (i == 2 || i == 5) out[n++] = ' ';   // groups: I2C | interrupts | TE
+        out[n++] = StatusFormat::lineLevel(low_pull, high_pull);
+    }
+    out[n] = '\0';
+    SystemStats::recordSleepLines(out);
+}
+
 void PowerManager::definePads() {
     pinMode(PIN_LCD_CS, OUTPUT);
     digitalWrite(PIN_LCD_CS, HIGH);    // panel interface deselected

@@ -217,8 +217,18 @@ Results from the Status screen's **Avg drain** row on battery (2026-10-31…11-0
 | A | rails + codecs + ext1 | 7.9 mA / 8 h — no gain over baseline |
 | B | A + ALDO2 cut | **49.6 mA** / 4 h |
 | C | A + pads held | ~8.4 mA / 14 h — no gain |
-| D | C + CO5300 deep standby (`PANEL_DEEP_STANDBY`) | [M], running |
+| D | C + CO5300 deep standby (`PANEL_DEEP_STANDBY`) | **6.3 mA** / 10 h (≈5.3 mA after the first hour), 3.951 V — gain ≈2–3 mA |
+| E | D + ALDO2 cut (`SLEEP_CUT_PANEL_POWER`) | [M], running |
 
+- **CO5300 deep standby helps** [measured]: the first measure with a clear gain. The
+  first hour after unplugging a full cell drops the gauge fast (100 → 96 %), which inflates
+  the whole-night figure; from the 1 h reading the drain is ≈5.3 mA. Still above the
+  2 mA target.
+- **Sleep lines** [measured, 2026-11-03]: probe at sleep entry reads `HH HFF L`
+  (SCL SDA | TP_INT RTC_INT QMI_INT1 | TE). No line sits low against a pull-up, so the
+  I2C and interrupt lines are not the remaining ~5 mA. RTC_INT and QMI_INT1 float (no
+  pull-up; the ESP32 pads are disabled in sleep, so no input leakage). TE low is the
+  panel's own output.
 - **Cutting ALDO2 (`DSI_PWR_EN`) in sleep is harmful** [measured]: +30–40 mA. The AMOLED
   module draws more with its supply enable low while its logic stays on VCC3V3.
   `SLEEP_CUT_PANEL_POWER` stays false.
