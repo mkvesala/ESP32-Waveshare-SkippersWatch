@@ -50,6 +50,8 @@ void PmuRails::beginAwake() {
 
     if (PowerManager::UNUSED_RAILS_OFF) this->unusedRailsOff();
     if (PowerManager::AUDIO_CODECS_OFF) this->codecsPowerDown();
+    if (PowerManager::IMU_OFF) this->imuPowerDown();
+    this->scanBus();
 }
 
 void PmuRails::enterSleep() {
@@ -112,6 +114,11 @@ void PmuRails::unusedRailsOff() {
     _pmu->disableCPUSLDO();
     _pmu->disableDLDO1();
     _pmu->disableDLDO2();
+    if (PowerManager::UNUSED_DCDC_OFF) {
+        _pmu->disableDC2();
+        _pmu->disableDC3();
+        _pmu->disableDC4();
+    }
 }
 
 // The ES7210 and ES8311 sit powered (ALDO1 + VCC3V3) but are never used. Their state
@@ -139,8 +146,57 @@ void PmuRails::codecsPowerDown() {
     }
 }
 
+// The QMI8658 is never initialised, so it sits in its reset state: sensors disabled but
+// the internal oscillator running. Both off; checked against WHO_AM_I first. Runs on
+// every wake for the same reason as the codecs.
+void PmuRails::imuPowerDown() {
+    if (_wire == nullptr) return;
+    uint8_t id = 0, ctrl1 = 0;
+    if (!this->readReg(QMI8658_ADDR, QMI_REG_WHO_AM_I, id) || id != QMI_WHO_AM_I) {
+        Serial.printf("[rails] QMI8658 not found at 0x%02X (id %02X)\n", QMI8658_ADDR, id);
+        return;
+    }
+    uint8_t fails = 0;
+    if (!this->writeReg(QMI8658_ADDR, QMI_REG_CTRL7, 0x00)) fails++;
+    if (!this->readReg(QMI8658_ADDR, QMI_REG_CTRL1, ctrl1) ||
+        !this->writeReg(QMI8658_ADDR, QMI_REG_CTRL1, ctrl1 | QMI_CTRL1_SENSOR_DISABLE)) fails++;
+    _imu_fails = (int8_t)fails;
+}
+
+void PmuRails::scanBus() {
+    if (_wire == nullptr) return;
+    size_t n = 0;
+    for (uint8_t addr = 0x08; addr < 0x78 && n + 4 <= sizeof(_bus_devices); ++addr) {
+        if (!this->probe(addr)) continue;
+        // Codec power-down result: '*' all writes acknowledged, '!' some failed
+        const int8_t fails = addr == ES7210_ADDR ? _es7210_fails
+                           : addr == ES8311_ADDR ? _es8311_fails
+                           : addr == QMI8658_ADDR ? _imu_fails : -1;
+        n += snprintf(_bus_devices + n, sizeof(_bus_devices) - n, n ? " %02X%s" : "%02X%s", addr,
+                      fails < 0 ? "" : fails == 0 ? "*" : "!");
+    }
+    if (n == 0) snprintf(_bus_devices, sizeof(_bus_devices), "none");
+    Serial.printf("[rails] I2C: %s\n", _bus_devices);
+}
+
 bool PmuRails::probe(uint8_t addr) const {
     _wire->beginTransmission(addr);
+    return _wire->endTransmission() == 0;
+}
+
+bool PmuRails::readReg(uint8_t addr, uint8_t reg, uint8_t& value) const {
+    _wire->beginTransmission(addr);
+    _wire->write(reg);
+    if (_wire->endTransmission(false) != 0) return false;
+    if (_wire->requestFrom(addr, (uint8_t)1) != 1) return false;
+    value = (uint8_t)_wire->read();
+    return true;
+}
+
+bool PmuRails::writeReg(uint8_t addr, uint8_t reg, uint8_t value) const {
+    _wire->beginTransmission(addr);
+    _wire->write(reg);
+    _wire->write(value);
     return _wire->endTransmission() == 0;
 }
 

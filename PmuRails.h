@@ -22,7 +22,8 @@ class XPowersAXP2101;   // XPowersLib, included only in the .cpp files
 //                     (SLEEP_CUT_PANEL_POWER, off). Always restored before the panel init.
 //     ALDO3           vibration-motor pad (0R); no motor on this board.
 //     ALDO4, BLDO1/2, DLDO1/2, CPUSLDO   no load. Off.
-//     DCDC2..5        not touched (pins unconnected; DCDC5 shares the VSYS node).
+//     DCDC2..4        pins unconnected, on after reset. Off (UNUSED_DCDC_OFF).
+//     DCDC5           not touched (shares the VSYS node).
 // - The rail state survives ESP32 deep sleep (the PMIC stays powered), so beginAwake()
 //   must undo what enterSleep() did on every wake. A PMIC power cycle (PWR held ~6 s)
 //   reloads its own defaults; beginAwake() sets every state explicitly either way.
@@ -47,6 +48,10 @@ public:
     // 0x80 (DCDC on/off), 0x90 and 0x91 (LDO on/off), raw hex. "--" without a PMIC.
     void summary(char* out, size_t len) const;
 
+    // 7-bit addresses that answered this boot's bus scan, "18* 34 40* ..." ("--" before
+    // it). A codec or the IMU marked '*' took its whole power-down, '!' had failed writes.
+    const char* busDevices() const { return _bus_devices[0] ? _bus_devices : "--"; }
+
     // Full decoded rail and ADC dump to Serial (only seen on USB)
     void logState() const;
 
@@ -60,6 +65,9 @@ private:
     // number of failed register writes.
     int8_t _es7210_fails = -1;
     int8_t _es8311_fails = -1;
+    int8_t _imu_fails = -1;
+
+    char _bus_devices[48] = {};
 
     // DSI_PWR_EN settle before the panel reset pulse when ALDO2 was off [M]
     static constexpr uint32_t PANEL_POWER_SETTLE_MS = 10;
@@ -68,8 +76,21 @@ private:
     static constexpr uint8_t ES7210_ADDR = 0x40;
     static constexpr uint8_t ES8311_ADDR = 0x18;
 
+    // QMI8658 (RIOT qmi8658_constants.h, read 2026-11-03): WHO_AM_I 0x00 = 0x05; CTRL1
+    // 0x02 bit0 = SensorDisable (internal oscillator off); CTRL7 0x08 = sensor enables
+    static constexpr uint8_t QMI8658_ADDR = 0x6B;
+    static constexpr uint8_t QMI_REG_WHO_AM_I = 0x00;
+    static constexpr uint8_t QMI_WHO_AM_I = 0x05;
+    static constexpr uint8_t QMI_REG_CTRL1 = 0x02;
+    static constexpr uint8_t QMI_CTRL1_SENSOR_DISABLE = 0x01;
+    static constexpr uint8_t QMI_REG_CTRL7 = 0x08;
+
+    void scanBus();
     void unusedRailsOff();
     void codecsPowerDown();
+    void imuPowerDown();
+    bool readReg(uint8_t addr, uint8_t reg, uint8_t& value) const;
+    bool writeReg(uint8_t addr, uint8_t reg, uint8_t value) const;
     bool probe(uint8_t addr) const;
     uint8_t writeSequence(uint8_t addr, const uint8_t (*seq)[2], size_t count) const;
 

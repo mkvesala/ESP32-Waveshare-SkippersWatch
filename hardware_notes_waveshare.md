@@ -115,7 +115,7 @@ Update the marks as the port progresses.
   | ALDO2 | only `DSI_PWR_EN` (R10 10k pull-up) = the AMOLED module's own supply enable | stays on: cutting it in sleep measured +30–40 mA |
   | ALDO3 | vibration-motor pad P1 (0R); no motor fitted | off |
   | ALDO4, BLDO1/2, CPUSLDO, DLDO1/2 | no load (BLDOIN, CPUSLDO, DLDO pins unconnected) | off |
-  | DCDC2–4 | VIN/LX pins unconnected | not touched |
+  | DCDC2–4 | VIN/LX pins unconnected; on after reset (0x80 = 0F) | off (`UNUSED_DCDC_OFF`) |
   | DCDC5 | shares the `Vsys/DCDC5` node | not touched |
   | RTCLDO = VCC-RTC | PCF85063 | — |
 
@@ -218,7 +218,8 @@ Results from the Status screen's **Avg drain** row on battery (2026-10-31…11-0
 | B | A + ALDO2 cut | **49.6 mA** / 4 h |
 | C | A + pads held | ~8.4 mA / 14 h — no gain |
 | D | C + CO5300 deep standby (`PANEL_DEEP_STANDBY`) | **6.3 mA** / 10 h (≈5.3 mA after the first hour), 3.951 V — gain ≈2–3 mA |
-| E | D + ALDO2 cut (`SLEEP_CUT_PANEL_POWER`) | [M], running |
+| E | D + ALDO2 cut (`SLEEP_CUT_PANEL_POWER`) | 6.7 mA / 8 h (100 → 86 %, 3.962 V) — no gain over D |
+| F | D + QMI8658 oscillator/sensors off (`IMU_OFF`) + DCDC2–4 off (`UNUSED_DCDC_OFF`) | [M], running |
 
 - **CO5300 deep standby helps** [measured]: the first measure with a clear gain. The
   first hour after unplugging a full cell drops the gauge fast (100 → 96 %), which inflates
@@ -229,6 +230,9 @@ Results from the Status screen's **Avg drain** row on battery (2026-10-31…11-0
   I2C and interrupt lines are not the remaining ~5 mA. RTC_INT and QMI_INT1 float (no
   pull-up; the ESP32 pads are disabled in sleep, so no input leakage). TE low is the
   panel's own output.
+- **I2C scan** [measured, 2026-11-03]: `18* 34 38 40* 51 6B` — both codecs answer at
+  their schematic addresses and take their whole power-down sequence (`*`). An earlier
+  "not found" serial line was a one-off boot. The codecs are not the remaining load.
 - **Cutting ALDO2 (`DSI_PWR_EN`) in sleep is harmful** [measured]: +30–40 mA. The AMOLED
   module draws more with its supply enable low while its logic stays on VCC3V3.
   `SLEEP_CUT_PANEL_POWER` stays false.

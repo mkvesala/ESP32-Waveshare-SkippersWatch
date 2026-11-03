@@ -162,7 +162,7 @@ public:
     // available. Expected effect per measure is [M] until that row says otherwise.
     //
     // ALDO2 off in sleep → DSI_PWR_EN low, the AMOLED module's own converter off (PmuRails)
-    static constexpr bool SLEEP_CUT_PANEL_POWER = true;    // bisect E, with deep standby (without it: 49.6 mA alone, 36 mA with pads)
+    static constexpr bool SLEEP_CUT_PANEL_POWER = false;   // E (with deep standby): 6.7 mA, no gain. Alone 49.6 mA, with pads 36 mA
     // QSPI and I2S pads driven to a defined level and held, instead of floating into
     // inputs that are still powered (panel VDDIO and ES8311 sit on VCC3V3)
     static constexpr bool SLEEP_DEFINE_PADS = true;        // bisect C (panel stays powered)
@@ -170,6 +170,10 @@ public:
     static constexpr bool UNUSED_RAILS_OFF = true;
     // ES7210 + ES8311 into their drivers' power-down state on every wake (PmuRails)
     static constexpr bool AUDIO_CODECS_OFF = true;
+    // QMI8658 (never initialised) sensors and internal oscillator off (PmuRails)
+    static constexpr bool IMU_OFF = true;               // bisect F
+    // DCDC2-4 off: on after reset (0x80 = 0F) with their pins unconnected (PmuRails)
+    static constexpr bool UNUSED_DCDC_OFF = true;       // bisect F
     // Wake on ext1 (RTC controller) instead of ext0, which keeps the RTC_PERIPH domain
     // powered. GPIO10 is driven by T1/R11, so no internal pull is needed.
     static constexpr bool WAKE_ON_EXT1 = true;

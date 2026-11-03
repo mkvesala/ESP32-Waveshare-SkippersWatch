@@ -18,6 +18,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
   and panel TE, probed at each sleep entry with the internal pull-down and then pull-up
   (`H`/`L`/`F` = high, low, floating). Shows whether any line sits low against a pull-up
   through sleep. First reading: `HH HFF L`, no leak.
+- **Status: I2C devices** — addresses that answer the bus scan at boot; the codecs and the
+  IMU are marked `*` when their power-down went through (`!` on failed writes).
 
 ### Changed
 
@@ -30,6 +32,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
   `DSI_PWR_EN`) in sleep measured +30–40 mA without deep standby; with deep standby
   (6.3 mA) it is being retried as bisect E. The bisection results are in
   `hardware_notes_waveshare.md`.
+- **QMI8658 and DCDC2–4 off** (bisect F): the never-initialised IMU gets its sensors and
+  internal oscillator switched off on every wake, and the unconnected DCDC2–4 are disabled.
+  Bisect E (ALDO2 cut on top of CO5300 deep standby) gave no gain, so ALDO2 stays on.
 - **Avg drain** restarts its baseline when the AXP2101 gauge reads above it. The gauge
   climbs for an hour or more after a USB unplug or a power cycle.
 - `BatteryMonitor::beginPmu()` no longer enables the VBUS/system ADC channels; `PmuRails`
