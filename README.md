@@ -41,6 +41,7 @@ Screens (carousel, plus a page menu for direct access):
 - **Attitude** — artificial horizon with pitch and roll
 - **Clock** — local date + weekday, local and UTC time (GNSS-disciplined, no RTC chip, no NTP)
 - **Setup** — display brightness, wake time, prevent sleep, demo mode and night mode, all persisted to NVS
+- **Celestial** — computed altitude and azimuth (Hc, Zn) of the Sun, Moon and twilight bodies for sextant practice, with UTC time, pressure, temperature and position
 
 Developed on:
 - [Waveshare ESP32-S3-Touch-AMOLED-2.06](https://docs.waveshare.com/ESP32-S3-Touch-AMOLED-2.06) (SKU 31957)
