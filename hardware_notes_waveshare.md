@@ -115,7 +115,7 @@ Update the marks as the port progresses.
   | ALDO2 | only `DSI_PWR_EN` (R10 10k pull-up) = the AMOLED module's own supply enable | stays on: cutting it in sleep measured +30–40 mA |
   | ALDO3 | vibration-motor pad P1 (0R); no motor fitted | off |
   | ALDO4, BLDO1/2, CPUSLDO, DLDO1/2 | no load (BLDOIN, CPUSLDO, DLDO pins unconnected) | off |
-  | DCDC2–4 | VIN/LX pins unconnected; on after reset (0x80 = 0F) | off (`UNUSED_DCDC_OFF`) |
+  | DCDC2–4 | VIN/LX pins unconnected; on after reset (0x80 = 0F) | off |
   | DCDC5 | shares the `Vsys/DCDC5` node | not touched |
   | RTCLDO = VCC-RTC | PCF85063 | — |
 
@@ -208,8 +208,8 @@ cell, demo mode, 1–2 wakes, < 1 min awake. Gauge 100 → 54 % (3.750 V) in 25 
 → 23 % (3.683 V) in 36 h: **~7–8.5 mA average deep-sleep draw** [measured, from the
 gauge]. Target ≤ 2 mA (~200 h on 400 mAh).
 
-Measures added in v2.2.0, each behind its own switch in `PowerManager.h` for bisecting.
-Results from the Status screen's **Avg drain** row on battery (2026-10-31…11-02):
+Measures added in v2.1.0, bisected with temporary switches (removed for the release).
+Results from the Status screen's **Avg drain** row on battery (2026-10-31…11-03):
 
 | Test | Switches | Drain |
 |---|---|---|
@@ -217,38 +217,54 @@ Results from the Status screen's **Avg drain** row on battery (2026-10-31…11-0
 | A | rails + codecs + ext1 | 7.9 mA / 8 h — no gain over baseline |
 | B | A + ALDO2 cut | **49.6 mA** / 4 h |
 | C | A + pads held | ~8.4 mA / 14 h — no gain |
-| D | C + CO5300 deep standby (`PANEL_DEEP_STANDBY`) | **6.3 mA** / 10 h (≈5.3 mA after the first hour), 3.951 V — gain ≈2–3 mA |
-| E | D + ALDO2 cut (`SLEEP_CUT_PANEL_POWER`) | 6.7 mA / 8 h (100 → 86 %, 3.962 V) — no gain over D |
-| F | D + QMI8658 oscillator/sensors off (`IMU_OFF`) + DCDC2–4 off (`UNUSED_DCDC_OFF`) | [M], running |
+| D | C + CO5300 deep standby | **6.3 mA** / 10 h (≈5.3 mA after the first hour), 3.951 V — gain ≈2–3 mA |
+| E | D + ALDO2 cut | 6.7 mA / 8 h (100 → 86 %, 3.962 V) — no gain over D |
+| F | D + QMI8658 oscillator/sensors off + DCDC2–4 off | 6.0 mA / 13 h (100 → 80 %, 3.919 V) — no gain over D beyond the ±0.3 mA resolution |
 
 - **CO5300 deep standby helps** [measured]: the first measure with a clear gain. The
   first hour after unplugging a full cell drops the gauge fast (100 → 96 %), which inflates
   the whole-night figure; from the 1 h reading the drain is ≈5.3 mA. Still above the
   2 mA target.
-- **Sleep lines** [measured, 2026-11-03]: probe at sleep entry reads `HH HFF L`
+- **Sleep lines** [measured, 2026-11-03, with a temporary probe]: at sleep entry reads `HH HFF L`
   (SCL SDA | TP_INT RTC_INT QMI_INT1 | TE). No line sits low against a pull-up, so the
   I2C and interrupt lines are not the remaining ~5 mA. RTC_INT and QMI_INT1 float (no
   pull-up; the ESP32 pads are disabled in sleep, so no input leakage). TE low is the
   panel's own output.
-- **I2C scan** [measured, 2026-11-03]: `18* 34 38 40* 51 6B` — both codecs answer at
+- **IMU and DCDC2–4** [measured, 2026-11-03]: bisect F reads `6B*` on the I2C row (all
+  QMI8658 writes acknowledged) and 6.0 mA, the same as D. Both stay off as default-off
+  hygiene. Every peripheral the firmware can reach is now asleep or unpowered, and ~5–6 mA
+  remains. Not yet separated: the ESP32-S3 itself, the AMOLED module in deep standby, the
+  AXP2101's own draw, and the gauge's accuracy on this cell (capacity [M]).
+- **Board off** [measured, test G, 2026-11-03→04]: PWR hold off for 9 h 29 min, no firmware
+  change. 4.038 V / 95 % → 4.013 V / 94 %, read ~20 s after power-on. 1 % = 4 mAh, so about
+  0.4 mA at most by the gauge (±1 % resolution), and part of the 25 mV is relaxation after
+  charging. The same span in deep sleep would cost about 14 %. The ~5–6 mA is therefore a
+  real load while the board is in deep sleep, not gauge error or cell self-discharge. The
+  gauge did not read low after this power-on, unlike the earlier case; not yet watched
+  over the following hours.
+- **I2C scan** [measured, 2026-11-03, with a temporary Status row]: `18* 34 38 40* 51 6B` — both codecs answer at
   their schematic addresses and take their whole power-down sequence (`*`). An earlier
   "not found" serial line was a one-off boot. The codecs are not the remaining load.
 - **Cutting ALDO2 (`DSI_PWR_EN`) in sleep is harmful** [measured]: +30–40 mA. The AMOLED
   module draws more with its supply enable low while its logic stays on VCC3V3.
-  `SLEEP_CUT_PANEL_POWER` stays false.
 - The unused LDOs, codec power-down, ext1 wake and held pads are each below the gauge's
   resolution over one night. They stay on as harmless.
+- **Accepted for v2.1.0** (2026-11-04): v2.1.0 ships with a deep-sleep floor of about 6 mA,
+  about 66 h on the nominal 400 mAh with no wakes. The 2 mA target stays open. For long
+  storage, power the board off with PWR (~6 s). The release build drops the temporary
+  sleep-line probe, so its pads are as in test D (6.3 mA); it has not had its own overnight
+  test.
 - **Gauge caveat** [measured]: after a USB unplug or a PWR power cycle the AXP2101 gauge
   re-estimates *upwards* for an hour or more (57 → 62 %, 50 → 80 %). The drain baseline
   therefore restarts whenever the gauge reads above it. Start a test by unplugging USB
   only.
 
 ## To measure first on the bench [M]
-1. Deep-sleep floor on battery only, with display off and everything default-off.
-2. Active current at several brightness levels, on a typical (mostly black) screen.
-3. AXP2101 `shutdown()` floor, for comparison with 1.
-4. AXP2101 gauge percentage vs. cell voltage over one full discharge.
-5. Reset reason and RTC-memory survival for each button (as done on CrowPanel).
+1. Active current at several brightness levels, on a typical (mostly black) screen.
+2. Deep-sleep floor and board-off draw with a real meter (so far gauge-based only).
+3. AXP2101 gauge percentage vs. cell voltage over one full discharge.
+4. Reset reason and RTC-memory survival for each button (as done on CrowPanel).
+5. Fitted cell's real capacity (400 mAh is the assumed figure behind every mA above).
 
 ## Sources
 - Waveshare docs: <https://docs.waveshare.com/ESP32-S3-Touch-AMOLED-2.06> (pin table,

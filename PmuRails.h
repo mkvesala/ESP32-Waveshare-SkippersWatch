@@ -18,14 +18,14 @@ class XPowersAXP2101;   // XPowersLib, included only in the .cpp files
 //                     ES7210's I2C pins sit on 3.3 V pull-ups would back-power it through
 //                     its ESD diodes. The codecs are powered down by register instead.
 //     ALDO2           only DSI_PWR_EN (10k pull-up): the AMOLED module's own supply
-//                     enable. Left ON: cutting it in sleep measured +30-40 mA
-//                     (SLEEP_CUT_PANEL_POWER, off). Always restored before the panel init.
+//                     enable. Left ON: cutting it in sleep measured +30-40 mA, and no
+//                     gain with the CO5300 in deep standby.
 //     ALDO3           vibration-motor pad (0R); no motor on this board.
 //     ALDO4, BLDO1/2, DLDO1/2, CPUSLDO   no load. Off.
-//     DCDC2..4        pins unconnected, on after reset. Off (UNUSED_DCDC_OFF).
+//     DCDC2..4        pins unconnected, on after reset. Off.
 //     DCDC5           not touched (shares the VSYS node).
 // - The rail state survives ESP32 deep sleep (the PMIC stays powered), so beginAwake()
-//   must undo what enterSleep() did on every wake. A PMIC power cycle (PWR held ~6 s)
+//   undoes what enterSleep() did on every wake. A PMIC power cycle (PWR held ~6 s)
 //   reloads its own defaults; beginAwake() sets every state explicitly either way.
 // - Owned by: WatchApplication.
 
@@ -40,17 +40,13 @@ public:
     // init: the AMOLED module needs DSI_PWR_EN high before its reset sequence.
     void beginAwake();
 
-    // Sleep rail state. Call after the panel is in sleep-in, as the last bus traffic
-    // before the wake source is armed.
+    // Sleep state: the ADC channels only read while awake off. Call after the panel is in
+    // sleep-in, as the last bus traffic before the wake source is armed.
     void enterSleep();
 
     // Compact rail state for the Status screen: "DC 01 LDO 03 00" = AXP2101 registers
     // 0x80 (DCDC on/off), 0x90 and 0x91 (LDO on/off), raw hex. "--" without a PMIC.
     void summary(char* out, size_t len) const;
-
-    // 7-bit addresses that answered this boot's bus scan, "18* 34 40* ..." ("--" before
-    // it). A codec or the IMU marked '*' took its whole power-down, '!' had failed writes.
-    const char* busDevices() const { return _bus_devices[0] ? _bus_devices : "--"; }
 
     // Full decoded rail and ADC dump to Serial (only seen on USB)
     void logState() const;
@@ -60,16 +56,14 @@ private:
     XPowersAXP2101* _pmu = nullptr;
     TwoWire* _wire = nullptr;
 
-    // Result of this boot's codec power-down, for logState(): the boot-time log lines are
+    // Result of this boot's codec and IMU power-down, for logState(): the boot-time log lines are
     // lost before the native USB port enumerates. -1 = not found / not run, else the
     // number of failed register writes.
     int8_t _es7210_fails = -1;
     int8_t _es8311_fails = -1;
     int8_t _imu_fails = -1;
 
-    char _bus_devices[48] = {};
-
-    // DSI_PWR_EN settle before the panel reset pulse when ALDO2 was off [M]
+    // DSI_PWR_EN settle before the panel reset pulse, if ALDO2 was off [M]
     static constexpr uint32_t PANEL_POWER_SETTLE_MS = 10;
 
     // Codec I2C addresses: ES7210 with AD0 = AD1 = GND (schematic), ES8311 with CE low
@@ -85,7 +79,6 @@ private:
     static constexpr uint8_t QMI_CTRL1_SENSOR_DISABLE = 0x01;
     static constexpr uint8_t QMI_REG_CTRL7 = 0x08;
 
-    void scanBus();
     void unusedRailsOff();
     void codecsPowerDown();
     void imuPowerDown();

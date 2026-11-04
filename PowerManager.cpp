@@ -1,7 +1,6 @@
 #include "PowerManager.h"
 #include "PmuRails.h"
 #include "SystemStats.h"
-#include "StatusFormat.h"
 #include "ESPNowReceiver.h"
 #include <driver/gpio.h>
 #include <driver/rtc_io.h>
@@ -19,7 +18,7 @@ void PowerManager::releaseHolds() {
     gpio_hold_dis((gpio_num_t)PIN_LCD_RST);
     gpio_hold_dis((gpio_num_t)PIN_TP_RST);
     gpio_hold_dis((gpio_num_t)PIN_PA_CTRL);
-    // Pads latched by definePads() (harmless when that was off): the panel bus has to be
+    // Pads latched by definePads(): the panel bus has to be
     // free again before initDisplay() builds the QSPI bus on it.
     gpio_hold_dis((gpio_num_t)PIN_LCD_CS);
     gpio_hold_dis((gpio_num_t)PIN_LCD_SCK);
@@ -27,7 +26,7 @@ void PowerManager::releaseHolds() {
     gpio_hold_dis((gpio_num_t)PIN_I2S_MCLK);
     gpio_deep_sleep_hold_dis();
 
-    // Hand the wake button back to the normal GPIO matrix: after an ext0 wake the pad is
+    // Hand the wake button back to the normal GPIO matrix: after an ext1 wake the pad is
     // still in RTC mode, where digitalRead() (used by the stuck-button guard) is not
     // meaningful.
     rtc_gpio_deinit((gpio_num_t)WAKE_BUTTON_PIN);
@@ -36,7 +35,7 @@ void PowerManager::releaseHolds() {
 // Timer wake = the stuck-button guard rechecking, never a user request. Do the absolute
 // minimum: read the button, sleep again. No rails, no panel, no UI, no radio — the whole
 // visit is a few hundred ms at boot current, and armWakeSource() below decides whether
-// the next sleep is armed on ext0 (released) or another timer (still held).
+// the next sleep is armed on ext1 (released) or another timer (still held).
 bool PowerManager::handleTimerRecheck(esp_sleep_wakeup_cause_t cause) {
     if (cause != ESP_SLEEP_WAKEUP_TIMER) return false;
 
@@ -50,10 +49,7 @@ bool PowerManager::handleTimerRecheck(esp_sleep_wakeup_cause_t cause) {
 }
 
 void PowerManager::begin(esp_sleep_wakeup_cause_t cause) {
-    _cause = cause;
-
     switch (cause) {
-        case ESP_SLEEP_WAKEUP_EXT0:
         case ESP_SLEEP_WAKEUP_EXT1:  Serial.println("[power] wake: button");   break;
         case ESP_SLEEP_WAKEUP_TIMER: Serial.println("[power] wake: timer");    break;
         default:                     Serial.println("[power] cold boot");      break;
@@ -200,15 +196,14 @@ void PowerManager::rampBrightnessDown() {
     _brightness.set(0);
 }
 
-// Put the panel (CO5300 display-off + sleep-in) and the touch controller (hibernate) to
-// sleep, switch the AXP2101 rails to their sleep state (the AMOLED module's own supply
-// off), keep the speaker amp off, then latch the lines so nothing floats through deep
-// sleep. Rail order matters: the panel is asleep before its supply enable drops.
+// Put the panel (CO5300 display-off + sleep-in + deep standby) and the touch controller
+// (hibernate) to sleep, switch the AXP2101 to its sleep state, keep the speaker amp off,
+// then latch the lines so nothing floats through deep sleep.
 void PowerManager::gatePeripherals() {
     if (_panel != nullptr) {
         _brightness.set(0);
         _panel->displayOff();
-        if (PANEL_DEEP_STANDBY && _panel_bus != nullptr) {
+        if (_panel_bus != nullptr) {
             _panel_bus->beginWrite();
             _panel_bus->writeC8D8(PANEL_CMD_DEEP_STANDBY, 0x01);
             _panel_bus->endWrite();
@@ -217,8 +212,7 @@ void PowerManager::gatePeripherals() {
     }
     if (_touch != nullptr) _touch->hibernate();
     if (_rails != nullptr) _rails->enterSleep();   // last I2C traffic of this wake
-    if (PROBE_SLEEP_LINES) this->probeSleepLines();
-    if (SLEEP_DEFINE_PADS) this->definePads();
+    this->definePads();
 
     pinMode(PIN_LCD_RST, OUTPUT);
     digitalWrite(PIN_LCD_RST, HIGH);   // not in reset: the panel stays in sleep-in
@@ -238,32 +232,6 @@ void PowerManager::gatePeripherals() {
 // powered CMOS input left halfway — a classic source of a few hundred µA each. The
 // QSPI bus driver is not torn down first: the pins are simply reclaimed as GPIOs, and
 // the next boot builds the bus from scratch after releaseHolds().
-// Sleep-floor diagnostic: with every peripheral asleep, each line that an external chip
-// drives or a resistor pulls is read with the internal pull-down, then the pull-up.
-// "L" on a line with an external pull-up means current through that resistor all
-// night (2.2k on I2C: ~1.5 mA); "F" means it floats. The pads are left disabled, as
-// they were. Shown on the next wake's Status screen.
-void PowerManager::probeSleepLines() {
-    char out[sizeof(PROBE_PINS) + 3];
-    size_t n = 0;
-    for (size_t i = 0; i < sizeof(PROBE_PINS); i++) {
-        const gpio_num_t pin = (gpio_num_t)PROBE_PINS[i];
-        gpio_set_direction(pin, GPIO_MODE_INPUT);
-        gpio_set_pull_mode(pin, GPIO_PULLDOWN_ONLY);
-        delayMicroseconds(PROBE_SETTLE_US);
-        const bool low_pull = gpio_get_level(pin);
-        gpio_set_pull_mode(pin, GPIO_PULLUP_ONLY);
-        delayMicroseconds(PROBE_SETTLE_US);
-        const bool high_pull = gpio_get_level(pin);
-        gpio_set_pull_mode(pin, GPIO_FLOATING);
-        gpio_set_direction(pin, GPIO_MODE_DISABLE);
-        if (i == 2 || i == 5) out[n++] = ' ';   // groups: I2C | interrupts | TE
-        out[n++] = StatusFormat::lineLevel(low_pull, high_pull);
-    }
-    out[n] = '\0';
-    SystemStats::recordSleepLines(out);
-}
-
 void PowerManager::definePads() {
     pinMode(PIN_LCD_CS, OUTPUT);
     digitalWrite(PIN_LCD_CS, HIGH);    // panel interface deselected
@@ -287,16 +255,16 @@ void PowerManager::definePads() {
     pinMode(PIN_I2S_ASDOUT, INPUT_PULLDOWN);
 }
 
-// Arm the PWR button (SYS_OUT, ACTIVE-HIGH) as an ext1 (or ext0) deep-sleep wake source.
+// Arm the PWR button (SYS_OUT, ACTIVE-HIGH) as the ext1 deep-sleep wake source.
 //
-// ext0 and ext1 are LEVEL-triggered: arming it while the button is already down (strap or sleeve
+// ext1 is LEVEL-triggered: arming it while the button is already down (strap or sleeve
 // pressure) makes esp_deep_sleep_start() return immediately — a reboot loop at active
 // current that would empty the cell in a few hours. So if the button is held, arm a
 // timer instead and let handleTimerRecheck() look again in 30 s without lighting the
 // watch up. Each recheck is a few hundred ms at boot current.
 void PowerManager::armWakeSource() {
     // Wake sources are cumulative within one boot — clear before arming so a timer
-    // recheck can never leave a stale timer source alongside a freshly armed ext0.
+    // recheck can never leave a stale timer source alongside a freshly armed ext1.
     esp_sleep_disable_wakeup_source(ESP_SLEEP_WAKEUP_ALL);
 
     pinMode(WAKE_BUTTON_PIN, INPUT_PULLDOWN);
@@ -309,22 +277,11 @@ void PowerManager::armWakeSource() {
         return;
     }
 
-    if (WAKE_ON_EXT1) {
-        esp_sleep_disable_ext1_wakeup_io(0);   // drop any earlier ext1 pin set
-        // RTC-controller wake: works with the RTC_PERIPH domain powered down, which ext0
-        // would keep on. No internal pull (it would not survive that domain anyway):
-        // T1 holds SYS_OUT low at rest and R11 pulls it high on a press.
-        esp_sleep_enable_ext1_wakeup_io(1ULL << WAKE_BUTTON_PIN, ESP_EXT1_WAKEUP_ANY_HIGH);
-        return;
-    }
-
-    rtc_gpio_init((gpio_num_t)WAKE_BUTTON_PIN);
-    rtc_gpio_set_direction((gpio_num_t)WAKE_BUTTON_PIN, RTC_GPIO_MODE_INPUT_ONLY);
-    // SYS_OUT is driven by the board's power-key circuit; the pull-down only keeps the
-    // pad defined if it is not [M: check the level stays low at rest in deep sleep].
-    rtc_gpio_pullup_dis((gpio_num_t)WAKE_BUTTON_PIN);
-    rtc_gpio_pulldown_en((gpio_num_t)WAKE_BUTTON_PIN);   // released = low, press = high
-    esp_sleep_enable_ext0_wakeup((gpio_num_t)WAKE_BUTTON_PIN, 1);  // wake when high (pressed)
+    esp_sleep_disable_ext1_wakeup_io(0);   // drop any earlier ext1 pin set
+    // RTC-controller wake: works with the RTC_PERIPH domain powered down, which ext0
+    // would keep on. No internal pull (it would not survive that domain anyway):
+    // T1 holds SYS_OUT low at rest and R11 pulls it high on a press.
+    esp_sleep_enable_ext1_wakeup_io(1ULL << WAKE_BUTTON_PIN, ESP_EXT1_WAKEUP_ANY_HIGH);
 }
 
 // Subscribe the Arduino loop task to the task watchdog. The awake ceiling only fires

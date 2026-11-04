@@ -16,8 +16,6 @@
 // - Battery drain estimate: a baseline (gauge % + uptime) taken when a battery-powered
 //   stretch begins; the Status screen turns the drop since then into average mA. With
 //   no meter on the battery lead, this is how the sleep floor gets measured.
-// - Sleep lines: recordSleepLines() keeps the levels PowerManager probes once the
-//   peripherals are asleep, for the Status screen of the next wake.
 // - onSleepEntry() is static and writes RTC RAM only (no flash), so PowerManager calls
 //   it on every sleep path, the stuck-button timer path included.
 // - Owned by: WatchApplication.
@@ -34,10 +32,6 @@ public:
 
     // Fold this wake's awake time and radio frame count into the power-on totals
     static void onSleepEntry(uint32_t radio_frames_this_wake);
-
-    // Probed line levels at the last sleep entry ("HH HFL L"), "--" until recorded
-    static void recordSleepLines(const char* lines);
-    const char* sleepLines() const;
 
     // Call each loop after BatteryMonitor::update(). On USB the baseline is dropped; the
     // first call on battery takes a new one, so it always starts at an unplug or a

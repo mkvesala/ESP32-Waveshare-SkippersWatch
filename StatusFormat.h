@@ -92,15 +92,6 @@ struct StatusFormat {
     // The power-on counters start over when their RTC memory cannot be trusted (magic
     // missing) or on a true power-on — the same moment the RTC timer behind "Uptime"
     // restarts from zero, so all the counters always describe the same span.
-    // One sleep-line probe: the pin's level read with the internal pull-down, then with
-    // the pull-up. A driven or externally pulled line reads the same both times; a line
-    // that follows the internal pull floats. Pull-down high but pull-up low cannot happen.
-    static char lineLevel(bool with_pulldown, bool with_pullup) {
-        if (with_pulldown && with_pullup) return 'H';
-        if (!with_pulldown && !with_pullup) return 'L';
-        return with_pullup ? 'F' : '?';
-    }
-
     static bool shouldReset(bool magic_ok, int reason) {
         return !magic_ok || reason == RST_POWERON;
     }

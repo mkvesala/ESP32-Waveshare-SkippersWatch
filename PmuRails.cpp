@@ -1,5 +1,4 @@
 #include "PmuRails.h"
-#include "PowerManager.h"
 #define XPOWERS_CHIP_AXP2101
 #include <XPowersLib.h>
 
@@ -34,8 +33,7 @@ namespace {
 void PmuRails::beginAwake() {
     if (_pmu == nullptr) return;
 
-    // AMOLED supply enable first, whatever the flags say: after a sleep that cut it, the
-    // panel init below would otherwise talk to an unpowered module.
+    // AMOLED supply enable first: the panel init below needs the module powered.
     if (!_pmu->isEnableALDO2()) {
         _pmu->enableALDO2();
         delay(PANEL_POWER_SETTLE_MS);
@@ -48,10 +46,9 @@ void PmuRails::beginAwake() {
     _pmu->enableVbusVoltageMeasure();
     _pmu->enableSystemVoltageMeasure();
 
-    if (PowerManager::UNUSED_RAILS_OFF) this->unusedRailsOff();
-    if (PowerManager::AUDIO_CODECS_OFF) this->codecsPowerDown();
-    if (PowerManager::IMU_OFF) this->imuPowerDown();
-    this->scanBus();
+    this->unusedRailsOff();
+    this->codecsPowerDown();
+    this->imuPowerDown();
 }
 
 void PmuRails::enterSleep() {
@@ -60,10 +57,6 @@ void PmuRails::enterSleep() {
     // VBUS / system voltage are only read while awake; the gauge keeps its own channels
     _pmu->disableVbusVoltageMeasure();
     _pmu->disableSystemVoltageMeasure();
-
-    // DSI_PWR_EN low: the AMOLED module's own converter off. The panel is already in
-    // sleep-in (PowerManager::gatePeripherals()), and its reset line is held high.
-    if (PowerManager::SLEEP_CUT_PANEL_POWER) _pmu->disableALDO2();
 }
 
 void PmuRails::summary(char* out, size_t len) const {
@@ -97,9 +90,10 @@ void PmuRails::logState() const {
     Serial.printf("[rails] batt %u mV, sys %u mV, vbus %u mV, gauge %d %%\n",
                   _pmu->getBattVoltage(), _pmu->getSystemVoltage(), _pmu->getVbusVoltage(),
                   _pmu->getBatteryPercent());
-    Serial.printf("[rails] codec power-down this boot: ES7210 %s (%d failed), ES8311 %s (%d failed)\n",
+    Serial.printf("[rails] power-down this boot: ES7210 %s (%d failed), ES8311 %s (%d failed), QMI8658 %s (%d failed)\n",
                   _es7210_fails < 0 ? "not found" : "done", _es7210_fails < 0 ? 0 : _es7210_fails,
-                  _es8311_fails < 0 ? "not found" : "done", _es8311_fails < 0 ? 0 : _es8311_fails);
+                  _es8311_fails < 0 ? "not found" : "done", _es8311_fails < 0 ? 0 : _es8311_fails,
+                  _imu_fails < 0 ? "not found" : "done", _imu_fails < 0 ? 0 : _imu_fails);
 }
 
 // === P R I V A T E ===
@@ -114,11 +108,9 @@ void PmuRails::unusedRailsOff() {
     _pmu->disableCPUSLDO();
     _pmu->disableDLDO1();
     _pmu->disableDLDO2();
-    if (PowerManager::UNUSED_DCDC_OFF) {
-        _pmu->disableDC2();
-        _pmu->disableDC3();
-        _pmu->disableDC4();
-    }
+    _pmu->disableDC2();
+    _pmu->disableDC3();
+    _pmu->disableDC4();
 }
 
 // The ES7210 and ES8311 sit powered (ALDO1 + VCC3V3) but are never used. Their state
@@ -161,22 +153,6 @@ void PmuRails::imuPowerDown() {
     if (!this->readReg(QMI8658_ADDR, QMI_REG_CTRL1, ctrl1) ||
         !this->writeReg(QMI8658_ADDR, QMI_REG_CTRL1, ctrl1 | QMI_CTRL1_SENSOR_DISABLE)) fails++;
     _imu_fails = (int8_t)fails;
-}
-
-void PmuRails::scanBus() {
-    if (_wire == nullptr) return;
-    size_t n = 0;
-    for (uint8_t addr = 0x08; addr < 0x78 && n + 4 <= sizeof(_bus_devices); ++addr) {
-        if (!this->probe(addr)) continue;
-        // Codec power-down result: '*' all writes acknowledged, '!' some failed
-        const int8_t fails = addr == ES7210_ADDR ? _es7210_fails
-                           : addr == ES8311_ADDR ? _es8311_fails
-                           : addr == QMI8658_ADDR ? _imu_fails : -1;
-        n += snprintf(_bus_devices + n, sizeof(_bus_devices) - n, n ? " %02X%s" : "%02X%s", addr,
-                      fails < 0 ? "" : fails == 0 ? "*" : "!");
-    }
-    if (n == 0) snprintf(_bus_devices, sizeof(_bus_devices), "none");
-    Serial.printf("[rails] I2C: %s\n", _bus_devices);
 }
 
 bool PmuRails::probe(uint8_t addr) const {

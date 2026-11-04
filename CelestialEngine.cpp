@@ -46,18 +46,6 @@ CelestialEngine::Result CelestialEngine::getResult() const {
     return r;
 }
 
-uint32_t CelestialEngine::getMaxComputeMicros() const {
-    uint32_t v;
-    portENTER_CRITICAL(&_spinlock);
-    v = _max_compute_us;
-    portEXIT_CRITICAL(&_spinlock);
-    return v;
-}
-
-UBaseType_t CelestialEngine::getStackHighWaterMark() const {
-    return _task ? uxTaskGetStackHighWaterMark(_task) : 0;
-}
-
 // === P R I V A T E ===
 
 void CelestialEngine::taskEntry(void* param) {
@@ -90,7 +78,6 @@ void CelestialEngine::run() {
         }
 
         uint32_t start_ms = millis();
-        uint32_t t0 = micros();
 
         Result r;
         if (in.valid) this->compute(in, start_ms, r);
@@ -98,11 +85,9 @@ void CelestialEngine::run() {
         r.computed_millis = start_ms;
         r.valid = in.valid;
         r.source_tag = in.source_tag;
-        r.compute_us = micros() - t0;
 
         portENTER_CRITICAL(&_spinlock);
         _result = r;
-        if (r.compute_us > _max_compute_us) _max_compute_us = r.compute_us;
         portEXIT_CRITICAL(&_spinlock);
 
         uint32_t elapsed = millis() - start_ms;

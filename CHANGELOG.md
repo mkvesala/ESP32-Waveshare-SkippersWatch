@@ -4,43 +4,7 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
-
-### Added
-
-- **Status: Avg drain** — average battery drain in mA since the battery-powered stretch
-  began (unplug or power-on on battery), from the AXP2101 gauge's percentage drop and the
-  RTC uptime, for a 400 mAh cell. Shows `-- mA/<1h` for the first hour (1 % = 4 mAh) and
-  `-- (USB)` on external power. The way to measure the sleep floor without a meter.
-- **Status: PMU rails** — AXP2101 rail enable registers (0x80, 0x90, 0x91) as raw hex. A
-  full decoded rail/ADC dump goes to Serial once per USB session.
-- **Status: Sleep lines** — levels of I2C SCL/SDA, the touch, RTC and IMU interrupts
-  and panel TE, probed at each sleep entry with the internal pull-down and then pull-up
-  (`H`/`L`/`F` = high, low, floating). Shows whether any line sits low against a pull-up
-  through sleep. First reading: `HH HFF L`, no leak.
-- **Status: I2C devices** — addresses that answer the bus scan at boot; the codecs and the
-  IMU are marked `*` when their power-down went through (`!` on failed writes).
-
-### Changed
-
-- **Deep-sleep floor** (first field test: ~7–8 mA against a 2 mA target). New `PmuRails`
-  owns the AXP2101 rail state from the traced rail-to-load map: unused LDOs are switched
-  off, and the ES7210/ES8311 codecs are put into their drivers' power-down state. Panel
-  QSPI and I2S pads are held at defined levels through sleep, the CO5300 enters deep
-  standby (0x4F) after sleep-in, and the PWR button wakes via ext1 instead of ext0. Each
-  measure has its own switch in `PowerManager.h`. Cutting ALDO2 (the AMOLED module's
-  `DSI_PWR_EN`) in sleep measured +30–40 mA without deep standby; with deep standby
-  (6.3 mA) it is being retried as bisect E. The bisection results are in
-  `hardware_notes_waveshare.md`.
-- **QMI8658 and DCDC2–4 off** (bisect F): the never-initialised IMU gets its sensors and
-  internal oscillator switched off on every wake, and the unconnected DCDC2–4 are disabled.
-  Bisect E (ALDO2 cut on top of CO5300 deep standby) gave no gain, so ALDO2 stays on.
-- **Avg drain** restarts its baseline when the AXP2101 gauge reads above it. The gauge
-  climbs for an hour or more after a USB unplug or a power cycle.
-- `BatteryMonitor::beginPmu()` no longer enables the VBUS/system ADC channels; `PmuRails`
-  turns them on while awake and off in sleep.
-
-## [2.1.0] - 2026-10-27
+## [2.1.0] - 2026-11-04
 
 ### Added
 
@@ -64,9 +28,27 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Host tests for the celestial code (`tests/celestial/`, JPL Horizons and SIMBAD fixtures).
 - **Celestial icon in the page menu** (`ui_ImgButtonCelestial` / `ui_ImgButtonCelestialNight`,
   bottom middle of the grid).
+- **Status: Avg drain** — average battery drain in mA since the battery-powered stretch
+  began (unplug or power-on on battery), from the AXP2101 gauge's percentage drop and the
+  RTC uptime, for a 400 mAh cell. Shows `-- mA/<1h` for the first hour (1 % = 4 mAh) and
+  `-- (USB)` on external power. The baseline restarts when the gauge reads above it, since
+  the gauge can climb for an hour or more after a USB unplug or a power cycle.
+- **Status: PMU rails** — AXP2101 rail enable registers (0x80, 0x90, 0x91) as raw hex. A
+  full decoded rail/ADC dump goes to Serial once per USB session.
 
 ### Changed
 
+- **Deep-sleep floor about 6 mA**, down from ~7–8 mA (400 mAh cell, gauge-based, measured
+  overnight; ~5 mA after the first hour off the charger). The 2 mA target was not reached,
+  and about 6 mA is accepted for this release; holding PWR ~6 s powers the board off for
+  long storage (at most ~0.4 mA measured). New `PmuRails` owns the AXP2101 rail state from
+  the traced rail-to-load map: unused LDOs and the unconnected DCDC2–4 are off, the ES7210,
+  ES8311 and QMI8658 are powered down over I2C on every wake, and the VBUS/system ADC channels
+  run only while awake. Panel QSPI and I2S pads are held at defined levels through sleep, the
+  CO5300 enters deep standby (0x4F) after sleep-in, and the PWR button wakes via ext1 instead
+  of ext0. Only the CO5300 deep standby had a measurable effect. Cutting ALDO2 (the AMOLED
+  module's `DSI_PWR_EN`) in sleep made things worse, so it stays on. The test results are in
+  `hardware_notes_waveshare.md`.
 - Built with **LVGL 9.6.0** (was 9.5.0) and **GFX Library for Arduino 1.6.9** (was 1.6.7).
   No code changes needed. `lv_conf.h` rebuilt from the 9.6.0 template (the only project
   changes stay: 96 kB `LV_MEM_SIZE`, NULL / malloc asserts on), so the deprecated
@@ -78,6 +60,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
   to whole seconds, so the clock is now within ±0.5 s instead of 0–1 s late.
 - The demo clock's epoch moved from `ClockUI` to `DemoValues::DEMO_EPOCH_UTC`, shared by the
   Clock and Celestial screens.
+
+### Removed
+
+- Receiver and engine code nothing used: the per-source has-new flags (except date/time),
+  packets-per-second statistics, `isConnected()` and the Celestial compute-time diagnostics.
 
 ## [2.0.0] - 2026-10-23
 

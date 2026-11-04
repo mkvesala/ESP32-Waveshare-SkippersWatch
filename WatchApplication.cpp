@@ -96,8 +96,8 @@ void WatchApplication::begin() {
     // below whether the radio is brought up at all.
     Wire.begin(PIN_I2C_SDA, PIN_I2C_SCL);
     _battery.beginPmu(Wire, PIN_I2C_SDA, PIN_I2C_SCL);
-    // Awake rail state BEFORE the panel init: the last sleep cut the AMOLED module's
-    // supply enable (ALDO2), and the codecs are powered down here, not later.
+    // Awake rail state BEFORE the panel init: the AMOLED module needs its supply enable
+    // (ALDO2), and the codecs and IMU are powered down here, not later.
     _rails.attach(_battery.pmu(), &Wire);
     _rails.beginAwake();
 

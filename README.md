@@ -69,9 +69,11 @@ This is one of my individual digital boat projects. Use at your own risk. Not fo
 
 ## Project status
 
-**Version 2.0.0** (2026-10-23) — see [CHANGELOG.md](CHANGELOG.md).
+**Version 2.1.0** (2026-11-04) — see [CHANGELOG.md](CHANGELOG.md).
 
-Port to the Waveshare AMOLED board: the full v1.0.0 feature set plus the [page menu](#input), the [status screen](#status-screen), the [startup screen](#startup-screen), [demo mode and night mode](#setup-screen) and an adjustable wake time, flashed and running correctly on the board. The board's own current measurements (sleep floor, active draw) are still open. Until they are measured, no endurance figures are claimed for this board (see [Power management](#power-management)).
+Adds the [Celestial screen](#celestial-screen) and brings the deep-sleep floor down to about 6 mA, measured from the fuel gauge (see [Power management](#power-management)). The active current on this board is still unmeasured.
+
+**Version 2.0.0** (2026-10-23) — port to the Waveshare AMOLED board: the full v1.0.0 feature set plus the [page menu](#input), the [status screen](#status-screen), the [startup screen](#startup-screen), [demo mode and night mode](#setup-screen) and an adjustable wake time.
 
 **Version 1.0.0** (CrowPanel 2.01") ran on hardware on the vessel with all seven screens, the GNSS-disciplined clock, the touch UI and a measured, closed power budget.
 
@@ -80,7 +82,7 @@ Port to the Waveshare AMOLED board: the full v1.0.0 feature set plus the [page m
 <!-- TODO(diagram): add class / UML diagram here, e.g. <img src="docs/full_uml_diagram.jpeg" width="480"> -->
 
 **`WatchApplication`:**
-- Owns: `Arduino_ESP32QSPI`, `Arduino_CO5300`, `PanelBrightness`, `ESPNowReceiver`, `NavigationUI`, `BatteryUI`, `WeatherUI`, `EngineUI`, `AttitudeUI`, `ClockUI`, `SetupUI`, `LastPosition`, `CelestialUI`, `MenuUI`, `TouchInput`, `ScreenManager`, `PowerManager`, `BatteryMonitor`, `DemoSource`, `ThemeController`, `SystemStats`, `StatusUI`
+- Owns: `Arduino_ESP32QSPI`, `Arduino_CO5300`, `PanelBrightness`, `ESPNowReceiver`, `NavigationUI`, `BatteryUI`, `WeatherUI`, `EngineUI`, `AttitudeUI`, `ClockUI`, `SetupUI`, `LastPosition`, `CelestialUI`, `MenuUI`, `TouchInput`, `ScreenManager`, `PowerManager`, `BatteryMonitor`, `PmuRails`, `DemoSource`, `ThemeController`, `SystemStats`, `StatusUI`
 - Responsible for: orchestrating everything within the main program, including the staggered wake sequence (with the startup screen on a true power-on), gesture dispatch (carousel and page menu), GNSS time discipline and applying Setup's demo and night switches
 
 **`PowerManager`:**
@@ -91,6 +93,11 @@ Port to the Waveshare AMOLED board: the full v1.0.0 feature set plus the [page m
 **`BatteryMonitor`:**
 - Uses: `XPowersAXP2101` (XPowersLib)
 - Responsible for: reading the watch's own LiPo from the AXP2101 PMIC (voltage, EMA smoothing, fuel-gauge state-of-charge with a LiPo resting curve as fallback), VBUS detection, driving the status-bar indicator, and classifying the charge into the `OK` / `WARN` / `CRITICAL` / `CUTOFF` level the power ladder acts on. Data only — the policy lives in `PowerManager`
+- Owned by: `WatchApplication`
+
+**`PmuRails`:**
+- Uses: `XPowersAXP2101` (owned by `BatteryMonitor`), the shared I2C bus
+- Responsible for: the AXP2101 rail state from the traced rail-to-load map (unused rails off, VBUS/system ADC only while awake) and the I2C power-down of the audio codecs and the IMU on every wake. Mechanism only — when to sleep stays in `PowerManager`
 - Owned by: `WatchApplication`
 
 **`ESPNowReceiver`:**
@@ -122,7 +129,7 @@ Port to the Waveshare AMOLED board: the full v1.0.0 feature set plus the [page m
 - Owned by: `WatchApplication`
 
 **`StatusUI`:**
-- Uses: `SystemStats`, `BatteryMonitor`, `ESPNowReceiver` (frame count)
+- Uses: `SystemStats`, `BatteryMonitor`, `PmuRails` (rail registers), `ESPNowReceiver` (frame count)
 - Responsible for: the Status overlay (`ui_ContainerStatus`): show / hide and a once-per-second refresh of its values. Not an `IScreenUI` page — never part of the carousel or the last-active store
 - Owned by: `WatchApplication`
 
@@ -264,7 +271,7 @@ Two limits still apply, deliberately:
 
 ### Celestial screen
 
-<!-- TODO(screenshot): docs/celestial.png (SquareLine) + docs/celestial.jpeg (on the watch) -->
+<img src="docs/celestialview.png" height="260" alt="Celestial (SquareLine)"> <img src="docs/celestialview.jpeg" height="260" alt="Celestial (on the watch)">
 
 A sight-reduction aid for sextant practice: the computed altitude **Hc** and true azimuth **Zn** of the bodies worth shooting right now, plus the other inputs of a manual sight reduction.
 
@@ -302,7 +309,7 @@ All interaction is by touch; the PWR button is the wake source.
 | Jump to a screen | Tap its icon in the page menu |
 | Screen action | Tap |
 | Adjust brightness / wake time, toggle prevent sleep / demo / night | Drag a slider, tap a switch (Setup) |
-| Wake from deep sleep | Press the **PWR** button (GPIO10, `ext0`) |
+| Wake from deep sleep | Press the **PWR** button (GPIO10, `ext1`) |
 
 Screen carousel order:
 - **Swipe left:** Navigation → Batteries → Weather → Engine → Attitude → Clock → Setup → Celestial → Navigation
@@ -340,6 +347,8 @@ Swipe up on any screen for a status overlay; swipe down returns to the screen yo
 | Last reset | Reset reason of this boot (`POWERON`, `DEEPSLEEP`, `WDT`, `PANIC`, `BROWNOUT`, `SW`, …) | `esp_reset_reason()` |
 | Chip temp | ESP32-S3 internal sensor (coarse) | `temperatureRead()` |
 | Battery voltage | Watch cell, EMA-smoothed (the charge voltage while on USB) | AXP2101 |
+| Avg drain | Average drain since the battery-powered stretch began, e.g. `6.0 mA/13h`; `-- mA/<1h` for the first hour, `-- (USB)` on external power. Assumes a 400 mAh cell; the first hour after a full charge reads high | AXP2101 gauge % drop over RTC uptime |
+| PMU rails | AXP2101 rail enables as raw hex (`DC` = 0x80, `LDO` = 0x90 and 0x91) | AXP2101 |
 
 All power-on counters survive deep sleep, watchdog, panic and software resets, and start over on a true power-on (AXP2101 power-off, flat or removed battery) — the same moment the RTC timer restarts and the [startup screen](#startup-screen) shows. Writing them costs no flash: they live in RTC RAM and are updated at sleep entry, the stuck-button recheck path included. Uptime and deep sleep follow the RTC slow clock, which can drift by roughly 1–2 %; wake time is `millis()`-exact. Over a battery cycle, wake time vs deep sleep gives the watch's actual duty cycle.
 
@@ -347,7 +356,7 @@ All power-on counters survive deep sleep, watchdog, panic and software resets, a
 
 The whole architecture resolves one contradiction: **in deep sleep the radio is off, so no ESP-NOW packet can be received.** You cannot both deep-sleep and listen.
 
-**Model B (deep-sleep, wake-to-fetch).** Deep sleep is the resting default. A PWR-button press wakes the watch; only *then* does it bring the radio up, catch a broadcast, render, and — after a short display-on timeout (the Setup **wake time**, 2–20 s, default 10 s, shortened automatically as the cell empties) of no interaction — soft-ramp the brightness down and return to deep sleep. On sleep entry the AMOLED is switched off and put into sleep-in, the FT3168 into hibernate, the panel and touch reset lines are held high and the speaker amp enable (GPIO46) low through sleep; the PWR button (GPIO10, RTC-capable, **active-high**) is armed as the `ext0` wake source. The AXP2101 rails are left on for now: which load hangs on which rail is still to be traced, and cutting the wrong one could cut the SoC or the I2C pull-ups.
+**Model B (deep-sleep, wake-to-fetch).** Deep sleep is the resting default. A PWR-button press wakes the watch; only *then* does it bring the radio up, catch a broadcast, render, and — after a short display-on timeout (the Setup **wake time**, 2–20 s, default 10 s, shortened automatically as the cell empties) of no interaction — soft-ramp the brightness down and return to deep sleep. On sleep entry the AMOLED is switched off and put into sleep-in and deep standby, the FT3168 into hibernate, the panel and touch reset lines are held high, the panel QSPI and I2S pads at defined levels and the speaker amp enable (GPIO46) low through sleep; the PWR button (GPIO10, RTC-capable, **active-high**) is armed as the `ext1` wake source. `PmuRails` keeps the unused AXP2101 rails off and powers the audio codecs and the IMU down over I2C on every wake.
 
 **Staggered wake (spike discipline).** A wake from deep sleep is the worst-timed current spike — several loads want to turn on at once on a small, possibly-aged cell. The bring-up spreads the inrush in time: release GPIO holds → PMIC + panel init (panel stays dark) → low-battery check → radio up first into the dark, low-load moment → ~200 ms dark ESP-NOW listen window so the first *lit* frame shows real data, not a placeholder flash → render → **then** the brightness ramps up (soft-start in panel-command steps, never a hard step). On a true power-on the [startup screen](#startup-screen) is lit (with the same soft ramp) in place of the dark listen window. The brownout detector is kept enabled — a trip means the sequence is too aggressive, not a reason to disable protection.
 
@@ -359,7 +368,7 @@ With a comfortable average budget, what actually threatens endurance is not the 
 |---|---|---|
 | Absolute awake ceiling | 120 s | A stuck input source (bouncing button, latched touch INT, a UI path signalling activity every frame) holding the watch awake indefinitely. User activity **cannot** extend this ceiling — that is the whole point. Suspended on USB power |
 | Task watchdog | 30 s | A *hung* loop, which the ceiling cannot catch because the ceiling itself needs the loop to run. A trip resets the SoC, i.e. a recoverable cold boot rather than a flat cell |
-| Stuck wake-button guard | 30 s recheck | Deep-sleep `ext0` is **level-triggered**: arming it while the PWR button is already held (strap or sleeve pressure) makes the SoC wake immediately, over and over. The pin is read before arming (high = held) and, when held, a timer is armed instead; the recheck runs before any panel, UI or radio bring-up |
+| Stuck wake-button guard | 30 s recheck | Deep-sleep `ext1` is **level-triggered**: arming it while the PWR button is already held (strap or sleeve pressure) makes the SoC wake immediately, over and over. The pin is read before arming (high = held) and, when held, a timer is armed instead; the recheck runs before any panel, UI or radio bring-up |
 | Low-charge ladder | see below | Running the cell down to its own protection cutoff |
 
 **Low-charge ladder.** `BatteryMonitor` classifies the charge and `PowerManager` acts on it. The level only ever escalates within one awake session, so a reading that jitters across a threshold under load cannot make the behaviour flap; a wake is a full reboot, so every wake re-evaluates from scratch. On USB power the ladder is suppressed entirely.
@@ -398,18 +407,25 @@ Boot logs the reset reason and which tier supplied the page (`[page] reset=… s
 
 ### Consumption measurements
 
-**Not yet measured on the Waveshare board.** No current figures are claimed for it until they are: the sleep floor and the active current decide the whole budget. To measure, battery only (USB unplugged):
+Measured on the Waveshare board from the AXP2101 fuel gauge over overnight tests, not with a meter, assuming a 400 mAh cell (2026-10-29…11-04, see `hardware_notes_waveshare.md`):
 
-- **Deep-sleep floor — series shunt + voltmeter.** A known resistor (e.g. 100 Ω) in series on battery `+`, bridged with a jumper while booting so the inrush bypasses it; once the watch sleeps, remove the jumper and read the voltage across the resistor. `I = U / R`.
-- **Active current — DMM 10 A jack in series.** The mA ranges' burden voltage browns the board out; the 10 A range does not. Measure at several brightness levels on a typical (mostly black) screen.
+| State | Draw |
+|---|---|
+| Deep sleep | **about 6 mA** (6.0 mA over 13 h; ~5 mA without the first hour after a full charge) |
+| Powered off (PWR held ~6 s) | at most ~0.4 mA (1 % over 9.5 h) |
+| Active | not yet measured |
+
+The original target of 2 mA was not reached. Every peripheral the firmware can reach is asleep or unpowered, and the remaining load has not been located; about 6 mA is accepted for now. To store the watch, power it off: hold PWR ~6 s, and press PWR to start it again.
+
+Active current still needs a meter, battery only (USB unplugged): a DMM's 10 A jack in series. The mA ranges' burden voltage browns the board out; the 10 A range does not. Measure at several brightness levels on a typical (mostly black) screen.
 
 For reference, v1.0.0 on the CrowPanel measured a **2.16 mA** deep-sleep floor and **~145 mA** active at 20 % backlight. Those numbers belong to that board and are not carried over.
 
 ### Endurance
 
-Daily budget = sleep floor × 24 h + glances per day × active current × glance length (10 s window + ~0.5 s wake). The target is one to two days on the fitted cell (assumed ~300 mAh until confirmed) with nightly charging. The table is filled in once the floor and the active current have been measured.
+Daily budget = sleep floor × 24 h + glances per day × active current × glance length (10 s window + ~0.5 s wake). The target is one to two days on the fitted cell with nightly charging. At 6 mA, deep sleep alone takes 144 mAh per day, so 400 mAh lasts about 66 h before any wakes. The glance share follows once the active current has been measured.
 
-On the CrowPanel, Model B met the 24 h + nightly-charge requirement with a 2.7–4.8× margin, so a hybrid light-sleep "watch mode" (Model C) was dropped; whether that still holds here follows from the measurements.
+On the CrowPanel, Model B met the 24 h + nightly-charge requirement with a 2.7–4.8× margin, so a hybrid light-sleep "watch mode" (Model C) was dropped; whether that still holds here follows from the active-current measurement.
 
 **The dominant endurance risk is not the average draw but a failure to sleep**: at active current a small cell is flat in hours. That is exactly what the awake ceiling, the task watchdog and the stuck-wake-button guard exist for — see [Power guards](#power-guards).
 
@@ -488,10 +504,11 @@ struct DepthDelta {
 
 | File(s) | Description |
 |---------|-------------|
-| `ESP32-Crowpanel-SkippersWatch.ino` | Owns `WatchApplication app`, contains `setup()` and `loop()` |
+| `ESP32-Waveshare-SkippersWatch.ino` | Owns `WatchApplication app`, contains `setup()` and `loop()` |
 | `WatchApplication.h/.cpp` | Class `WatchApplication`, the "app" — owns all instances, display stack, staggered wake, gesture dispatch, GNSS time sync |
 | `PowerManager.h/.cpp` | Class `PowerManager` — Model B deep-sleep, display timeout, peripheral sleep, PWR-button wake arming, and the power guards (awake ceiling, watchdog, low-charge ladder, stuck-button guard) |
 | `BatteryMonitor.h/.cpp` | Class `BatteryMonitor` — AXP2101 battery voltage + fuel gauge, VBUS detection, status-bar indicator, charge-level classification |
+| `PmuRails.h/.cpp` | Class `PmuRails` — AXP2101 rail state, codec and IMU power-down over I2C |
 | `BatteryLevel.h` | Charge levels, the low-charge ladder thresholds and the display-timeout cap (pure, host-tested) |
 | `DemoSource.h/.cpp`, `DemoValues.h` | Class `DemoSource` — demo-mode frames injected into the receiver; `DemoValues` is the pure value generator (host-tested) |
 | `ThemeController.h/.cpp`, `NightPalette.h` | Class `ThemeController` — day / night palette switch; `NightPalette` is the pure color mapping (host-tested) |
@@ -581,7 +598,7 @@ struct DepthDelta {
    | PSRAM | OPI PSRAM |
    | Flash Mode | QIO 80MHz |
 
-   The sketch is ~1.91 MB, about 60 % of the Huge APP slot; the default 1.2 MB app partition is too small.
+   The sketch is ~1.84 MB, about 58 % of the Huge APP slot; the default 1.2 MB app partition is too small.
 6. Point the ESP-NOW senders to the same WiFi channel
 
 **Note** that `lv_conf.h` is project-local. If you use LVGL elsewhere, a second `lv_conf.h` may live under `Arduino/libraries/` next to the `lvgl` folder — check both to avoid conflicts.
@@ -620,7 +637,7 @@ Developed by Matti Vesala in collaboration with Claude.
 
 <!-- TODO(images): add the UML diagram and a photo of the watch on the wrist here -->
 
-The watch running v2.0.0:
+The watch:
 
 | Navigation | Batteries | Weather |
 |---|---|---|
@@ -630,9 +647,9 @@ The watch running v2.0.0:
 |---|---|---|
 | <img src="docs/engineroom.jpeg" width="200"> | <img src="docs/attitude.jpeg" width="200"> | <img src="docs/clock.jpeg" width="200"> |
 
-| Setup | Page menu | Status |
-|---|---|---|
-| <img src="docs/setup.jpeg" width="200"> | <img src="docs/menu.jpeg" width="200"> | <img src="docs/status.jpeg" width="200"> |
+| Setup | Celestial | Page menu | Status |
+|---|---|---|---|
+| <img src="docs/setup.jpeg" width="200"> | <img src="docs/celestialview.jpeg" width="200"> | <img src="docs/menu.jpeg" width="200"> | <img src="docs/status.jpeg" width="200"> |
 
 Night mode:
 
@@ -650,6 +667,6 @@ SquareLine Studio previews of the 410×502 layout:
 |---|---|---|
 | <img src="docs/engineroom.png" width="200"> | <img src="docs/attitude.png" width="200"> | <img src="docs/clock.png" width="200"> |
 
-| Setup | Page menu | Status | Startup |
-|---|---|---|---|
-| <img src="docs/setup.png" width="200"> | <img src="docs/menu.png" width="200"> | <img src="docs/status.png" width="200"> | <img src="docs/startup.png" width="200"> |
+| Setup | Celestial | Page menu | Status | Startup |
+|---|---|---|---|---|
+| <img src="docs/setup.png" width="200"> | <img src="docs/celestialview.png" width="200"> | <img src="docs/menu.png" width="200"> | <img src="docs/status.png" width="200"> | <img src="docs/startup.png" width="200"> |

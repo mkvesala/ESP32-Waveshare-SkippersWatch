@@ -189,11 +189,6 @@ static void testStatusFormat() {
     CHECK_EQ(F::shouldReset(true, F::RST_POWERON), true);
     CHECK_EQ(F::shouldReset(false, F::RST_DEEPSLEEP), true);
     CHECK_EQ(F::shouldReset(true, F::RST_DEEPSLEEP), false);
-    // Sleep-line probe: driven or externally pulled lines ignore the internal pull
-    CHECK_EQ(F::lineLevel(true, true), 'H');
-    CHECK_EQ(F::lineLevel(false, false), 'L');
-    CHECK_EQ(F::lineLevel(false, true), 'F');
-    CHECK_EQ(F::lineLevel(true, false), '?');
     CHECK_EQ(F::shouldReset(true, F::RST_TASK_WDT), false);
 
     // Drain: the field test (100 -> 54 % of 400 mAh in 25 h) reads as 7.4 mA

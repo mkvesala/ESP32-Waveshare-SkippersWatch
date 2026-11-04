@@ -23,10 +23,9 @@ class PmuRails;
 // - Owned by: WatchApplication
 //
 // It is also the POLICY owner for everything that can force a sleep decision. The
-// policy is carried over unchanged from the CrowPanel build, where the measured budget
-// was comfortable for the 24 h + nightly-charge requirement; this board's sleep floor
-// and active draw are still to be measured [M]. The remaining risks are failure modes,
-// not averages. Four guards, all here:
+// policy is carried over unchanged from the CrowPanel build. On this board the deep-sleep
+// floor measured ~6 mA (hardware_notes_waveshare.md); active draw is still [M]. The
+// remaining risks are failure modes, not averages. Four guards, all here:
 //
 //   1. MAX_AWAKE_MS  — an ABSOLUTE ceiling on one awake session that notifyActivity()
 //      cannot reset. A stuck input source (bouncing button, latched touch INT, a UI
@@ -37,7 +36,7 @@ class PmuRails;
 //   3. Low-charge ladder — BatteryMonitor::Level shortens the display timeout, clamps
 //      the backlight, and finally forces a protective sleep before the cell reaches
 //      its own protection cutoff.
-//   4. Stuck wake-button guard — ext0/ext1 are LEVEL-triggered, so a button held down at
+//   4. Stuck wake-button guard — ext1 is LEVEL-triggered, so a button held down at
 //      sleep entry (strap/sleeve pressure on the PWR key) would wake the watch instantly, over
 //      and over. armWakeSource() then arms a timer instead and rechecks cheaply.
 //
@@ -130,9 +129,6 @@ public:
     // backlight ramps straight to the clamped target instead of flashing bright first
     static int8_t backlightCeilingFor(BatteryMonitor::Level level);
 
-    bool wokeFromButton() const {
-        return _cause == ESP_SLEEP_WAKEUP_EXT0 || _cause == ESP_SLEEP_WAKEUP_EXT1;
-    }
     PowerState state() const { return _state; }
 
     // Default display-on window before returning to deep sleep, used until the app pushes
@@ -155,33 +151,6 @@ public:
     static constexpr uint32_t STAYAWAKE_DIM_IDLE_MS = 60000;
     static constexpr int8_t   STAYAWAKE_DIM_PERCENT = 5;
 
-    // --- Deep-sleep floor measures (2026-10-31) ---
-    // The first battery test drained ~7-8 mA in deep sleep (400 mAh, 100 -> 54 % in
-    // 25 h) against a ~2 mA target. Each measure has its own switch so the floor can be
-    // bisected over nights with the Status screen's "Avg drain" row, the only meter
-    // available. Expected effect per measure is [M] until that row says otherwise.
-    //
-    // ALDO2 off in sleep → DSI_PWR_EN low, the AMOLED module's own converter off (PmuRails)
-    static constexpr bool SLEEP_CUT_PANEL_POWER = false;   // E (with deep standby): 6.7 mA, no gain. Alone 49.6 mA, with pads 36 mA
-    // QSPI and I2S pads driven to a defined level and held, instead of floating into
-    // inputs that are still powered (panel VDDIO and ES8311 sit on VCC3V3)
-    static constexpr bool SLEEP_DEFINE_PADS = true;        // bisect C (panel stays powered)
-    // Rails with no load (ALDO3/4, BLDO1/2, CPUSLDO, DLDO1/2) off on every wake (PmuRails)
-    static constexpr bool UNUSED_RAILS_OFF = true;
-    // ES7210 + ES8311 into their drivers' power-down state on every wake (PmuRails)
-    static constexpr bool AUDIO_CODECS_OFF = true;
-    // QMI8658 (never initialised) sensors and internal oscillator off (PmuRails)
-    static constexpr bool IMU_OFF = true;               // bisect F
-    // DCDC2-4 off: on after reset (0x80 = 0F) with their pins unconnected (PmuRails)
-    static constexpr bool UNUSED_DCDC_OFF = true;       // bisect F
-    // Wake on ext1 (RTC controller) instead of ext0, which keeps the RTC_PERIPH domain
-    // powered. GPIO10 is driven by T1/R11, so no internal pull is needed.
-    static constexpr bool WAKE_ON_EXT1 = true;
-    // CO5300 deep standby (0x4F = 0x01) after sleep-in. Left commented out in GFX's own
-    // Arduino_CO5300::displayOff(). Exit needs a hardware reset, which every wake's panel
-    // init already does.
-    static constexpr bool PANEL_DEEP_STANDBY = true;    // bisect D: 6.3 mA (C: 8.4 mA)
-
 private:
 
     // ramp_brightness=false for sleep paths that run before the panel is initialised
@@ -190,7 +159,6 @@ private:
     void rampBrightnessDown();
     void gatePeripherals();
     void definePads();
-    void probeSleepLines();
     void armWakeSource();
     void initWatchdog();
 
@@ -223,7 +191,6 @@ private:
     bool _prevent_sleep = false;   // user's SetupUI choice, pushed in every loop
     uint32_t _user_timeout_ms = DISPLAY_TIMEOUT_MS;   // user's wake time, pushed in every loop
 
-    esp_sleep_wakeup_cause_t _cause = ESP_SLEEP_WAKEUP_UNDEFINED;
     PowerState _state = PowerState::WAKING;
     uint32_t _last_activity = 0;
     uint32_t _wake_ms = 0;          // start of this awake session (the ceiling's origin)
@@ -231,8 +198,7 @@ private:
     bool _wdt_armed = false;
 
     // PWR button state line (SYS_OUT) — RTC-capable, ACTIVE-HIGH (high = pressed), the
-    // deep-sleep wake source (ext1 ANY_HIGH, or ext0 level 1 — see WAKE_ON_EXT1). Touch cannot wake from deep sleep on this
-    // board: the FT3168 INT is GPIO38, not an RTC pin. The same key is the AXP2101 power
+    // deep-sleep wake source (ext1 ANY_HIGH). Touch cannot wake from deep sleep on this board: the FT3168 INT is GPIO38, not an RTC pin. The same key is the AXP2101 power
     // key: ~6 s held cuts power in hardware, whatever the firmware does.
     static constexpr uint8_t WAKE_BUTTON_PIN = 10;
 
@@ -243,17 +209,14 @@ private:
     static constexpr uint8_t PIN_TP_RST   = TouchInput::TOUCH_RST_PIN;
     static constexpr uint8_t PIN_PA_CTRL  = 46;
 
-    // CO5300 Deep Standby Mode register (GFX CO5300_W_DEEPSTMODE) and a settle time [M]
+    // CO5300 Deep Standby Mode register (GFX CO5300_W_DEEPSTMODE) and a settle time [M].
+    // Left commented out in GFX's own Arduino_CO5300::displayOff(); the one sleep measure
+    // with a measured gain (~2-3 mA). Exit needs a hardware reset, which every wake's panel
+    // init already does.
     static constexpr uint8_t PANEL_CMD_DEEP_STANDBY = 0x4F;
     static constexpr uint32_t PANEL_DEEP_STANDBY_MS = 10;
 
-    // Sleep-line probe (diagnostic, see probeSleepLines): I2C SCL/SDA (14/15) | touch,
-    // RTC and IMU interrupts (38/39/21) | panel TE (13), shown on Status as "HH HFL L".
-    static constexpr bool PROBE_SLEEP_LINES = true;
-    static constexpr uint8_t PROBE_PINS[6] = { 14, 15, 38, 39, 21, 13 };
-    static constexpr uint32_t PROBE_SETTLE_US = 50;
-
-    // Pads latched through deep sleep when SLEEP_DEFINE_PADS is on. RTC pads (GPIO0-21)
+    // Pads latched through deep sleep. RTC pads (GPIO0-21)
     // need gpio_hold_en() each; digital pads are covered by gpio_deep_sleep_hold_en().
     // Panel QSPI: CS idle high, clock and data low.
     static constexpr uint8_t PIN_LCD_CS   = 12;

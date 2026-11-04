@@ -25,18 +25,7 @@ bool ESPNowReceiver::begin(uint8_t channel) {
     esp_now_register_recv_cb(onDataRecv);
 
     _initialized = true;
-    _last_stats_millis = millis();
-
     return true;
-}
-
-// Returns true if new packet available, otherwise false
-bool ESPNowReceiver::hasNewData() const {
-    bool result;
-    portENTER_CRITICAL(&s_spinlock);
-    result = s_has_new_data;
-    portEXIT_CRITICAL(&s_spinlock);
-    return result;
 }
 
 // Returns the latest data packet received via ESP-NOW
@@ -44,43 +33,12 @@ HeadingData ESPNowReceiver::getData() {
     HeadingData data;
     portENTER_CRITICAL(&s_spinlock);
     data = s_latest_data;
-    s_has_new_data = false;
     portEXIT_CRITICAL(&s_spinlock);
     return data;
 }
 
-// Returns true if timeout not reached, otherwise false
-bool ESPNowReceiver::isConnected(uint32_t timeout_ms) const {
-    uint32_t last_rx;
-    portENTER_CRITICAL(&s_spinlock);
-    last_rx = s_last_rx_millis;
-    portEXIT_CRITICAL(&s_spinlock);
-
-    if (last_rx == 0) return false;
-
-    return (millis() - last_rx) < timeout_ms;
-}
-
-// Update the PPS statistics
-void ESPNowReceiver::updateStats() {
-    uint32_t now = millis();
-    uint32_t elapsed = now - _last_stats_millis;
-    if (elapsed < 1000) return;
-
-    uint32_t count;
-    portENTER_CRITICAL(&s_spinlock);
-    count = s_packet_count;
-    portEXIT_CRITICAL(&s_spinlock);
-
-    uint32_t delta_count = count - _last_packet_count;
-    _packets_per_second = (float)delta_count * 1000.0f / (float)elapsed;
-
-    _last_packet_count = count;
-    _last_stats_millis = now;
-}
-
-// Demo mode switch. Both directions wipe every displayed source (timestamps and has-new
-// flags), so neither a real value can linger among the demo values nor a demo value pass
+// Demo mode switch. Both directions wipe every displayed source (their timestamps),
+// so neither a real value can linger among the demo values nor a demo value pass
 // for a real one: the pages show their placeholders until the new source delivers. The
 // cached payloads themselves are left as they are — with a zero timestamp no page shows
 // them, and the next stored frame overwrites them.
@@ -88,14 +46,14 @@ void ESPNowReceiver::setDemoMode(bool on) {
     portENTER_CRITICAL(&s_spinlock);
     if (s_demo_mode != on) {
         s_demo_mode = on;
-        s_has_new_data = false;    s_last_rx_millis = 0;
-        s_has_new_weather = false; s_last_weather_millis = 0;
-        s_has_new_battery = false; s_last_battery_millis = 0;
-        s_has_new_gnss = false;    s_last_gnss_millis = 0;
-        s_has_new_engine = false;  s_last_engine_millis = 0;
-        s_has_new_tank = false;    s_last_tank_millis = 0;
-        s_has_new_water = false;   s_last_water_millis = 0;
-        s_has_new_depth = false;   s_last_depth_millis = 0;
+        s_last_rx_millis = 0;
+        s_last_weather_millis = 0;
+        s_last_battery_millis = 0;
+        s_last_gnss_millis = 0;
+        s_last_engine_millis = 0;
+        s_last_tank_millis = 0;
+        s_last_water_millis = 0;
+        s_last_depth_millis = 0;
     }
     portEXIT_CRITICAL(&s_spinlock);
 }
@@ -163,9 +121,7 @@ void ESPNowReceiver::dispatch(const uint8_t* data, int data_len, bool from_demo)
             portENTER_CRITICAL(&s_spinlock);
             if (acceptLocked(from_demo)) {
                 s_latest_data    = converted;
-                s_has_new_data   = true;
                 s_last_rx_millis = millis();
-                s_packet_count++;
             }
             portEXIT_CRITICAL(&s_spinlock);
             break;
@@ -178,7 +134,6 @@ void ESPNowReceiver::dispatch(const uint8_t* data, int data_len, bool from_demo)
             portENTER_CRITICAL(&s_spinlock);
             if (acceptLocked(from_demo)) {
                 s_latest_weather  = weather;
-                s_has_new_weather = true;
                 s_last_weather_millis = millis();
             }
             portEXIT_CRITICAL(&s_spinlock);
@@ -192,7 +147,6 @@ void ESPNowReceiver::dispatch(const uint8_t* data, int data_len, bool from_demo)
             portENTER_CRITICAL(&s_spinlock);
             if (acceptLocked(from_demo)) {
                 s_latest_battery  = battery;
-                s_has_new_battery = true;
                 s_last_battery_millis = millis();
             }
             portEXIT_CRITICAL(&s_spinlock);
@@ -207,7 +161,6 @@ void ESPNowReceiver::dispatch(const uint8_t* data, int data_len, bool from_demo)
             portENTER_CRITICAL(&s_spinlock);
             if (acceptLocked(from_demo)) {
                 s_latest_gnss  = converted;
-                s_has_new_gnss = true;
                 s_last_gnss_millis = millis();
             }
             portEXIT_CRITICAL(&s_spinlock);
@@ -221,7 +174,6 @@ void ESPNowReceiver::dispatch(const uint8_t* data, int data_len, bool from_demo)
             portENTER_CRITICAL(&s_spinlock);
             if (acceptLocked(from_demo)) {
                 s_latest_engine  = eng;
-                s_has_new_engine = true;
                 s_last_engine_millis = millis();
             }
             portEXIT_CRITICAL(&s_spinlock);
@@ -235,7 +187,6 @@ void ESPNowReceiver::dispatch(const uint8_t* data, int data_len, bool from_demo)
             portENTER_CRITICAL(&s_spinlock);
             if (acceptLocked(from_demo)) {
                 s_latest_tank  = tank;
-                s_has_new_tank = true;
                 s_last_tank_millis = millis();
             }
             portEXIT_CRITICAL(&s_spinlock);
@@ -249,7 +200,6 @@ void ESPNowReceiver::dispatch(const uint8_t* data, int data_len, bool from_demo)
             portENTER_CRITICAL(&s_spinlock);
             if (acceptLocked(from_demo)) {
                 s_latest_water  = water;
-                s_has_new_water = true;
                 s_last_water_millis = millis();
             }
             portEXIT_CRITICAL(&s_spinlock);
@@ -263,7 +213,6 @@ void ESPNowReceiver::dispatch(const uint8_t* data, int data_len, bool from_demo)
             portENTER_CRITICAL(&s_spinlock);
             if (acceptLocked(from_demo)) {
                 s_latest_depth  = depth;
-                s_has_new_depth = true;
                 s_last_depth_millis = millis();
             }
             portEXIT_CRITICAL(&s_spinlock);
@@ -288,32 +237,13 @@ void ESPNowReceiver::dispatch(const uint8_t* data, int data_len, bool from_demo)
     }
 }
 
-// Returns true if new weather data packet available, otherwise false
-bool ESPNowReceiver::hasNewWeatherData() const {
-    bool result;
-    portENTER_CRITICAL(&s_spinlock);
-    result = s_has_new_weather;
-    portEXIT_CRITICAL(&s_spinlock);
-    return result;
-}
-
 // Returns the latest weather data packet received via ESP-NOW
 WeatherDelta ESPNowReceiver::getWeatherData() {
     WeatherDelta data;
     portENTER_CRITICAL(&s_spinlock);
     data = s_latest_weather;
-    s_has_new_weather = false;
     portEXIT_CRITICAL(&s_spinlock);
     return data;
-}
-
-// Returns true if new battery data packet available, otherwise false
-bool ESPNowReceiver::hasNewBatteryData() const {
-    bool result;
-    portENTER_CRITICAL(&s_spinlock);
-    result = s_has_new_battery;
-    portEXIT_CRITICAL(&s_spinlock);
-    return result;
 }
 
 // Returns the latest battery data packet received via ESP-NOW
@@ -321,18 +251,8 @@ BatteryDelta ESPNowReceiver::getBatteryData() {
     BatteryDelta data;
     portENTER_CRITICAL(&s_spinlock);
     data = s_latest_battery;
-    s_has_new_battery = false;
     portEXIT_CRITICAL(&s_spinlock);
     return data;
-}
-
-// Returns true if new GNSS data packet available, otherwise false
-bool ESPNowReceiver::hasNewGnssData() const {
-    bool result;
-    portENTER_CRITICAL(&s_spinlock);
-    result = s_has_new_gnss;
-    portEXIT_CRITICAL(&s_spinlock);
-    return result;
 }
 
 // Returns the latest GNSS data packet received via ESP-NOW
@@ -340,18 +260,8 @@ GnssData ESPNowReceiver::getGnssData() {
     GnssData data;
     portENTER_CRITICAL(&s_spinlock);
     data = s_latest_gnss;
-    s_has_new_gnss = false;
     portEXIT_CRITICAL(&s_spinlock);
     return data;
-}
-
-// Returns true if new HALMET engine data packet available, otherwise false
-bool ESPNowReceiver::hasNewEngineData() const {
-    bool result;
-    portENTER_CRITICAL(&s_spinlock);
-    result = s_has_new_engine;
-    portEXIT_CRITICAL(&s_spinlock);
-    return result;
 }
 
 // Returns the latest HALMET engine data packet received via ESP-NOW
@@ -359,18 +269,8 @@ HALMETEngineDelta ESPNowReceiver::getEngineData() {
     HALMETEngineDelta data;
     portENTER_CRITICAL(&s_spinlock);
     data = s_latest_engine;
-    s_has_new_engine = false;
     portEXIT_CRITICAL(&s_spinlock);
     return data;
-}
-
-// Returns true if new HALMET tank data packet available, otherwise false
-bool ESPNowReceiver::hasNewTankData() const {
-    bool result;
-    portENTER_CRITICAL(&s_spinlock);
-    result = s_has_new_tank;
-    portEXIT_CRITICAL(&s_spinlock);
-    return result;
 }
 
 // Returns the latest HALMET tank data packet received via ESP-NOW
@@ -378,18 +278,8 @@ HALMETTankDelta ESPNowReceiver::getTankData() {
     HALMETTankDelta data;
     portENTER_CRITICAL(&s_spinlock);
     data = s_latest_tank;
-    s_has_new_tank = false;
     portEXIT_CRITICAL(&s_spinlock);
     return data;
-}
-
-// Returns true if new HALMET fresh water data packet available, otherwise false
-bool ESPNowReceiver::hasNewWaterData() const {
-    bool result;
-    portENTER_CRITICAL(&s_spinlock);
-    result = s_has_new_water;
-    portEXIT_CRITICAL(&s_spinlock);
-    return result;
 }
 
 // Returns the latest HALMET fresh water data packet received via ESP-NOW
@@ -397,18 +287,8 @@ HALMETWaterDelta ESPNowReceiver::getWaterData() {
     HALMETWaterDelta data;
     portENTER_CRITICAL(&s_spinlock);
     data = s_latest_water;
-    s_has_new_water = false;
     portEXIT_CRITICAL(&s_spinlock);
     return data;
-}
-
-// Returns true if new depth data packet available, otherwise false
-bool ESPNowReceiver::hasNewDepthData() const {
-    bool result;
-    portENTER_CRITICAL(&s_spinlock);
-    result = s_has_new_depth;
-    portEXIT_CRITICAL(&s_spinlock);
-    return result;
 }
 
 // Returns the latest depth data packet received via ESP-NOW
@@ -416,7 +296,6 @@ DepthDelta ESPNowReceiver::getDepthData() {
     DepthDelta data;
     portENTER_CRITICAL(&s_spinlock);
     data = s_latest_depth;
-    s_has_new_depth = false;
     portEXIT_CRITICAL(&s_spinlock);
     return data;
 }

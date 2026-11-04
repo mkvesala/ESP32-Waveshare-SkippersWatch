@@ -46,8 +46,6 @@ public:
 
     void setDemo(bool on) { if (on != _demo) { _demo = on; _refresh_key = INT64_MIN; } }
 
-    const CelestialEngine& getEngine() const { return _engine; }
-
 private:
 
     // Position fed to the engine and shown; marker "" = live GNSS, "*" / "**" = stored

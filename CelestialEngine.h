@@ -56,7 +56,6 @@ public:
         int8_t   star[CelestialSelector::MAX_STARS] = {   // NavStars index, filled from [0]
             CelestialSelector::NONE, CelestialSelector::NONE, CelestialSelector::NONE };
         Body     star_pos[CelestialSelector::MAX_STARS];
-        uint32_t compute_us      = 0;
         uint32_t source_tag      = 0;      // Inputs::source_tag this result was computed from
     };
 
@@ -66,10 +65,6 @@ public:
     void setActive(bool active);
     void setInputs(const Inputs& inputs);
     Result getResult() const;
-
-    // Diagnostics
-    uint32_t getMaxComputeMicros() const;
-    UBaseType_t getStackHighWaterMark() const;
 
 private:
 
@@ -93,7 +88,6 @@ private:
     uint32_t _inputs_millis = 0;   // millis() of the last setInputs(), 0 = none
     Result   _result;
     bool     _active = false;
-    uint32_t _max_compute_us = 0;
 
     // Task-only state
     TaskHandle_t        _task = nullptr;

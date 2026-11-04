@@ -46,8 +46,6 @@ public:
     // Hide the current page container without leaving it (the page menu covers it)
     void hideCurrent();
 
-    uint8_t screenCount() const { return _screen_count; }
-
     // Hide every registered page container. Usable before begin() — the startup screen
     // needs a clean screen, and the SquareLine export may leave a page visible.
     void hideAll();
