@@ -72,6 +72,7 @@ void MenuUI::buttons(Button (&out)[BUTTON_COUNT]) {
         { ui_ImgButtonClock,      ui_ImgButtonClockNight,      PAGE_CLOCK      },
         { ui_ImgButtonSetup,      ui_ImgButtonSetupNight,      PAGE_SETUP      },
         { ui_ImgButtonCelestial,  ui_ImgButtonCelestialNight,  PAGE_CELESTIAL  },
+        { ui_ImgButtonChart,      ui_ImgButtonChartNight,      PAGE_CHART      },
     };
     for (size_t i = 0; i < BUTTON_COUNT; ++i) out[i] = table[i];
 }

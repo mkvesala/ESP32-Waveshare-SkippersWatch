@@ -13,6 +13,7 @@
 #include "ClockUI.h"
 #include "SetupUI.h"
 #include "CelestialUI.h"
+#include "ChartUI.h"
 #include "LastPosition.h"
 #include "MenuUI.h"
 #include "StatusUI.h"
@@ -32,14 +33,14 @@
 // - "The app": orchestrates the Skipper's Watch on the Waveshare ESP32-S3-Touch-AMOLED-2.06
 //   (CO5300 QSPI AMOLED 410×502, FT3168 touch, AXP2101 PMIC)
 // - Init: app.begin();  Loop: app.loop()
-// - Owns: Arduino_GFX QSPI display stack, ESPNowReceiver, the eight page adapters, the page
+// - Owns: Arduino_GFX QSPI display stack, ESPNowReceiver, the nine page adapters, the page
 //   menu, TouchInput, ScreenManager, PowerManager, BatteryMonitor (+ the AXP2101)
 // - Input: touch only (no knob on this board). Swipe left/right steps the carousel, swipe
 //   down opens the page menu, swipe up closes it, tap goes to the page or a menu button.
 //   Swipe up on a page opens the Status screen, swipe down closes it. Menu and Status are
 //   both overlays opened from a page, never from each other.
 // - Page carousel: NAVIGATION(0) → BATTERIES(1) → WEATHER(2) → ENGINE(3) → ATTITUDE(4) → CLOCK(5) → SETUP(6)
-//   → CELESTIAL(7)
+//   → CELESTIAL(7) → CHART(8)
 // - Pins/parts from Waveshare's examples — see hardware_notes_waveshare.md
 // - Model B power: deep sleep at rest, the PWR button wakes (see PowerManager).
 // - A true power-on (after the AXP2101 cut power) shows the startup screen for
@@ -67,6 +68,10 @@ private:
     // values instead of a "---" placeholder flash. Senders broadcast faster
     // than this, so a fresh packet typically lands within it.
     static constexpr uint32_t ESPNOW_WAKE_LISTEN_MS = 200;
+
+    // How long the dark panel waits for a page that is still fetching its first frame (the
+    // chart page: mount and read take about 200 ms). Past this the page shows without it.
+    static constexpr uint32_t FIRST_FRAME_WAIT_MS = 800;
 
     // How long the "BATTERY EMPTY / CHARGE NOW" prompt is held before the protective
     // sleep. Long enough to read, short enough that a repeated press of the wake button
@@ -122,8 +127,9 @@ private:
     AttitudeUI     _attitudeUI;
     ClockUI        _clockUI;
     SetupUI        _setupUI;
-    LastPosition   _lastPosition;   // Celestial's fallback when no live fix (before _celestialUI)
+    LastPosition   _lastPosition;   // Celestial's and the chart's fallback when no live fix (before both)
     CelestialUI    _celestialUI;
+    ChartUI        _chartUI;
     MenuUI         _menu;
     TouchInput     _touch;
     ScreenManager  _screenMgr;

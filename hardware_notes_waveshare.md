@@ -136,9 +136,44 @@ Update the marks as the port progresses.
 - Amplifier enable `PA_CTRL` = **GPIO46**. Keep low. [V]
 
 ## Other pins [V]
-- TF card (SPI): MOSI=1, SCK=2, MISO=3, CS=17.
 - Native USB: D−=19, D+=20.
 - UART0: TX=43, RX=44.
+
+## TF card
+- Pins [V]: GPIO1 = MOSI / CMD, GPIO2 = SCK / CLK, GPIO3 = MISO / D0, GPIO17 = CS / D3.
+  D3 only stays pulled up in 1-bit SD mode. Used by the Chart screen (`ChartStore`).
+- **Bus** [measured, 2026-11-04]: one 376 KB chart view from a 32 GB SDHC, mean of 3 rounds,
+  USB on, demo mode. The firmware uses SD_MMC 1-bit at 40 MHz, with 20 MHz as the fallback if
+  the mount fails, and reads directly to PSRAM. A 32 KB DMA buffer would save only 11 ms.
+
+  | Mode | Mount | Via 32 KB DMA buffer | Direct to PSRAM |
+  |---|---|---|---|
+  | SD_MMC 1-bit 40 MHz | 47 ms | 141 ms | 152 ms |
+  | SD_MMC 1-bit 20 MHz | 42 ms | 232 ms | 243 ms |
+  | SPI3 20 MHz | 146 ms | 297 ms | 308 ms |
+  | SPI3 40 MHz | 46 ms | 297 ms | 308 ms |
+
+  SPI "40 MHz" timed exactly like 20 MHz, so the clock apparently did not rise. Its mount is
+  faster because the card was already in SPI mode. A card left in SPI mode needs re-inserting
+  before SD_MMC works again. The display holds SPI2, so SPI would have needed SPI3.
+- **Filesystem** [V]: FAT32 with an MBR. The core's FatFs is built with `FF_FS_EXFAT 0`.
+- **Power:** the card and its 10k pull-ups are on DCDC1, so firmware cannot cut them. Drain
+  from the gauge, deep sleep, with the same card:
+
+  | Card state | Drain |
+  |---|---|
+  | Fitted, never initialised since it got power | **42.1 mA** / 8 h (98 → 11 %, 3.500 V) |
+  | One mount and close, then sleep | 8.4 mA / 3 h (100 → 92 %, 4.013 V) |
+  | Mount and close before sleep, chart page not visited | 9.4 mA / 4 h (100 → 90 %, 3.995 V) |
+
+  The fitted, uninitialised card is the main suspect for the 42 mA, but there was no run of the
+  same firmware without a card. The two short readings include the gauge's fast first hour and
+  ±1 mA of gauge step, so the card's own share against the ~6 mA floor needs a reading of 10 h
+  or more.
+- **Before every sleep** `ChartEngine` mounts and closes the card, also on a wake that never
+  opened the chart, because a card can be put in unnoticed. Measured time: 58 ms without a card,
+  47 ms with an unopened card, 1 ms when the chart page already mounted it. Afterwards the four
+  pins are left as inputs with no hold.
 
 ## Deep-sleep wake summary (Model B)
 | Source | GPIO | RTC-capable | Polarity | Use |
@@ -185,7 +220,7 @@ used above and `XPOWERS_CHIP_AXP2101`.
 ### As used by this project (port branch, 2026-10-13) [V: compiles]
 | Setting | Value |
 |---|---|
-| Board | ESP32S3 Dev Module, core esp32 3.3.11 |
+| Board | ESP32S3 Dev Module, core esp32 3.3.12 |
 | USB CDC On Boot | Enabled |
 | USB Mode | Hardware CDC and JTAG |
 | Flash Size | 32MB (256Mb) |
@@ -196,7 +231,7 @@ used above and `XPOWERS_CHIP_AXP2101`.
 Libraries: GFX Library for Arduino 1.6.9 (mainline, contains `Arduino_CO5300`; 1.6.7
 GC9309-patched also worked), LVGL 9.6.0 with the project-local `lv_conf.h` (v9.6.0 template),
 **XPowersLib 0.3.3** (added for the port). No Arduino_DriveBus: the FT3168 is driven by
-the project's own `ft3168_touch.*`. Sketch: ~1.91 MB of the 3 MB app slot.
+the project's own `ft3168_touch.*`. Sketch: ~1.98 MB of the 3 MB app slot (v2.2.0).
 
 CLI equivalent (the arduino-cli bundled with the IDE):
 `arduino-cli compile --fqbn esp32:esp32:esp32s3:CDCOnBoot=cdc,FlashSize=32M,PartitionScheme=huge_app,PSRAM=opi .`
@@ -265,6 +300,9 @@ Results from the Status screen's **Avg drain** row on battery (2026-10-31…11-0
 3. AXP2101 gauge percentage vs. cell voltage over one full discharge.
 4. Reset reason and RTC-memory survival for each button (as done on CrowPanel).
 5. Fitted cell's real capacity (400 mAh is the assumed figure behind every mA above).
+6. Deep-sleep drain with the card fitted over 10 h or more, against the ~6 mA floor.
+7. Chart screen's awake drain, since a light map lights far more of the AMOLED than a black page.
+8. `ChartEngine` task's stack high-water mark (8 KB chosen generously, not measured).
 
 ## Sources
 - Waveshare docs: <https://docs.waveshare.com/ESP32-S3-Touch-AMOLED-2.06> (pin table,

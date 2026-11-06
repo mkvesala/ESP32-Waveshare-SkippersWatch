@@ -59,6 +59,7 @@ WatchApplication::WatchApplication()
     , _engineUI(_receiver)
     , _attitudeUI(_receiver)
     , _celestialUI(_receiver, _lastPosition)
+    , _chartUI(_receiver, _lastPosition)
     , _setupUI(_brightness)
     , _power(_brightness)
     , _theme(_battery, _menu)
@@ -118,7 +119,8 @@ void WatchApplication::begin() {
     _clockUI.begin();
     _setupUI.begin();
     _celestialUI.begin();
-    _menu.begin();           // hides ui_ContainerMenu (the export leaves it visible)
+    _chartUI.begin();
+    _menu.begin();          // hides ui_ContainerMenu (the export leaves it visible)
     _status.begin();         // hides ui_ContainerStatus (likewise) and writes its titles
 
     // Watch's own battery gauge on the always-visible top bar. Safe here: the PMIC is up
@@ -147,6 +149,7 @@ void WatchApplication::begin() {
     _screenMgr.addScreen(&_clockUI);
     _screenMgr.addScreen(&_setupUI);
     _screenMgr.addScreen(&_celestialUI);
+    _screenMgr.addScreen(&_chartUI);
     // Restore the last-active page from RTC, else NVS, else Navigation. The actual
     // _screenMgr.begin(start_page) is deferred to after the dark listen window below, so
     // the page is revealed only once data has had a chance to arrive.
@@ -191,7 +194,15 @@ void WatchApplication::begin() {
     // arrived (correct: never fabricate data).
     _screenMgr.begin(start_page);
     IScreenUI* screen = _screenMgr.getCurrentScreen();
-    if (screen) screen->update();
+    if (screen) {
+        screen->update();
+        // Still dark: a page that started a card read gets a moment to finish it (bounded)
+        const uint32_t wait_start = millis();
+        while (!screen->readyForReveal() && millis() - wait_start < FIRST_FRAME_WAIT_MS) {
+            delay(10);
+            screen->update();
+        }
+    }
 
     lv_refr_now(_lvgl_disp);          // render the first frame into the dark panel
     if (!power_on) {
@@ -317,6 +328,7 @@ void WatchApplication::savePageToNvs() {
 void WatchApplication::preSleepFlush(void* ctx) {
     WatchApplication* self = static_cast<WatchApplication*>(ctx);
     if (self == nullptr) return;
+    self->_chartUI.shutdown();   // always: leaves a card idle even if it was just put in
     self->_lastPosition.saveOnSleep();
     if (self->_nvs_page_written == s_last_page_index) return;   // nothing changed
     self->savePageToNvs();
@@ -526,11 +538,13 @@ void WatchApplication::applyModes() {
         _battery.setDemoSuffix(demo);
         _clockUI.setDemo(demo);
         _celestialUI.setDemo(demo);
+        _chartUI.setDemo(demo);
         _lastPosition.setDemo(demo);
         if (demo) _demo.sendAll(millis());   // no placeholder gap after switching on
         Serial.printf("[demo] %s\n", demo ? "ON (ESP-NOW data not shown)" : "OFF");
     }
     _theme.apply(_setupUI.nightMode());
+    _chartUI.setNightMode(_setupUI.nightMode());
 }
 
 // Lit startup screen during a power-on wake. Runs before PowerManager::begin(), so the

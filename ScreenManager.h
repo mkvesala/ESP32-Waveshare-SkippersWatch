@@ -22,7 +22,7 @@ class ScreenManager {
 
 public:
 
-    static constexpr uint8_t MAX_SCREENS = 8;
+    static constexpr uint8_t MAX_SCREENS = 9;
 
     explicit ScreenManager() = default;
 

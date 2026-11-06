@@ -42,12 +42,13 @@ Screens (carousel, plus a page menu for direct access):
 - **Clock** — local date + weekday, local and UTC time (GNSS-disciplined, no RTC chip, no NTP)
 - **Setup** — display brightness, wake time, prevent sleep, demo mode and night mode, all persisted to NVS
 - **Celestial** — computed altitude and azimuth (Hc, Zn) of the Sun, Moon and twilight bodies for sextant practice, with UTC time, pressure, temperature and position
+- **Chart** — Traficom's nautical chart from a microSD card, north up, with the boat, heading, COG vector and a 0.25 NM range ring on top
 
 Developed on:
 - [Waveshare ESP32-S3-Touch-AMOLED-2.06](https://docs.waveshare.com/ESP32-S3-Touch-AMOLED-2.06) (SKU 31957)
-- [ESP32 board package](https://github.com/espressif/arduino-esp32) (3.3.11)
+- [ESP32 board package](https://github.com/espressif/arduino-esp32) (3.3.12)
 - [Arduino IDE](https://www.arduino.cc/en/software/) (2.3.x)
-- [LVGL](https://lvgl.io/) (9.5)
+- [LVGL](https://lvgl.io/) (9.6.0)
 - [Arduino GFX Library](https://github.com/moononournation/Arduino_GFX) (1.6.9, `Arduino_CO5300` driver)
 - [XPowersLib](https://github.com/lewisxhe/XPowersLib) (0.3.3, AXP2101 PMIC)
 - [SquareLine Studio](https://squareline.io/) for UI design
@@ -70,7 +71,9 @@ This is one of my individual digital boat projects. Use at your own risk. Not fo
 
 ## Project status
 
-**Version 2.1.0** (2026-11-04) — see [CHANGELOG.md](CHANGELOG.md).
+**Version 2.2.0** (2026-11-06) — adds the [Chart screen](#chart-screen). Tested at home in demo mode, not yet on the boat. See [CHANGELOG.md](CHANGELOG.md).
+
+**Version 2.1.0** (2026-11-04).
 
 Adds the [Celestial screen](#celestial-screen) and brings the deep-sleep floor down to about 6 mA, measured from the fuel gauge (see [Power management](#power-management)). The active current on this board is still unmeasured.
 
@@ -83,7 +86,7 @@ Adds the [Celestial screen](#celestial-screen) and brings the deep-sleep floor d
 <!-- TODO(diagram): add class / UML diagram here, e.g. <img src="docs/full_uml_diagram.jpeg" width="480"> -->
 
 **`WatchApplication`:**
-- Owns: `Arduino_ESP32QSPI`, `Arduino_CO5300`, `PanelBrightness`, `ESPNowReceiver`, `NavigationUI`, `BatteryUI`, `WeatherUI`, `EngineUI`, `AttitudeUI`, `ClockUI`, `SetupUI`, `LastPosition`, `CelestialUI`, `MenuUI`, `TouchInput`, `ScreenManager`, `PowerManager`, `BatteryMonitor`, `PmuRails`, `DemoSource`, `ThemeController`, `SystemStats`, `StatusUI`
+- Owns: `Arduino_ESP32QSPI`, `Arduino_CO5300`, `PanelBrightness`, `ESPNowReceiver`, `NavigationUI`, `BatteryUI`, `WeatherUI`, `EngineUI`, `AttitudeUI`, `ClockUI`, `SetupUI`, `LastPosition`, `CelestialUI`, `ChartUI`, `MenuUI`, `TouchInput`, `ScreenManager`, `PowerManager`, `BatteryMonitor`, `PmuRails`, `DemoSource`, `ThemeController`, `SystemStats`, `StatusUI`
 - Responsible for: orchestrating everything within the main program, including the staggered wake sequence (with the startup screen on a true power-on), gesture dispatch (carousel and page menu), GNSS time discipline and applying Setup's demo and night switches
 
 **`PowerManager`:**
@@ -116,7 +119,7 @@ Adds the [Celestial screen](#celestial-screen) and brings the deep-sleep floor d
 
 **`DemoSource`:**
 - Uses: `ESPNowReceiver`, `DemoValues` (pure value generator, host-tested)
-- Responsible for: demo mode's data — made-up but plausible values packed into real ESP-NOW frames and injected into the receiver, so the screens show them through their normal freshness logic
+- Responsible for: demo mode's data — a recorded stretch of the boat's instruments packed into real ESP-NOW frames and injected into the receiver, so the screens show them through their normal freshness logic
 - Owned by: `WatchApplication`
 
 **`ThemeController`:**
@@ -153,8 +156,23 @@ Adds the [Celestial screen](#celestial-screen) and brings the deep-sleep floor d
 - Uses: `ESPNowReceiver` (position, weather, time freshness), `LastPosition` (fallback position), the ESP32 system clock, `CelestialFormat` (pure, host-tested)
 - Responsible for: the Celestial screen's table (body, Hc, Zn) and its variables (UTC date and time, pressure, temperature, position), redrawn once per UTC second; no bodies without fresh time and a live or ≤ 1 h old last known position
 
+**`ChartUI`:**
+- Owns: `ChartEngine`
+- Uses: `ESPNowReceiver` (position, heading, COG, SOG), `LastPosition` (fallback position), `ChartGeometry` (pure, host-tested)
+- Responsible for: the Chart screen's map image, the boat, heading line, COG vector and range ring drawn over it, the recentering rules and the freshness states
+- Owned by: `WatchApplication`
+
+**`ChartEngine`:**
+- Uses: `ChartStore`, `ChartFormat`, `ChartGeometry`
+- Responsible for: composing chart views off the UI loop — a FreeRTOS task on core 0, created on the first visit of a wake, with two RGB565 frames in PSRAM swapped only when complete; leaving the card idle before every sleep
+- Owned by: `ChartUI`
+
+**`ChartStore`:**
+- Responsible for: the chart files on the microSD card over SD_MMC 1-bit, mounting, closing and reading. Never formats the card
+- Owned by: `ChartEngine`
+
 **`LastPosition`:**
-- Responsible for: the Celestial screen's last known position — the latest fresh fix of the awake session (RAM), persisted to NVS in the pre-sleep flush and read back lazily on the first need of a wake; aged in UTC, usable for 1 h, expired records removed on sleep; nothing recorded in demo mode
+- Responsible for: the Celestial and Chart screens' last known position — the latest fresh fix of the awake session (RAM), persisted to NVS in the pre-sleep flush and read back lazily on the first need of a wake; aged in UTC, usable for 1 h, expired records removed on sleep; nothing recorded in demo mode
 - Owned by: `WatchApplication`
 - Owned by: `WatchApplication`
 
@@ -241,7 +259,7 @@ In demo mode the percentage reads e.g. `80 % DEMO`. The bar, the percentage and 
 - Local and UTC time `HH:MM:SS` (24 h); a `PREV.`/`NEXT.` indicator appears under UTC when its calendar day differs from local
 - **Timekeeping is ESP32-internal POSIX time** (`time.h`), Finland timezone `EET-2EEST,M3.5.0/3,M10.5.0/4`, disciplined by GNSS UTC over ESP-NOW (`DateTimeDelta` → `settimeofday()`). Survives deep sleep for free via the RTC timer
 - Shows placeholders until synced (system year ≥ 2020) — a fabricated time is never displayed. No external RTC chip (PCF8563 deferred), no NTP (deliberately — no internet at anchor)
-- Demo mode is the only exception: with no synced time it shows a made-up time ticking from 10:10:00. The system clock is never changed by it, and real GNSS time keeps being applied in demo mode
+- Demo mode is the only exception: with no synced time it shows the demo track's time, ticking from 08:15:00 on 2026-10-20. The system clock is never changed by it, and real GNSS time keeps being applied in demo mode
 
 ### Setup screen
 
@@ -264,7 +282,7 @@ Two limits still apply, deliberately:
 
 **Wake time** (`ui_SliderWaketime`) — how long the screen stays on after the last touch before the watch goes back to deep sleep: 2–20 s, default 10 s. Key `"waketime"`. The low-charge ladder still caps it (5 s at `WARN`, 3 s from `CRITICAL` down) but never lengthens a shorter choice. While prevent sleep is on there is no timeout to set, so the slider is greyed out and ignores touch.
 
-**Demo mode** (`ui_SwitchDemoMode`) — every screen shows made-up but plausible values instead of the ESP-NOW data, for showing the watch away from the boat. Key `"demo"`. The radio keeps listening and parsing exactly as normal, so battery behaviour is the same as with real data; received frames are simply not stored. The receiver keeps one fixed slot per message type with no queue or heap, so nothing received accumulates. Switching either way clears every source, so the screens show placeholders until the new source delivers: a demo value can never pass for a real one, or the other way round. The status bar shows `DEMO`.
+**Demo mode** (`ui_SwitchDemoMode`) — every screen shows a looping 10 min recording of the boat's instruments instead of the ESP-NOW data, for showing the watch away from the boat. Key `"demo"`. The radio keeps listening and parsing exactly as normal, so battery behaviour is the same as with real data; received frames are simply not stored. The receiver keeps one fixed slot per message type with no queue or heap, so nothing received accumulates. Switching either way clears every source, so the screens show placeholders until the new source delivers: a demo value can never pass for a real one, or the other way round. The status bar shows `DEMO`.
 
 **Night mode** (`ui_SwitchNightMode`) — everything on the panel is drawn in shades of red to keep the eyes dark-adapted: text, the status bar, sliders and switches, and the menu shows a separate set of red icons drawn in SquareLine (`ui_ImgButton*Night`, stacked on the day icons; one set is visible at a time). Key `"night"`. Applied before the first frame of a wake, so a night wake never flashes white. Black stays true black. Colors are mapped by brightness (`NightPalette`); the ones whose meaning is their hue (battery-bar states, switch on/off) use explicit red shades so they stay distinguishable. On the AMOLED, red-only drives only the red subpixels, so night mode should also draw less current (to be measured).
 
@@ -283,11 +301,32 @@ A sight-reduction aid for sextant practice: the computed altitude **Hc** and tru
 - **Variables** below the table: UTC date `dd.mm.yyyy`, UTC time `HH:MM:SS UTC`, pressure (mbar) and air temperature, latitude and longitude — the values a sight reduction needs next to Hs
 - **Hc and Zn are geocentric**, as in the Nautical Almanac: apparent place of date from the Earth's centre, no refraction, no parallax, no semi-diameter, and **not related to the boat's heading**. Correct Hs → Ho yourself (dip, refraction with the shown pressure and temperature, SD, HP) as usual
 - **Freshness:** time is trusted only while GNSS `DateTimeDelta` keeps arriving (≤ 10 s old) — the RTC drifts during deep sleep. Position needs a fresh GNSS fix (≤ 6 s), or the last known position below. Without either the table shows `No time` / `No fix` instead of bodies; each variable is dashed on its own when stale. `Wait` is shown until the first computation lands (≤ 1 s), `No bodies` at night outside twilight
-- **Last known position:** without a live fix the screen uses the last one known — from this awake session, or stored to NVS on the way into the previous deep sleep (`LastPosition`). The latitude and longitude then carry `*` (up to 15 min old) or `**` (up to 1 h) after the hemisphere letter; an older position is not used and is removed from NVS on the next sleep. A live fix replaces it the moment it arrives (`Wait` until the table is recomputed, well under a second). The stored position is for the Celestial screen only — Navigation never shows it
+- **Last known position:** without a live fix the screen uses the last one known — from this awake session, or stored to NVS on the way into the previous deep sleep (`LastPosition`). The latitude and longitude then carry `*` (up to 15 min old) or `**` (up to 1 h) after the hemisphere letter; an older position is not used and is removed from NVS on the next sleep. A live fix replaces it the moment it arrives (`Wait` until the table is recomputed, well under a second). The stored position is for the Celestial and Chart screens only — Navigation never shows it
 - **Computation only while the screen is shown:** the astronomy runs on its own task (`CelestialEngine`, core 0), created on the first visit of a wake, computing once per second while the screen is open and updated. Leaving the screen, or covering it with the page menu or status screen, stops it; double precision is software-emulated on the ESP32-S3, so a full twilight selection pass takes a few hundred ms
 - **Demo mode:** the same real computation on demo inputs — the demo position and weather, and the Clock screen's demo time. The variables show those inputs as if they were real, so the table can be checked against an almanac for the shown time and position
 - Last in the carousel, after Setup; the page menu has its own icon (day and night sets) in the bottom middle of the grid
 - Astronomy by [Astronomy Engine](https://github.com/cosinekitty/astronomy) (MIT), ported with the selection logic from [ESP32-Crowpanel-compass](https://github.com/mkvesala/ESP32-Crowpanel-compass), which draws the same bodies on a star chart relative to the heading
+
+### Chart screen
+
+<img src="docs/chart.jpeg" height="260" alt="Chart (on the watch), day"> <img src="docs/night_chart.jpeg" height="260" alt="Chart (on the watch), night">
+
+<img src="docs/chart.png" height="260" alt="Chart, illustration with a fictional chart, day"> <img src="docs/night_chart.png" height="260" alt="Chart, illustration with a fictional chart, night">
+
+> The photos show the watch with Traficom's chart (see [Nautical chart data](#nautical-chart-data)). The two images below them are illustrations of the screen, with symbols at the watch's sizes on a randomly generated, fictional chart. They contain no Traficom data and do not show a real place.
+
+Traficom's nautical chart series A from a microSD card, about 1 NM across the display's height at a fixed 4 m/px. North up, with no zoom or pan. The firmware never fetches anything: a tool on a Mac prepares the card once (see [Chart card](#chart-card)).
+
+- **Symbols:** the boat, a fixed 0.25 NM range ring that doubles as the scale, a solid heading line out to the ring and a dashed COG vector showing the distance covered in 3 min at SOG. True bearings are turned to the chart's grid north with the meridian convergence, which is about 2–3.5° in western Finland
+- **Values:** COG, HDG, SOG and DPT in the corners, on half-transparent backgrounds and under the same freshness rules as the [Navigation screen](#navigation-screen)
+- **Recentering:** the map centers on the boat when the screen opens, on a wake or boot, and when the page menu or status screen closes, then again after 21 s if the display is still on, or at once if the boat is off the view. In between the map stands still and the boat moves on it, about once per second
+- **Freshness:** without a fresh fix all symbols are hidden, since a stale boat on a chart invites a wrong decision. The map may stay on the [last known position](#celestial-screen), up to 1 h old, marked `No fix *` (up to 15 min) or `No fix **` (up to 1 h). A fresh fix takes over at once. The heading line needs compass data under 5 s old, and the COG vector needs SOG of at least 0.5 kn
+- **Other states:** `No fix` with no position at all, `No chart card` when there is no readable chart on the card, and `No chart here` when the area is not on the card. An area with no data is black, so it cannot be mistaken for open water
+- **Night mode:** an inverted red chart with light grey symbols and corner values
+- **Demo mode:** the same page on the demo track, which should fall within the area you have loaded on the card
+- Last in the carousel, after Celestial; the page menu has its own icon (day and night sets) in the bottom right of the grid
+
+**Not for navigation.** The chart does not meet the requirements of an official nautical chart. For the source and license, see [Nautical chart data](#nautical-chart-data).
 
 ### Startup screen
 
@@ -313,7 +352,7 @@ All interaction is by touch; the PWR button is the wake source.
 | Wake from deep sleep | Press the **PWR** button (GPIO10, `ext1`) |
 
 Screen carousel order:
-- **Swipe left:** Navigation → Batteries → Weather → Engine → Attitude → Clock → Setup → Celestial → Navigation
+- **Swipe left:** Navigation → Batteries → Weather → Engine → Attitude → Clock → Setup → Celestial → Chart → Navigation
 - **Swipe right:** the reverse
 
 <img src="docs/menu.png" height="260" alt="Page menu (SquareLine)"> <img src="docs/menu.jpeg" height="260" alt="Page menu (on the watch)">
@@ -358,6 +397,8 @@ All power-on counters survive deep sleep, watchdog, panic and software resets, a
 The whole architecture resolves one contradiction: **in deep sleep the radio is off, so no ESP-NOW packet can be received.** You cannot both deep-sleep and listen.
 
 **Model B (deep-sleep, wake-to-fetch).** Deep sleep is the resting default. A PWR-button press wakes the watch; only *then* does it bring the radio up, catch a broadcast, render, and — after a short display-on timeout (the Setup **wake time**, 2–20 s, default 10 s, shortened automatically as the cell empties) of no interaction — soft-ramp the brightness down and return to deep sleep. On sleep entry the AMOLED is switched off and put into sleep-in and deep standby, the FT3168 into hibernate, the panel and touch reset lines are held high, the panel QSPI and I2S pads at defined levels and the speaker amp enable (GPIO46) low through sleep; the PWR button (GPIO10, RTC-capable, **active-high**) is armed as the `ext1` wake source. `PmuRails` keeps the unused AXP2101 rails off and powers the audio codecs and the IMU down over I2C on every wake.
+
+**microSD card.** The card shares the main 3.3 V rail with the ESP32-S3, so the firmware cannot cut its power. A card that has not been initialised since it got power draws far more in deep sleep, so the pre-sleep hook mounts and closes it on every sleep, about 47 ms with a card and 58 ms without one, and leaves its pins as inputs. A card pushed in while the watch sleeps stays uninitialised until the watch has woken and gone back to sleep.
 
 **Staggered wake (spike discipline).** A wake from deep sleep is the worst-timed current spike — several loads want to turn on at once on a small, possibly-aged cell. The bring-up spreads the inrush in time: release GPIO holds → PMIC + panel init (panel stays dark) → low-battery check → radio up first into the dark, low-load moment → ~200 ms dark ESP-NOW listen window so the first *lit* frame shows real data, not a placeholder flash → render → **then** the brightness ramps up (soft-start in panel-command steps, never a hard step). On a true power-on the [startup screen](#startup-screen) is lit (with the same soft ramp) in place of the dark listen window. The brownout detector is kept enabled — a trip means the sequence is too aggressive, not a reason to disable protection.
 
@@ -414,6 +455,9 @@ Measured on the Waveshare board from the AXP2101 fuel gauge over overnight tests
 |---|---|
 | Deep sleep | **about 6 mA** (6.0 mA over 13 h; ~5 mA without the first hour after a full charge) |
 | Powered off (PWR held ~6 s) | at most ~0.4 mA (1 % over 9.5 h) |
+| Deep sleep, card fitted, closed before sleep | 8.4 mA over 3 h and 9.4 mA over 4 h from a full charge, including the gauge's fast first hour; a long reading is still open |
+| Deep sleep, card fitted, never initialised | 42 mA over 8 h, which is why the card is closed before every sleep |
+| Chart screen awake | not yet measured |
 | Active | not yet measured |
 
 The original target of 2 mA was not reached. Every peripheral the firmware can reach is asleep or unpowered, and the remaining load has not been located; about 6 mA is accepted for now. To store the watch, power it off: hold PWR ~6 s, and press PWR to start it again.
@@ -511,7 +555,7 @@ struct DepthDelta {
 | `BatteryMonitor.h/.cpp` | Class `BatteryMonitor` — AXP2101 battery voltage + fuel gauge, VBUS detection, status-bar indicator, charge-level classification |
 | `PmuRails.h/.cpp` | Class `PmuRails` — AXP2101 rail state, codec and IMU power-down over I2C |
 | `BatteryLevel.h` | Charge levels, the low-charge ladder thresholds and the display-timeout cap (pure, host-tested) |
-| `DemoSource.h/.cpp`, `DemoValues.h` | Class `DemoSource` — demo-mode frames injected into the receiver; `DemoValues` is the pure value generator (host-tested) |
+| `DemoSource.h/.cpp`, `DemoValues.h`, `DemoTrack.h/.cpp` | Class `DemoSource` — demo-mode frames injected into the receiver; `DemoValues` is the pure value generator (host-tested) over `DemoTrack`, the generated recording |
 | `ThemeController.h/.cpp`, `NightPalette.h` | Class `ThemeController` — day / night palette switch; `NightPalette` is the pure color mapping (host-tested) |
 | `version.h` | Firmware version (`SW_VERSION`), shown on the startup screen |
 | `SystemStats.h/.cpp`, `StatusFormat.h` | Class `SystemStats` — uptime and power-on counters across deep sleep; `StatusFormat` is the pure formatting and reset rule (host-tested) |
@@ -527,9 +571,13 @@ struct DepthDelta {
 | `AttitudeUI.h/.cpp` | Class `AttitudeUI` — artificial horizon, realizes `IScreenUI` |
 | `ClockUI.h/.cpp` | Class `ClockUI` — system-clock reader + formatting, realizes `IScreenUI` |
 | `CelestialUI.h/.cpp`, `CelestialFormat.h` | Class `CelestialUI` — Celestial screen table and variables, realizes `IScreenUI`; `CelestialFormat` is the pure formatting (host-tested) |
-| `LastPosition.h/.cpp` | Class `LastPosition` — Celestial's last known position, session RAM + NVS on sleep |
+| `LastPosition.h/.cpp` | Class `LastPosition` — last known position for Celestial and Chart, session RAM + NVS on sleep |
 | `CelestialEngine.h/.cpp` | Class `CelestialEngine` — astronomy task on core 0, active only while the Celestial screen is |
 | `CelestialCalculator.h/.cpp`, `CelestialSelector.h/.cpp`, `NavStars.h/.cpp` | Geocentric Hc / Zn, rise / set and twilight; twilight body selection; the 57 navigational stars (pure, host-tested) |
+| `ChartUI.h/.cpp` | Class `ChartUI` — Chart screen map and symbols, realizes `IScreenUI` |
+| `ChartEngine.h/.cpp` | Class `ChartEngine` — composes chart views on a core-0 task, leaves the card idle before sleep |
+| `ChartStore.h/.cpp` | Class `ChartStore` — chart files on the microSD card over SD_MMC |
+| `ChartGeometry.h`, `ChartFormat.h` | WGS84 → TM35FIN, convergence and symbol geometry; card format and block addressing (pure, host-tested) |
 | `astronomy.h/.c` | Astronomy Engine 2.1.19 (C), copied unchanged from ESP32-Crowpanel-compass |
 | `SetupUI.h/.cpp` | Class `SetupUI` — brightness and wake-time sliders, prevent-sleep / demo / night switches (touch), realizes `IScreenUI` |
 | `MenuUI.h/.cpp` | Class `MenuUI` — page menu overlay and its hit-testing |
@@ -539,6 +587,8 @@ struct DepthDelta {
 | `ScreenManager.h/.cpp` | Class `ScreenManager` — scalable screen carousel (container visibility) + direct jumps |
 | `lv_conf.h` | LVGL configuration (project-local, from the 9.6.0 template: RGB565, `LV_MEM_SIZE` 96 kB) |
 | `ui.h/.c`, `ui_ScreenMain.h/.c`, `ui_helpers.h/.c`, `ui_font_*.c`, `ui_img_*.c` | SquareLine Studio generated — UI, fonts and menu icons (day and night sets) |
+| `tools/chart/build_chart.py` | Mac tool for the chart card: fetch, build, simulate, install; not part of the sketch |
+| `tools/demo/make_demo_track.py` | Cuts `DemoTrack` out of the ESP-NOW testlab's recording; not part of the sketch |
 | `tests/host/` | Host unit tests for the pure logic (`make -C tests/host`); not part of the sketch |
 | `tests/celestial/` | Host tests for the celestial code against JPL Horizons and SIMBAD fixtures (`tests/celestial/run_tests.sh`) |
 | `hardware_notes_waveshare.md` | Waveshare pin map, parts, build settings, open hardware questions |
@@ -557,23 +607,26 @@ struct DepthDelta {
    - FT3168 capacitive touch (I2C 0x38, INT=GPIO38, RST=GPIO9)
    - AXP2101 PMIC: charger, rails, fuel gauge, power key
    - PWR button (GPIO10 = SYS_OUT, high = pressed) and BOOT button (GPIO0)
-   - QMI8658 IMU, PCF85063 RTC, ES8311/ES7210 audio, TF slot — not used (audio amp held off)
+   - TF slot, used for the chart
+   - QMI8658 IMU, PCF85063 RTC, ES8311/ES7210 audio — not used (audio amp held off)
    - LiPo cell on an MX1.25 connector (capacity of the fitted cell to be confirmed; ~300 mAh assumed), factory case with strap
 2. WiFi router set to a fixed channel 6
 3. The ESP-NOW senders listed under [Integrated via ESP-NOW with](#esp32-skipperswatch)
+4. microSD card for the chart, FAT32 with an MBR partition map (developed on a 32 GB SDHC). exFAT is not supported
 
 **No paid partnerships.**
 
 ## Software
 
 1. Arduino IDE 2.3.x
-2. Espressif Systems esp32 board package 3.x (developed on 3.3.11)
+2. Espressif Systems esp32 board package 3.x (developed on 3.3.12)
 3. Additional libraries:
    - LVGL 9.6.0 (with a project-local `lv_conf.h` built from its template; RGB565 colour format)
    - Arduino GFX Library 1.6.9 (contains `Arduino_CO5300`; no patch needed for this board — the `Arduino_GC9309` patch is only for the v1.0.0 CrowPanel build)
    - XPowersLib 0.3.x (Lewis He) for the AXP2101
 4. SquareLine Studio for UI design and code generation
 5. The ESP-NOW sender projects (see above)
+6. For the chart card, on a Mac: Python 3 with Pillow, numpy and pyproj, plus curl
 
 ## Installation
 
@@ -599,12 +652,34 @@ struct DepthDelta {
    | PSRAM | OPI PSRAM |
    | Flash Mode | QIO 80MHz |
 
-   The sketch is ~1.84 MB, about 58 % of the Huge APP slot; the default 1.2 MB app partition is too small.
+   The sketch is ~1.98 MB, about 62 % of the Huge APP slot; the default 1.2 MB app partition is too small.
 6. Point the ESP-NOW senders to the same WiFi channel
 
 **Note** that `lv_conf.h` is project-local. If you use LVGL elsewhere, a second `lv_conf.h` may live under `Arduino/libraries/` next to the `lvgl` folder — check both to avoid conflicts.
 
 **SquareLine Studio note:** SquareLine clears the export directory completely on export. Always git commit before exporting, and set a temporary export directory in project settings.
+
+### Chart card
+
+The tool fetches the chosen area from Traficom's public WMTS service and keeps the tiles in `~/.cache/skippers-watch-chart`, outside the repository. Give the same area to `fetch` and `build`, as the latitude and longitude of two opposite corners in degrees. `--bbox` can be repeated, and `--center` with `--radius-km` adds a circle such as the demo position:
+
+```bash
+python3 tools/chart/build_chart.py fetch --bbox 60.083 25.317 60.5 26.45
+```
+
+```bash
+python3 tools/chart/build_chart.py build --bbox 60.083 25.317 60.5 26.45 --out ~/.cache/skippers-watch-chart/builds/my-area
+```
+
+```bash
+python3 tools/chart/build_chart.py simulate --out ~/.cache/skippers-watch-chart/builds/my-area --lat 60.2 --lon 25.8 --hdg 45 --cog 60 --sog 6 --png view.png
+```
+
+```bash
+python3 tools/chart/build_chart.py install --out ~/.cache/skippers-watch-chart/builds/my-area --volume /Volumes/CHART
+```
+
+The fetch is limited to a few requests per second and resumes where it stopped, so a failed tile is fetched by running the same command again. The example area of about 60 × 45 km took about 2 h 20 min and 300 MB on the card. The tool checks that the card is FAT32 with an MBR, compares the copy and never formats the card.
 
 ## Flashing
 
@@ -634,6 +709,20 @@ Board bring-up follows [Waveshare's example code](https://github.com/wavesharete
 
 Developed by Matti Vesala in collaboration with Claude.
 
+### Nautical chart data
+
+The nautical chart data displayed in the application is provided by the Finnish Transport and Communications Agency (Traficom) under the [Creative Commons Attribution 4.0 International (CC BY 4.0)](https://creativecommons.org/licenses/by/4.0/) license.
+
+Source: Finnish Transport and Communications Agency Traficom.
+
+Not for navigation. Does not meet the requirements of an official nautical chart.
+
+The tool that prepares the card resamples the chart to 4 m/px and reduces it to a 256-colour palette, and the application displays it with modified colours for day and night modes.
+
+The chart data is not distributed with this repository. Screenshots and photographs may show portions of the chart data rendered by the application, including these modifications.
+
+The application is an independent open-source project and is not affiliated with or endorsed by Traficom.
+
 ## Gallery
 
 <!-- TODO(images): add the UML diagram and a photo of the watch on the wrist here -->
@@ -648,15 +737,15 @@ The watch:
 |---|---|---|
 | <img src="docs/engineroom.jpeg" width="200"> | <img src="docs/attitude.jpeg" width="200"> | <img src="docs/clock.jpeg" width="200"> |
 
-| Setup | Celestial | Page menu | Status |
-|---|---|---|---|
-| <img src="docs/setup.jpeg" width="200"> | <img src="docs/celestialview.jpeg" width="200"> | <img src="docs/menu.jpeg" width="200"> | <img src="docs/status.jpeg" width="200"> |
+| Setup | Celestial | Chart | Page menu | Status |
+|---|---|---|---|---|
+| <img src="docs/setup.jpeg" width="200"> | <img src="docs/celestialview.jpeg" width="200"> | <img src="docs/chart.jpeg" width="200"> | <img src="docs/menu.jpeg" width="200"> | <img src="docs/status.jpeg" width="200"> |
 
 Night mode:
 
-| Batteries | Setup | Page menu |
-|---|---|---|
-| <img src="docs/night_batteries.jpeg" width="200"> | <img src="docs/night_setup.jpeg" width="200"> | <img src="docs/night_menu.jpeg" width="200"> |
+| Batteries | Setup | Chart | Page menu |
+|---|---|---|---|
+| <img src="docs/night_batteries.jpeg" width="200"> | <img src="docs/night_setup.jpeg" width="200"> | <img src="docs/night_chart.jpeg" width="200"> | <img src="docs/night_menu.jpeg" width="200"> |
 
 SquareLine Studio previews of the 410×502 layout:
 

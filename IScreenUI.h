@@ -45,6 +45,10 @@ public:
     virtual void update(){}
     virtual void onButtonPress(){}
 
+    // False while the page is still fetching what its first lit frame should show. The wake
+    // sequence waits for it, for a limited time, with the panel dark.
+    virtual bool readyForReveal() const { return true; }
+
     virtual bool interceptsTouchAt(int16_t x, int16_t y) { return false; }
     virtual void onTouchDrag(int16_t x, int16_t y){}
     virtual void onTouchEnd(){}

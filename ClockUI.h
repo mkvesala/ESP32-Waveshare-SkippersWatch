@@ -14,7 +14,7 @@
 //   formats whatever the system clock currently holds.
 // - "Never show a fabricated time": until the clock has been set (system year < 2020)
 //   all fields show placeholders. Demo mode is the one exception: with no real time
-//   known it shows a made-up time that ticks from 10:10:00 local. The system clock itself
+//   known it shows the demo track's time, ticking from 08:15:00 local. The system clock itself
 //   is never touched, so a real GNSS sync replaces the demo time the moment it lands.
 // - Realizes IScreenUI over container ui_ContainerClock
 // - Owned by: WatchApplication

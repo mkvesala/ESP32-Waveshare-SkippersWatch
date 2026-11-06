@@ -5,8 +5,8 @@
 CXX      ?= c++
 CXXFLAGS ?= -std=c++17 -Wall -Wextra -Werror -I../..
 
-test_runner: test_main.cpp ../../GestureClassifier.h ../../BatteryLevel.h ../../NightPalette.h ../../DemoValues.h ../../StatusFormat.h
-	$(CXX) $(CXXFLAGS) -o $@ test_main.cpp
+test_runner: test_main.cpp ../../GestureClassifier.h ../../BatteryLevel.h ../../NightPalette.h ../../DemoValues.h ../../DemoTrack.h ../../DemoTrack.cpp ../../StatusFormat.h ../../ChartGeometry.h ../../ChartFormat.h
+	$(CXX) $(CXXFLAGS) -o $@ test_main.cpp ../../DemoTrack.cpp
 
 .PHONY: run clean
 run: test_runner

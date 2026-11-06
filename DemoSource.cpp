@@ -38,8 +38,8 @@ void DemoSource::sendAll(uint32_t now) {
 
     DepthDelta depth;
     depth.below_surface_m    = d.depth_below_surface_m;
-    depth.below_transducer_m = d.depth_below_surface_m - 0.5f;
-    depth.below_keel_m       = d.depth_below_surface_m - 1.7f;
+    depth.below_transducer_m = d.depth_below_surface_m - 0.2f;   // offsets as in the recording
+    depth.below_keel_m       = d.depth_below_surface_m - 1.2f;
     depth.age_ms             = 0;
     this->send(ESPNowMsgType::DEPTH_DELTA, depth);
 

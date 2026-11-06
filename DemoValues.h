@@ -2,14 +2,14 @@
 
 #include <stdint.h>
 #include <math.h>
+#include "DemoTrack.h"
 
 // === D E M O  V A L U E S ===
 //
-// - Made-up but plausible instrument values for demo mode, as a pure function of time.
-//   No Arduino, LVGL or protocol types, so host unit tests can check that every value
-//   stays in a range the pages accept (no NaN, no placeholder-triggering value).
-// - Values drift slowly (sines with different periods) so the pages visibly live, the
-//   way they do on the boat: under way on a westerly course in the Gulf of Finland.
+// - Instrument values for demo mode, as a pure function of time: DemoTrack's recorded rows,
+//   one per second, looping back to the start. No Arduino, LVGL or protocol types, so host
+//   unit tests can check that every value stays in a range the pages accept (no NaN, no
+//   placeholder-triggering value).
 // - DemoSource turns a snapshot into ESP-NOW wire structs.
 
 struct DemoSnapshot {
@@ -36,50 +36,45 @@ struct DemoSnapshot {
 
 struct DemoValues {
 
-    // Start of the demo track and how long before it loops back (keeps the position
-    // inside a sensible box no matter how long demo mode runs)
-    static constexpr float START_LAT_DEG = 60.0833f;   // 60°05.0'N
-    static constexpr float START_LON_DEG = 24.8333f;   // 024°50.0'E
-    static constexpr float TRACK_LOOP_S  = 3600.0f;
+    // Where the demo track starts and how long before it loops back
+    static constexpr float START_LAT_DEG = 60.2708f;   // 60°16.2'N
+    static constexpr float START_LON_DEG = 26.0097f;   // 026°00.6'E
+    static constexpr float TRACK_LOOP_S  = (float)DemoTrack::ROWS;
 
-    // Demo clock while the system clock has no GNSS time: this epoch plus uptime.
-    // 2026-07-15 07:10:00 UTC = 10:10:00 local (EEST). Shared by the Clock page and the
-    // Celestial page, which computes real Hc/Zn for this time and the demo position.
-    static constexpr int64_t DEMO_EPOCH_UTC = 1784099400;
+    // Demo clock while the system clock has no GNSS time: this epoch plus uptime. The time of
+    // the track's first row, shared by the Clock page and the Celestial page, which computes
+    // real Hc/Zn for this time and the demo position.
+    static constexpr int64_t DEMO_EPOCH_UTC = DemoTrack::START_UTC;
 
     static DemoSnapshot at(uint32_t ms) {
-        const float t = ms / 1000.0f;
+        const DemoTrack::Row& r = DemoTrack::TRACK[(ms / 1000u) % DemoTrack::ROWS];
         DemoSnapshot d{};
 
-        d.heading_true_deg = wrap360(245.0f + 5.0f * sinf(t / 20.0f));
+        d.heading_true_deg = wrap360(r.hdg_true_e4 / 1e4f * RAD_TO_DEG_F);
         d.mag_var_deg      = 11.0f;
-        d.pitch_deg        = 3.0f * sinf(t / 4.0f);
-        d.roll_deg         = 8.0f * sinf(t / 6.0f + 1.0f);
+        d.pitch_deg        = r.pitch_e4 / 1e4f * RAD_TO_DEG_F;
+        d.roll_deg         = r.roll_e4 / 1e4f * RAD_TO_DEG_F;
 
-        d.cog_true_deg     = wrap360(247.0f + 2.0f * sinf(t / 30.0f));
-        d.sog_kn           = 6.2f + 0.3f * sinf(t / 15.0f);
+        d.cog_true_deg     = wrap360(r.cog_e4 / 1e4f * RAD_TO_DEG_F);
+        d.sog_kn           = r.sog_mms / 1000.0f * MS_TO_KN;
 
-        // Dead-reckon along the mean course at the mean speed, looping every TRACK_LOOP_S
-        const float leg_s   = fmodf(t, TRACK_LOOP_S);
-        const float dist_nm = 6.2f * leg_s / 3600.0f;
-        const float crs     = 247.0f * (float)M_PI / 180.0f;
-        d.lat_deg = START_LAT_DEG + dist_nm * cosf(crs) / 60.0f;
-        d.lon_deg = START_LON_DEG + dist_nm * sinf(crs) / (60.0f * cosf(START_LAT_DEG * (float)M_PI / 180.0f));
+        d.lat_deg = (float)(r.lat_e7 / 1e7);
+        d.lon_deg = (float)(r.lon_e7 / 1e7);
 
-        d.depth_below_surface_m = 10.0f + 2.0f * sinf(t / 25.0f);
+        d.depth_below_surface_m = r.depth_surf_cm / 100.0f;
 
-        d.house_v       = 12.9f + 0.05f * sinf(t / 40.0f);
-        d.house_a       = -3.4f + 0.4f * sinf(t / 10.0f);
-        d.house_soc_pct = 87.0f;
-        d.start_v       = 12.7f;
+        d.house_v       = r.house_v_mv / 1000.0f;
+        d.house_a       = r.house_i_ca / 100.0f;
+        d.house_soc_pct = r.soc_e2 / 100.0f;
+        d.start_v       = r.start_v_mv / 1000.0f;
 
-        d.temperature_c = 18.0f + 0.3f * sinf(t / 60.0f);
-        d.pressure_hpa  = 1013.2f + 0.4f * sinf(t / 90.0f);
-        d.humidity_pct  = 62.0f + 2.0f * sinf(t / 45.0f);
+        d.temperature_c = r.temp_c_e2 / 100.0f;
+        d.pressure_hpa  = (float)((int32_t)r.press_pa_o + DemoTrack::PRESS_OFFSET) / 100.0f;
+        d.humidity_pct  = r.hum_e2 / 100.0f;
 
-        d.exhaust_k   = 330.0f + 5.0f * sinf(t / 35.0f);
-        d.fuel_ratio  = 0.65f;
-        d.water_ratio = 0.40f;
+        d.exhaust_k   = r.exhaust_k_e2 / 100.0f;
+        d.fuel_ratio  = r.fuel_e4 / 1e4f;
+        d.water_ratio = r.water_e4 / 1e4f;
         return d;
     }
 
@@ -87,5 +82,10 @@ struct DemoValues {
         float r = fmodf(deg, 360.0f);
         return r < 0.0f ? r + 360.0f : r;
     }
+
+private:
+
+    static constexpr float RAD_TO_DEG_F = 180.0f / (float)M_PI;
+    static constexpr float MS_TO_KN     = 1.94384f;
 
 };

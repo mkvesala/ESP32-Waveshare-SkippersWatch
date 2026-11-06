@@ -8,7 +8,10 @@
 #include "NightPalette.h"
 #include "DemoValues.h"
 #include "StatusFormat.h"
+#include "ChartGeometry.h"
+#include "ChartFormat.h"
 #include <cstring>
+#include <cmath>
 
 static int g_failed = 0;
 static int g_run = 0;
@@ -122,22 +125,26 @@ static bool inRange(float v, float lo, float hi) { return v == v && v >= lo && v
 
 static void testDemoValues() {
     bool ok = true;
-    // Two hours in 7 s steps: every value stays plausible, finite and never NaN, so no
-    // page ever drops to its placeholder in demo mode.
-    for (uint32_t ms = 0; ms < 2u * 3600u * 1000u; ms += 7000u) {
+    // Every row: each value stays plausible, finite and never NaN, so no page ever drops
+    // to its placeholder in demo mode.
+    for (uint32_t ms = 0; ms < DemoTrack::ROWS * 1000u; ms += 1000u) {
         const DemoSnapshot d = DemoValues::at(ms);
         ok = ok && inRange(d.heading_true_deg, 0, 360) && inRange(d.cog_true_deg, 0, 360)
-                && inRange(d.sog_kn, 5, 7) && inRange(d.pitch_deg, -5, 5)
-                && inRange(d.roll_deg, -10, 10)
-                && inRange(d.lat_deg, 59.9f, 60.2f) && inRange(d.lon_deg, 24.4f, 25.0f)
-                && inRange(d.depth_below_surface_m, 7, 13)
-                && inRange(d.house_v, 12, 14) && inRange(d.house_a, -5, 0)
-                && inRange(d.house_soc_pct, 0, 100) && inRange(d.start_v, 12, 14)
-                && inRange(d.temperature_c, 10, 30) && inRange(d.pressure_hpa, 1000, 1030)
+                && inRange(d.sog_kn, 6, 8) && inRange(d.pitch_deg, -10, 10)
+                && inRange(d.roll_deg, -15, 15)
+                && inRange(d.lat_deg, 60.25f, 60.30f) && inRange(d.lon_deg, 25.95f, 26.10f)
+                && inRange(d.depth_below_surface_m, 2, 30)
+                && inRange(d.house_v, 24, 30) && inRange(d.house_a, -10, 10)
+                && inRange(d.house_soc_pct, 0, 100) && inRange(d.start_v, 24, 30)
+                && inRange(d.temperature_c, 0, 30) && inRange(d.pressure_hpa, 980, 1050)
                 && inRange(d.humidity_pct, 0, 100) && inRange(d.exhaust_k, 300, 400)
                 && inRange(d.fuel_ratio, 0, 1) && inRange(d.water_ratio, 0, 1);
     }
     CHECK_EQ(ok, true);
+    // START_LAT/LON_DEG name the track's first row
+    const DemoSnapshot first = DemoValues::at(0);
+    CHECK_EQ(fabsf(first.lat_deg - DemoValues::START_LAT_DEG) < 0.001f, true);
+    CHECK_EQ(fabsf(first.lon_deg - DemoValues::START_LON_DEG) < 0.001f, true);
     // The track loops: the position is back at the start after TRACK_LOOP_S
     const DemoSnapshot a = DemoValues::at(0);
     const DemoSnapshot b = DemoValues::at((uint32_t)(DemoValues::TRACK_LOOP_S * 1000));
@@ -200,7 +207,170 @@ static void testStatusFormat() {
     CHECK_EQ(fmtDrain(false, 80, 70, 99999, "-- (USB)"), true);
 }
 
+#define CHECK_NEAR(actual, expected, tol)                                            \
+    do {                                                                             \
+        ++g_run;                                                                     \
+        if (std::fabs((double)(actual) - (double)(expected)) > (tol)) {              \
+            ++g_failed;                                                              \
+            std::printf("FAIL %s:%d  %s = %.6f, expected %.6f\n", __FILE__, __LINE__, \
+                        #actual, (double)(actual), (double)(expected));              \
+        }                                                                            \
+    } while (0)
+
+// Reference values: pyproj 3.7.2, Proj("EPSG:3067") forward and get_factors()
+static void testChartProjection() {
+    struct Ref { double lat, lon, e, n, conv; };
+    const Ref refs[] = {
+        { 60.0833, 24.8333, 379464.874, 6662663.930, -1.87821 },   // the demo position
+        { 59.82,   22.95,   272967.956, 6638305.962, -3.50250 },   // off Hanko
+        { 60.5,    27.0,    500000.000, 6707097.168,  0.00000 },   // on the central meridian
+        { 60.45,   27.9,    549515.561, 6701866.700,  0.78295 },   // east of it
+        { 60.15,   19.9,    106283.130, 6689315.183, -6.16589 },   // Åland, far from it
+        { 65.0,    25.0,    405698.988, 7209946.446, -1.81275 },
+    };
+    for (const Ref& r : refs) {
+        const ChartGeometry::GridPoint p = ChartGeometry::wgs84ToTm35(r.lat, r.lon);
+        CHECK_NEAR(p.e, r.e, 0.01);
+        CHECK_NEAR(p.n, r.n, 0.01);
+        CHECK_NEAR(ChartGeometry::convergenceDeg(r.lat, r.lon), r.conv, 0.005);
+    }
+
+    // West of 27°E true north points right of grid north, and the result wraps to 0..360
+    CHECK_NEAR(ChartGeometry::gridBearingDeg(0.0, -3.5), 3.5, 1e-9);
+    CHECK_NEAR(ChartGeometry::gridBearingDeg(359.0, -3.5), 2.5, 1e-9);
+    CHECK_NEAR(ChartGeometry::gridBearingDeg(1.0, 3.5), 357.5, 1e-9);
+}
+
+static void testChartSymbols() {
+    // 0.25 NM at 4 m/px, and 3 min at 5 kn is the same distance
+    CHECK_NEAR(ChartGeometry::ringRadiusPx(4.0), 115.75, 0.01);
+    CHECK_NEAR(ChartGeometry::cogVectorPx(5.0, 4.0), 115.75, 0.01);
+    CHECK_NEAR(ChartGeometry::cogVectorPx(1.0, 4.0), 23.15, 0.01);
+
+    ChartGeometry::ScreenPoint p = ChartGeometry::lineEnd(100.0f, 100.0f, 0.0, 50.0f);   // up
+    CHECK_NEAR(p.x, 100.0, 0.001);
+    CHECK_NEAR(p.y, 50.0, 0.001);
+    p = ChartGeometry::lineEnd(100.0f, 100.0f, 90.0, 50.0f);                             // right
+    CHECK_NEAR(p.x, 150.0, 0.001);
+    CHECK_NEAR(p.y, 100.0, 0.001);
+    p = ChartGeometry::lineEnd(100.0f, 100.0f, 180.0, 50.0f);                            // down
+    CHECK_NEAR(p.x, 100.0, 0.001);
+    CHECK_NEAR(p.y, 150.0, 0.001);
+}
+
+static void testChartAddressing() {
+    using C = ChartFormat;
+    CHECK_EQ(C::TILE_BYTES, 65536u);
+    CHECK_EQ(C::BLOCK_BYTES, 16777216u);
+
+    CHECK_EQ(C::floorDiv(511, 256), 1);
+    CHECK_EQ(C::floorDiv(512, 256), 2);
+    CHECK_EQ(C::floorDiv(-1, 256), -1);
+    CHECK_EQ(C::floorDiv(-256, 256), -1);
+    CHECK_EQ(C::floorDiv(-257, 256), -2);
+
+    char path[C::BLOCK_PATH_LEN];
+    CHECK_EQ(C::blockPath(1000, 1650, path, sizeof(path)), true);
+    CHECK_EQ(std::strcmp(path, "/chart/blocks/c0062r0103.bin"), 0);
+    CHECK_EQ(C::blockPath(-1, 1650, path, sizeof(path)), false);
+    CHECK_EQ(C::blockPath(1000, -1, path, sizeof(path)), false);
+
+    CHECK_EQ(C::blockOffset(32, 48, 0), 0u);                     // first tile of its block
+    CHECK_EQ(C::blockOffset(33, 48, 0), 65536u);                 // next column
+    CHECK_EQ(C::blockOffset(32, 49, 0), 16u * 65536u);           // next row
+    CHECK_EQ(C::blockOffset(47, 63, 255), C::BLOCK_BYTES - 256u);   // last row of the last tile
+
+    // The demo position through the whole chain: tile 11 of the TM35FIN grid at 4 m/px
+    C::Meta m = {};
+    m.m_per_px = 4.0;
+    m.origin_e = -548576.0;
+    m.origin_n = 8388608.0;
+    const ChartGeometry::GridPoint g = ChartGeometry::wgs84ToTm35(60.0833, 24.8333);
+    double px, py;
+    C::toPixel(m, g.e, g.n, px, py);
+    CHECK_NEAR(px, (379464.874 + 548576.0) / 4.0, 0.01);
+    CHECK_NEAR(py, (8388608.0 - 6662663.930) / 4.0, 0.01);
+}
+
+// A view must be covered exactly once, whichever way it falls on the tiles
+static void checkViewCover(int32_t x0, int32_t y0, uint16_t w, uint16_t h, int expected_spans) {
+    using C = ChartFormat;
+    static uint8_t hits[1024 * 1024];
+    std::memset(hits, 0, sizeof(hits));
+    int spans = 0;
+    bool in_tile = true;
+    const C::View v = { x0, y0, w, h };
+    C::forEachSpan(v, [&](const C::Span& s) {
+        ++spans;
+        if (s.tile_x + s.w > C::TILE_PX || s.tile_y + s.h > C::TILE_PX) in_tile = false;
+        // The span's chart pixel, reached from both ends, must be the same one
+        if (s.col * C::TILE_PX + s.tile_x != x0 + s.view_x) in_tile = false;
+        if (s.row * C::TILE_PX + s.tile_y != y0 + s.view_y) in_tile = false;
+        for (uint16_t y = 0; y < s.h; ++y) {
+            for (uint16_t x = 0; x < s.w; ++x) hits[(s.view_y + y) * 1024u + s.view_x + x]++;
+        }
+    });
+    int wrong = 0;
+    for (uint16_t y = 0; y < h; ++y) {
+        for (uint16_t x = 0; x < w; ++x) {
+            if (hits[y * 1024u + x] != 1) ++wrong;
+        }
+    }
+    CHECK_EQ(spans, expected_spans);
+    CHECK_EQ(in_tile, true);
+    CHECK_EQ(wrong, 0);
+}
+
+static void testChartSpans() {
+    checkViewCover(0, 0, 256, 256, 1);           // exactly one tile
+    checkViewCover(255, 255, 2, 2, 4);           // a tile corner
+    checkViewCover(1024, 1024, 410, 502, 4);     // the watch view at its best: 2 x 2 tiles
+    checkViewCover(1000, 1000, 410, 502, 9);     // the watch view, usual case: 3 x 3 tiles
+    checkViewCover(-100, -100, 410, 502, 9);     // off the grid's corner
+    checkViewCover(10, 10, 650, 650, 9);         // a future bow-up source square
+    checkViewCover(250, 250, 650, 650, 16);      // ...which 3 x 3 tiles cannot always cover
+
+    // The view is centered on the boat's pixel
+    const ChartFormat::View v = ChartFormat::centeredView(1000.7, 2000.2, 410, 502);
+    CHECK_EQ(v.x0, 1000 - 205);
+    CHECK_EQ(v.y0, 2000 - 251);
+}
+
+// Index = tile_y * 16 + tile_x in a small test tile area, so each pixel names where it came from
+static void testChartExpand() {
+    using C = ChartFormat;
+    static uint8_t tile[C::TILE_BYTES];
+    static uint16_t palette[C::PALETTE_COUNT];
+    for (size_t i = 0; i < C::PALETTE_COUNT; ++i) palette[i] = (uint16_t)(0x1000 + i);
+    for (int y = 0; y < C::TILE_PX; ++y) {
+        for (int x = 0; x < C::TILE_PX; ++x) tile[y * C::TILE_PX + x] = (uint8_t)((y % 16) * 16 + (x % 16));
+    }
+
+    uint16_t view[6 * 10];
+    std::memset(view, 0xAB, sizeof(view));
+    const C::Span s = { 0, 0, /*tile_x*/ 3, /*tile_y*/ 2, /*view_x*/ 1, /*view_y*/ 4, /*w*/ 2, /*h*/ 2 };
+    // src starts at the span's first row, as the store reads it
+    C::expandSpan(s, tile + 2 * C::TILE_PX, palette, view, 10);
+    CHECK_EQ(view[4 * 10 + 1], 0x1000 + 2 * 16 + 3);
+    CHECK_EQ(view[4 * 10 + 2], 0x1000 + 2 * 16 + 4);
+    CHECK_EQ(view[5 * 10 + 1], 0x1000 + 3 * 16 + 3);
+    CHECK_EQ(view[5 * 10 + 2], 0x1000 + 3 * 16 + 4);
+    CHECK_EQ(view[4 * 10 + 0], 0xABAB);   // nothing outside the span is touched
+    CHECK_EQ(view[4 * 10 + 3], 0xABAB);
+    CHECK_EQ(view[3 * 10 + 1], 0xABAB);
+
+    C::blankSpan(s, view, 10);
+    CHECK_EQ(view[4 * 10 + 1], 0);
+    CHECK_EQ(view[5 * 10 + 2], 0);
+    CHECK_EQ(view[4 * 10 + 3], 0xABAB);
+}
+
 int main() {
+    testChartExpand();
+    testChartProjection();
+    testChartSymbols();
+    testChartAddressing();
+    testChartSpans();
     testTapAndLongPress();
     testFourSwipeDirections();
     testDominantAxis();

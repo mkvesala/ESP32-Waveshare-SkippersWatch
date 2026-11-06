@@ -1,7 +1,7 @@
 /*******************************************************************************
  * Size: 14 px
  * Bpp: 4
- * Opts: --bpp 4 --size 14 --font /Users/mattivesala/Documents/Arduino/ESP32-Crowpanel-SkippersWatch/SLS_project/assets/Orbitron-Black.ttf -o /Users/mattivesala/Documents/Arduino/ESP32-Crowpanel-SkippersWatch/SLS_project/assets/ui_font_FontLabel14.c --format lvgl -r 0x20-0x7f --symbols ° --no-compress --no-prefilter
+ * Opts: --bpp 4 --size 14 --font /Users/mattivesala/Documents/Arduino/ESP32-Waveshare-SkippersWatch/SLS_project_WS/assets/Orbitron-Black.ttf -o /Users/mattivesala/Documents/Arduino/ESP32-Waveshare-SkippersWatch/SLS_project_WS/assets/ui_font_FontLabel14.c --format lvgl -r 0x20-0x7f --symbols ° --no-compress --no-prefilter
  ******************************************************************************/
 
 #include "ui.h"

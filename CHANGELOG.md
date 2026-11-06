@@ -4,6 +4,48 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.0] - 2026-11-06
+
+### Added
+
+- **Chart screen** (`ChartUI` over SquareLine's `ui_ContainerChart`), last in the carousel
+  after Celestial: Traficom's nautical chart series A, north up, about 1 NM across the
+  display's height at a fixed 4 m/px, with no zoom or pan. The map is recentered on the boat
+  when the page opens, on a wake or boot, when an overlay closes and after 21 s with the
+  display still on; in between the boat moves on the map, about once per second.
+- **Chart symbols:** the boat, a fixed 0.25 NM range ring that doubles as the scale, a solid
+  heading line out to the ring and a dashed COG vector showing the distance covered in 3 min
+  at SOG. True bearings are turned to the chart's grid north with the meridian convergence.
+- **Chart values:** COG, HDG, SOG and DPT in the corners, on half-transparent backgrounds and
+  under the same freshness rules as the Navigation screen.
+- **Chart freshness:** without a fresh fix all symbols are hidden. The map may stay on the
+  last known position, up to 1 h old (`No fix *` up to 15 min, `No fix **` up to 1 h), and a
+  fresh fix takes over at once. Other states show `No fix`, `No chart card` or `No chart here`.
+- **Chart night mode:** an inverted red chart with light grey symbols and corner values.
+- **Chart icon in the page menu** (`ui_ImgButtonChart` / `ui_ImgButtonChartNight`, bottom
+  right of the grid).
+- **Chart on a microSD card:** read over SD_MMC in 1-bit mode at 40 MHz, with 20 MHz as the
+  fallback. A view reads in about 150 ms on `ChartEngine`'s own core-0 task, so touch keeps
+  working during a read. The watch never fetches anything from the network.
+- **`tools/chart/build_chart.py`:** downloads a chosen area on a Mac, builds the card's block
+  files and palette, simulates a view as a PNG and installs to a FAT32 card. It never formats
+  the card.
+- Host tests for the chart geometry and block addressing (`tests/host/`).
+
+### Changed
+
+- **The microSD card is mounted and closed before every sleep**, even on a wake that never
+  opened the chart. A card never initialised since it got power drew about 42 mA in deep sleep;
+  after a mount and close the watch measured 8.4 mA over 3 h and 9.4 mA over 4 h from a full
+  charge. Those short readings include the gauge's fast first-hour drop, so the card's own
+  share against the 6 mA floor is still open. Without a card the attempt takes about 58 ms.
+- The battery bar moved into `ui_ContainerTopBar`, always on top of the page and with a
+  half-transparent background only on the chart page.
+- **Demo mode plays a recording:** 10 min of the boat's instruments, looping, instead of
+  made-up values (`DemoTrack`, about 24 KB, cut from the ESP-NOW testlab's table by
+  `tools/demo/make_demo_track.py`). The demo clock starts at the track's time,
+  2026-10-20 08:15 EEST.
+
 ## [2.1.0] - 2026-11-04
 
 ### Added
@@ -221,6 +263,7 @@ First release, on the **Elecrow CrowPanel 2.01" Watch Display**. Running on hard
 - `hardware_notes.md` as the authoritative pin map, build/toolchain notes and power-guard reference.
 - Issue and pull-request templates, contribution guide, and third-party licence notes.
 
+[2.2.0]: https://github.com/mkvesala/ESP32-Waveshare-SkippersWatch/compare/v2.1.0...v2.2.0
 [2.1.0]: https://github.com/mkvesala/ESP32-Waveshare-SkippersWatch/compare/v2.0.0...v2.1.0
 [2.0.0]: https://github.com/mkvesala/ESP32-Waveshare-SkippersWatch/compare/v1.0.0...v2.0.0
 [1.0.0]: https://github.com/mkvesala/ESP32-Waveshare-SkippersWatch/releases/tag/v1.0.0

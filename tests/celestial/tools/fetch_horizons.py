@@ -15,12 +15,12 @@ TIMES = [  # (label, Horizons time, unix UTC)
     ("2026-06-21 10:00", "2026-06-21 10:00", 1782036000),
     ("2026-12-21 10:00", "2026-12-21 10:00", 1797847200),
     ("2026-10-14 16:15", "2026-10-14 16:15", 1791994500),
-    ("2026-07-15 07:10", "2026-07-15 07:10", 1784099400),  # watch demo epoch (DemoValues::DEMO_EPOCH_UTC)
+    ("2026-07-15 07:10", "2026-07-15 07:10", 1784099400),  # the watch's demo epoch before v2.2.0
 ]
 SITES = [  # (label, lat, lon)
     ("Helsinki", 60.15, 24.95),
     ("Santiago", -33.90, -70.60),
-    ("Demo", 60.0833, 24.8333),  # watch demo track start (DemoValues::START_LAT/LON_DEG)
+    ("Demo", 60.0833, 24.8333),  # the watch's demo track start before v2.2.0
 ]
 BODIES = [("SUN", "10"), ("MOON", "301"), ("VENUS", "299"), ("MARS", "499"), ("JUPITER", "599"), ("SATURN", "699")]
 

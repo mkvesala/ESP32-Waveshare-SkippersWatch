@@ -14,7 +14,7 @@
 //     * ui_SliderWaketime      — drag to set the wake time (display-on window, 2..20 s);
 //                                disabled while prevent sleep is on (no timeout to set)
 //     * ui_SwitchPreventSleep  — tap to keep the watch awake on battery
-//     * ui_SwitchDemoMode      — tap to show made-up values instead of ESP-NOW data
+//     * ui_SwitchDemoMode      — tap to show recorded demo data instead of ESP-NOW data
 //     * ui_SwitchNightMode     — tap to draw the whole UI in red
 // - All settings persist to NVS (namespace "display")
 // - Brightness reaches the AMOLED through PanelBrightness (a panel command, 0..255);

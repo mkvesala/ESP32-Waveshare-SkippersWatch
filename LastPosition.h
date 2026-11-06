@@ -5,8 +5,9 @@
 
 // === C L A S S  L A S T P O S I T I O N ===
 //
-// - Last known GNSS position for the Celestial page, used only when no live fix is available.
-//   Never shown as the boat's position elsewhere (Navigation keeps showing "---").
+// - Last known GNSS position for the Celestial and chart pages, used only when no live fix is
+//   available. Never shown as the boat's position: the chart page centers its map on it with
+//   no boat symbol, and Navigation keeps showing "---".
 // - Two sources, the newer one wins:
 //   - session: the latest fresh fix seen during this awake session (RAM, millis based)
 //   - stored:  the fix persisted to NVS on the way into the previous deep sleep (UTC based)
@@ -15,7 +16,7 @@
 // - Flash is touched only lazily (first lookup() of a wake reads) and in the pre-sleep flush
 //   (the only writer), as with the last-page store.
 // - Demo positions are never recorded or stored.
-// - Owned by: WatchApplication; used by: CelestialUI
+// - Owned by: WatchApplication; used by: CelestialUI, ChartUI
 
 class LastPosition {
 

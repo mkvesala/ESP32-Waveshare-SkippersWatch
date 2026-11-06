@@ -14,8 +14,6 @@ extern "C" {
 extern void ui_ScreenMain_screen_init(void);
 extern void ui_ScreenMain_screen_destroy(void);
 extern lv_obj_t *ui_ScreenMain;
-extern lv_obj_t *ui_BarBatteryIndicator;
-extern lv_obj_t *ui_LabelSoC;
 extern lv_obj_t *ui_ContainerNavigation;
 extern lv_obj_t *ui_LabelCOGTitle;
 extern lv_obj_t *ui_LabelCOGValue;
@@ -92,6 +90,7 @@ extern lv_obj_t *ui_ImgButtonSetup;
 extern lv_obj_t *ui_ImgButtonClock;
 extern lv_obj_t *ui_ImgButtonAttitude;
 extern lv_obj_t *ui_ImgButtonCelestial;
+extern lv_obj_t *ui_ImgButtonChart;
 extern lv_obj_t *ui_ImgButtonBatteriesNight;
 extern lv_obj_t *ui_ImgButtonNavigationNight;
 extern lv_obj_t *ui_ImgButtonEngineNight;
@@ -100,6 +99,7 @@ extern lv_obj_t *ui_ImgButtonSetupNight;
 extern lv_obj_t *ui_ImgButtonClockNight;
 extern lv_obj_t *ui_ImgButtonAttitudeNight;
 extern lv_obj_t *ui_ImgButtonCelestialNight;
+extern lv_obj_t *ui_ImgButtonChartNight;
 extern lv_obj_t *ui_ContainerStartup;
 extern lv_obj_t *ui_LabelSkippersWatch;
 extern lv_obj_t *ui_LabelVersion;
@@ -114,6 +114,20 @@ extern lv_obj_t *ui_LabelBodies;
 extern lv_obj_t *ui_LabelHc;
 extern lv_obj_t *ui_LabelZn;
 extern lv_obj_t *ui_LabelVariables;
+extern lv_obj_t *ui_ContainerChart;
+extern lv_obj_t *ui_LabelChartStatus;
+extern lv_obj_t *ui_LabelChartAttribution;
+extern lv_obj_t *ui_LabelCOGTitle2;
+extern lv_obj_t *ui_LabelCOGValue2;
+extern lv_obj_t *ui_LabelHDGValue2;
+extern lv_obj_t *ui_LabelHDGTitle2;
+extern lv_obj_t *ui_LabelSOGTitle2;
+extern lv_obj_t *ui_LabelSOGValue2;
+extern lv_obj_t *ui_LabelDPTValue2;
+extern lv_obj_t *ui_LabelDPTTitle2;
+extern lv_obj_t *ui_ContainerTopBar;
+extern lv_obj_t *ui_LabelSoC;
+extern lv_obj_t *ui_BarBatteryIndicator;
 // CUSTOM VARIABLES
 
 #ifdef __cplusplus

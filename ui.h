@@ -42,6 +42,7 @@ LV_IMG_DECLARE( ui_img_setup_png);   // assets/setup.png
 LV_IMG_DECLARE( ui_img_clock_png);   // assets/clock.png
 LV_IMG_DECLARE( ui_img_attitude_png);   // assets/attitude.png
 LV_IMG_DECLARE( ui_img_celestial_png);   // assets/celestial.png
+LV_IMG_DECLARE( ui_img_chart_png);   // assets/chart.png
 LV_IMG_DECLARE( ui_img_nightbatteries_png);   // assets/nightbatteries.png
 LV_IMG_DECLARE( ui_img_nightnavigation_png);   // assets/nightnavigation.png
 LV_IMG_DECLARE( ui_img_nightengine_png);   // assets/nightengine.png
@@ -50,6 +51,7 @@ LV_IMG_DECLARE( ui_img_nightsetup_png);   // assets/nightsetup.png
 LV_IMG_DECLARE( ui_img_nightclock_png);   // assets/nightclock.png
 LV_IMG_DECLARE( ui_img_nightattitude_png);   // assets/nightattitude.png
 LV_IMG_DECLARE( ui_img_nightcelestial_png);   // assets/nightcelestial.png
+LV_IMG_DECLARE( ui_img_nightchart_png);   // assets/nightchart.png
 
 // FONTS
 LV_FONT_DECLARE( ui_font_FontLabel14);

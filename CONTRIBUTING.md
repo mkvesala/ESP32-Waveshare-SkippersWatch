@@ -102,12 +102,15 @@ Feature requests are welcome! Please:
   * [ ] Engine — exhaust temp, fuel and fresh-water litres
   * [ ] Attitude — pitch, roll and horizon line
   * [ ] Clock — local date/weekday, local + UTC time (GNSS-disciplined)
+  * [ ] Chart — map centered on the boat, symbols and corner values, day and night
+* [ ] Chart without a card or with the card pulled out: `No chart card`, touch keeps working, the watch still sleeps, the map returns with the card
+* [ ] Cold boot: no page shows behind the startup screen
 * [ ] Stale data never shown as current; placeholders persist until a fresh broadcast
-* [ ] Screen carousel works both directions: swipe up/down AND knob CW/CCW
+* [ ] Screen carousel works both directions: swipe left/right
 * [ ] Touch gestures work: tap, swipe, Setup slider drag (absolute) and Setup switch tap
 * [ ] Setup brightness shows the NVS value on boot, adjusts by touch drag, persists after reboot
 * [ ] Setup prevent-sleep switch: red off / green on, keeps the watch awake on battery, still sleeps at the 120 s ceiling, persists after reboot
-* [ ] Deep sleep entry after the 10 s timeout; button wake (GPIO18) restores the last screen
+* [ ] Deep sleep entry after the 10 s timeout; PWR button wake (GPIO10) restores the last screen
 * [ ] Battery bar: SoC color green/amber/red, and blue/100 % while on USB power
 * [ ] No memory leaks (heap free stable over time)
 * [ ] Serial output reports no unexpected bottlenecks
