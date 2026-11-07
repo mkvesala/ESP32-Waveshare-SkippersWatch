@@ -62,6 +62,9 @@ void ChartUI::begin() {
 void ChartUI::onEnter() {
     _need_center = true;
     _last_update_ms = millis();
+    // Bow-up: the map takes the current or the newest heading at once, without the confirm wait
+    _reorient_now = true;
+    _bow_up_since_ms = _last_update_ms;
     lv_obj_set_style_bg_opa(ui_ContainerTopBar, _top_bar_opa, LV_PART_MAIN);
     this->showWaiting();
 }
@@ -85,8 +88,37 @@ void ChartUI::update() {
     const uint32_t rx = _receiver.lastGnssRxMillis();
     const bool fresh = rx > 0 && (now - rx) < GNSS_TIMEOUT_MS && gnss.hasFix();
 
+    this->trackHeading(now);
+    this->updateOrientation(gnss, fresh, now);
     this->applyPosition(gnss, fresh, now);
     this->refreshSymbols(gnss, fresh, now);
+}
+
+// On: bow-up, also after a fallback to north up in this wake. Off: north up, and stays so.
+void ChartUI::onDoubleTap() {
+    if (!_initialized) return;
+    if (_bow_up_active) {
+        _bow_up_selected = false;
+        _bow_up_active = false;
+        _orient_valid = false;
+        _rotate_pending = false;
+        _need_center = true;
+    } else {
+        _bow_up_selected = true;
+        _bow_up_active = true;
+        _reorient_now = true;
+        _rotate_pending = false;
+        _bow_up_since_ms = millis();
+    }
+    Serial.printf("[chart] %s\n", _bow_up_active ? "bow up" : "north up");
+}
+
+void ChartUI::setBowUpSelected(bool on) {
+    _bow_up_selected = on;
+    _bow_up_active = on;
+    _reorient_now = on;
+    _orient_valid = false;
+    _bow_up_since_ms = millis();
 }
 
 bool ChartUI::readyForReveal() const {
@@ -107,7 +139,7 @@ void ChartUI::setNightMode(bool on) {
     lv_obj_invalidate(_symbol_layer);
     // Same place, other palette: no need to wait for the next fix
     if (_have_request) {
-        _engine.request(_request_lat, _request_lon, _night);
+        this->sendRequest();
         _awaiting_result = true;
     }
 }
@@ -123,11 +155,19 @@ void ChartUI::takeEngineResult() {
     if (!_engine.takeResult(r)) return;
     if (!_engine.isBusy()) _awaiting_result = false;
 
+    // No memory for the bow-up source square: north up still works
+    if (r.rotated && r.status == ChartEngine::Status::NO_MEMORY) {
+        this->fallBackToNorthUp();
+        return;
+    }
+
     _status = r.status;
     if (r.pixels == nullptr) return;
 
     const bool first = !_have_frame;
     _have_frame = true;
+    _frame_rotated = r.rotated;
+    _frame_rot_deg = r.rot_deg;
     _view = r.view;
     _boat_px = r.boat_px;
     _boat_py = r.boat_py;
@@ -150,7 +190,86 @@ void ChartUI::center(double lat_deg, double lon_deg, uint32_t now) {
     _need_center = false;
     _last_center_ms = now;
     _awaiting_result = true;
-    _engine.request(lat_deg, lon_deg, _night);
+    _request_rotated = _bow_up_active && _orient_valid;
+    _request_rot_deg = _orient_deg;
+    this->sendRequest();
+}
+
+void ChartUI::sendRequest() {
+    if (_request_rotated) _engine.requestRotated(_request_lat, _request_lon, _night, _request_rot_deg);
+    else                  _engine.request(_request_lat, _request_lon, _night);
+}
+
+// The newest fresh heading of this wake, kept through short gaps for bow-up
+void ChartUI::trackHeading(uint32_t now) {
+    const uint32_t rx = _receiver.lastHeadingRxMillis();
+    if (rx > 0 && (now - rx) < HEADING_TIMEOUT_MS) {
+        _last_hdg_true = _receiver.getData().heading_true_x10 / 10.0;
+        _last_hdg_ms = rx;
+    }
+}
+
+// Decides when a bow-up map turns. A turn only sets the angle and asks for a recenter, which
+// applyPosition() then sends with it.
+void ChartUI::updateOrientation(const GnssData& gnss, bool fresh, uint32_t now) {
+    if (!_bow_up_active) return;
+
+    const bool recent = _last_hdg_ms != 0 && (now - _last_hdg_ms) <= HEADING_LOST_FALLBACK_MS;
+    if (!recent) {
+        _rotate_pending = false;
+        if (now - _bow_up_since_ms > HEADING_LOST_FALLBACK_MS) this->fallBackToNorthUp();
+        return;   // a short gap keeps the last angle; a new wake waits for its first heading
+    }
+
+    // The convergence needs a position: the fix, or the one the map is centered on
+    double lat, lon;
+    if (fresh) {
+        lat = gnss.lat_deg;
+        lon = gnss.lon_deg;
+    } else if (_have_request) {
+        lat = _request_lat;
+        lon = _request_lon;
+    } else {
+        return;
+    }
+    const double grid = ChartGeometry::gridBearingDeg(_last_hdg_true, ChartGeometry::convergenceDeg(lat, lon));
+
+    if (_reorient_now || !_orient_valid) {
+        _reorient_now = false;
+        _orient_valid = true;
+        _orient_deg = grid;
+        _last_rotate_ms = now;
+        _rotate_pending = false;
+        _need_center = true;
+        return;
+    }
+
+    // Only a live heading turns the map; in a gap the angle holds
+    if ((now - _last_hdg_ms) >= HEADING_TIMEOUT_MS ||
+        fabs(ChartGeometry::headingDelta(grid, _orient_deg)) < ROTATE_THRESHOLD_DEG) {
+        _rotate_pending = false;
+        return;
+    }
+    if (!_rotate_pending) {
+        _rotate_pending = true;
+        _rotate_off_since_ms = now;
+    }
+    if ((now - _rotate_off_since_ms) >= ROTATE_CONFIRM_MS && (now - _last_rotate_ms) >= ROTATE_MIN_INTERVAL_MS) {
+        _orient_deg = grid;
+        _last_rotate_ms = now;
+        _rotate_pending = false;
+        _need_center = true;
+    }
+}
+
+// For the rest of the wake: only a double tap brings bow-up back
+void ChartUI::fallBackToNorthUp() {
+    if (!_bow_up_active) return;
+    _bow_up_active = false;
+    _orient_valid = false;
+    _rotate_pending = false;
+    _need_center = true;
+    Serial.println("[chart] no heading: north up");
 }
 
 // Decides when the map moves. A fresh fix always wins; the last known position only serves
@@ -169,8 +288,14 @@ void ChartUI::applyPosition(const GnssData& gnss, bool fresh, uint32_t now) {
             _fix_was_lost = false;
         } else {
             const ChartGeometry::GridPoint g = ChartGeometry::wgs84ToTm35(lat, lon);
-            const double dx = (g.e - _frame_e) / _m_per_px;
-            const double dy = (g.n - _frame_n) / _m_per_px;
+            double dx = (g.e - _frame_e) / _m_per_px;
+            double dy = (g.n - _frame_n) / _m_per_px;
+            if (_frame_rotated) {
+                // Screen axes of the turned frame (dy is the northing here, so south is -dy)
+                const ChartGeometry::ScreenPoint o = ChartGeometry::rotateOffset(dx, -dy, _frame_rot_deg);
+                dx = o.x;
+                dy = o.y;
+            }
             // A boat off the view does not wait for its turn (the demo track's loop jumps)
             const bool off_view = !_awaiting_result && (fabs(dx) >= VIEW_W / 2.0 || fabs(dy) >= VIEW_H / 2.0);
             if (due || off_view) {
@@ -223,6 +348,7 @@ void ChartUI::refreshSymbols(const GnssData& gnss, bool fresh, uint32_t now) {
     const bool show_map = _have_frame && any_position && !card_failed && !no_memory;
     if (show_map) lv_obj_remove_flag(_image, LV_OBJ_FLAG_HIDDEN);
     else          lv_obj_add_flag(_image, LV_OBJ_FLAG_HIDDEN);
+    this->refreshNorthArrow(show_map);
 
     // Symbols: a fresh fix, and a frame to place them on
     Symbols next;
@@ -232,18 +358,31 @@ void ChartUI::refreshSymbols(const GnssData& gnss, bool fresh, uint32_t now) {
         const ChartGeometry::GridPoint g = ChartGeometry::wgs84ToTm35(lat, lon);
         const double conv = ChartGeometry::convergenceDeg(lat, lon);
         next.visible = true;
-        next.x = (int32_t)lround(_boat_px - _view.x0 + (g.e - _frame_e) / _m_per_px);
-        next.y = (int32_t)lround(_boat_py - _view.y0 - (g.n - _frame_n) / _m_per_px);
+        if (_frame_rotated) {
+            // A turned frame has the request's position at the view's center
+            const ChartGeometry::ScreenPoint o = ChartGeometry::rotateOffset(
+                (g.e - _frame_e) / _m_per_px, -(g.n - _frame_n) / _m_per_px, _frame_rot_deg);
+            next.x = (int32_t)lround(VIEW_W / 2 + o.x);
+            next.y = (int32_t)lround(VIEW_H / 2 + o.y);
+        } else {
+            next.x = (int32_t)lround(_boat_px - _view.x0 + (g.e - _frame_e) / _m_per_px);
+            next.y = (int32_t)lround(_boat_py - _view.y0 - (g.n - _frame_n) / _m_per_px);
+        }
+        // Bearings as drawn: north up unchanged, bow-up relative to the frame's angle
+        const auto onScreen = [&](double grid_deg) {
+            const double b = _frame_rotated ? ChartGeometry::screenBearing(grid_deg, _frame_rot_deg) : grid_deg;
+            return (int32_t)lround(b);
+        };
 
         const HeadingData hdg = _receiver.getData();
         const uint32_t hdg_rx = _receiver.lastHeadingRxMillis();
         if (hdg_rx > 0 && (now - hdg_rx) < HEADING_TIMEOUT_MS) {
             next.hdg_valid = true;
-            next.hdg_deg = (int32_t)lround(ChartGeometry::gridBearingDeg(hdg.heading_true_x10 / 10.0, conv));
+            next.hdg_deg = onScreen(ChartGeometry::gridBearingDeg(hdg.heading_true_x10 / 10.0, conv));
         }
         if (gnss.hasCog() && gnss.getSogKnots() >= COG_MIN_SOG_KNOTS) {
             next.cog_valid = true;
-            next.cog_deg = (int32_t)lround(ChartGeometry::gridBearingDeg(gnss.cog_true_x10 / 10.0, conv));
+            next.cog_deg = onScreen(ChartGeometry::gridBearingDeg(gnss.cog_true_x10 / 10.0, conv));
             next.cog_len = (int32_t)lroundf(ChartGeometry::cogVectorPx(gnss.getSogKnots(), _m_per_px));
         }
     }
@@ -381,7 +520,65 @@ lv_area_t ChartUI::symbolArea(const Symbols& s) const {
     return a;
 }
 
+// Fixed place and size, so one area covers the arrow at any angle
+lv_area_t ChartUI::northArea() const {
+    const int32_t cx = VIEW_W - NORTH_MARGIN_PX;
+    const int32_t cy = VIEW_H / 2;
+    const int32_t r = NORTH_TIP_PX + LINE_W_PX + REDRAW_PAD_PX;
+    lv_area_t a;
+    a.x1 = cx - r;
+    a.y1 = cy - r;
+    a.x2 = cx + r;
+    a.y2 = cy + r;
+    return a;
+}
+
+// Only on a turned map, fix or not: it tells how the map lies, not where the boat is
+void ChartUI::refreshNorthArrow(bool show_map) {
+    const int32_t next = (show_map && _frame_rotated)
+        ? (int32_t)lround(ChartGeometry::screenBearing(0.0, _frame_rot_deg)) % 360 : -1;
+    if (next == _drawn_north) return;
+    _drawn_north = next;
+    const lv_area_t a = this->northArea();
+    lv_obj_invalidate_area(_symbol_layer, &a);
+}
+
+void ChartUI::drawNorthArrow(lv_layer_t* layer) const {
+    if (_drawn_north < 0) return;
+    const float cx = (float)(VIEW_W - NORTH_MARGIN_PX);
+    const float cy = (float)(VIEW_H / 2);
+    const double b = (double)_drawn_north;
+    const lv_color_t color = lv_color_hex(_night ? SYMBOL_NIGHT_RGB : SYMBOL_DAY_RGB);
+
+    lv_draw_line_dsc_t tail;
+    lv_draw_line_dsc_init(&tail);
+    tail.color = color;
+    tail.width = LINE_W_PX;
+    const ChartGeometry::ScreenPoint end = ChartGeometry::lineEnd(cx, cy, b + 180.0, (float)NORTH_TAIL_PX);
+    tail.p1.x = (lv_value_precise_t)cx;
+    tail.p1.y = (lv_value_precise_t)cy;
+    tail.p2.x = (lv_value_precise_t)end.x;
+    tail.p2.y = (lv_value_precise_t)end.y;
+    lv_draw_line(layer, &tail);
+
+    lv_draw_triangle_dsc_t head;
+    lv_draw_triangle_dsc_init(&head);
+    head.color = color;
+    head.opa = LV_OPA_COVER;
+    const ChartGeometry::ScreenPoint tip = ChartGeometry::lineEnd(cx, cy, b, (float)NORTH_TIP_PX);
+    const ChartGeometry::ScreenPoint left = ChartGeometry::lineEnd(cx, cy, b - NORTH_BASE_DEG, (float)NORTH_BASE_PX);
+    const ChartGeometry::ScreenPoint right = ChartGeometry::lineEnd(cx, cy, b + NORTH_BASE_DEG, (float)NORTH_BASE_PX);
+    head.p[0].x = (lv_value_precise_t)tip.x;
+    head.p[0].y = (lv_value_precise_t)tip.y;
+    head.p[1].x = (lv_value_precise_t)left.x;
+    head.p[1].y = (lv_value_precise_t)left.y;
+    head.p[2].x = (lv_value_precise_t)right.x;
+    head.p[2].y = (lv_value_precise_t)right.y;
+    lv_draw_triangle(layer, &head);
+}
+
 void ChartUI::drawSymbols(lv_layer_t* layer) const {
+    this->drawNorthArrow(layer);
     if (!_drawn.visible) return;
     const Symbols& s = _drawn;
     const lv_color_t color = lv_color_hex(_night ? SYMBOL_NIGHT_RGB : SYMBOL_DAY_RGB);

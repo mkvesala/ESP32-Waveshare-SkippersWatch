@@ -6,6 +6,7 @@
 #include "ESPNowReceiver.h"
 #include "LastPosition.h"
 #include "ChartEngine.h"
+#include "ChartGeometry.h"
 
 // === C L A S S  C H A R T U I ===
 //
@@ -29,6 +30,15 @@
 //   the last known position (LastPosition, up to 1 h old), with "No fix *" or "No fix **" in
 //   the same meaning as on the Celestial page. No such position: black, "No fix". A fresh fix
 //   always takes over at once.
+// - Bow-up, toggled by a double tap on the page: grid bearing of the heading up. The map turns
+//   in steps, not continuously. It turns, and is recentered with it, when the heading has been
+//   ROTATE_THRESHOLD_DEG or more off the map's for ROTATE_CONFIRM_MS, at most every
+//   ROTATE_MIN_INTERVAL_MS. In between the symbols move and turn on it once per second as in
+//   north up. A heading gap up to HEADING_LOST_FALLBACK_MS keeps the last angle; a longer one
+//   turns the map north up for the rest of the wake, until the next double tap. The choice
+//   itself (bowUpSelected) is kept by WatchApplication across sleep. A wake has no heading at
+//   first (never stale), so its first map is north up and turns when the first heading lands.
+//   A small north arrow on the right edge shows where north is on a turned map.
 // - Card reads run on ChartEngine's task on core 0, started by the first visit of a wake, so a
 //   wake that stays off this page reads nothing and leaves the PSRAM frames unallocated. Every
 //   sleep still mounts and closes the card once (ChartEngine::shutdown).
@@ -48,8 +58,16 @@ public:
     void update() override;
     bool readyForReveal() const override;
 
+    void onDoubleTap() override;
+
     void setDemo(bool on);
     void setNightMode(bool on);
+
+    // The skipper's choice, kept across sleep by WatchApplication. Set before the first update.
+    void setBowUpSelected(bool on);
+    bool bowUpSelected() const { return _bow_up_selected; }
+
+    uint32_t chartTaskStackFreeBytes() const { return _engine.stackFreeBytes(); }
 
     // On the way into deep sleep: finish a read in flight and leave the card idle
     void shutdown();
@@ -68,6 +86,18 @@ private:
     static constexpr uint32_t DEPTH_FEED_MAX_AGE_MS = 5000;   // as NavigationUI
     static constexpr uint32_t SHUTDOWN_WAIT_MS   = 1000;
     static constexpr int      MIN_VALID_YEAR     = 2020;   // system clock not yet GNSS-set reads ~1970
+
+    // Bow-up. To be tuned on the water.
+    static constexpr uint32_t ROTATE_MIN_INTERVAL_MS   = 3000;    // between two turns of the map
+    static constexpr double   ROTATE_THRESHOLD_DEG     = 10.0;    // heading off the map's by this much...
+    static constexpr uint32_t ROTATE_CONFIRM_MS        = 2000;    // ...without a break for this long
+    static constexpr uint32_t HEADING_LOST_FALLBACK_MS = 21000;   // then north up until a double tap
+
+    static constexpr int32_t NORTH_TIP_PX    = 20;   // north arrow, from its center
+    static constexpr int32_t NORTH_BASE_PX   = 12;
+    static constexpr double  NORTH_BASE_DEG  = 150.0;
+    static constexpr int32_t NORTH_TAIL_PX   = 14;
+    static constexpr int32_t NORTH_MARGIN_PX = 30;   // its center from the right edge
 
     static constexpr double RECENTER_MIN_MOVE_PX = 2.0;
     static constexpr float  COG_MIN_SOG_KNOTS    = 0.5f;
@@ -108,6 +138,8 @@ private:
 
     // The frame on display
     bool _have_frame = false;
+    bool _frame_rotated = false;
+    double _frame_rot_deg = 0.0;
     ChartFormat::View _view = {};
     double _boat_px = 0.0;
     double _boat_py = 0.0;
@@ -125,16 +157,36 @@ private:
     double _request_lon = 0.0;
     uint32_t _last_center_ms = 0;
     uint32_t _last_update_ms = 0;
+    bool _request_rotated = false;
+    double _request_rot_deg = 0.0;
+
+    // Bow-up
+    bool _bow_up_selected = false;   // the skipper's choice
+    bool _bow_up_active = false;     // this wake: off after a long heading gap
+    bool _orient_valid = false;      // _orient_deg comes from a heading of this wake
+    double _orient_deg = 0.0;        // grid bearing up on the maps requested from now on
+    bool _reorient_now = false;      // page entered or bow-up turned on: take the heading at once
+    uint32_t _bow_up_since_ms = 0;   // the heading gap is counted from here at the earliest
+    uint32_t _last_rotate_ms = 0;
+    bool _rotate_pending = false;    // heading off by the threshold, since _rotate_off_since_ms
+    uint32_t _rotate_off_since_ms = 0;
+    double _last_hdg_true = 0.0;     // newest fresh heading of this wake
+    uint32_t _last_hdg_ms = 0;       // 0: none yet
 
     uint32_t _last_symbol_ms = 0;
     Symbols _drawn;
     int32_t _ring_px = 0;
+    int32_t _drawn_north = -1;       // north arrow's screen bearing, -1: hidden
 
     char _label_text[24] = "";
     lv_opa_t _top_bar_opa = LV_OPA_TRANSP;   // the SquareLine value, used on this page only
 
     void takeEngineResult();
     void center(double lat_deg, double lon_deg, uint32_t now);
+    void sendRequest();
+    void trackHeading(uint32_t now);
+    void updateOrientation(const GnssData& gnss, bool fresh, uint32_t now);
+    void fallBackToNorthUp();
     void applyPosition(const GnssData& gnss, bool fresh, uint32_t now);
     void refreshSymbols(const GnssData& gnss, bool fresh, uint32_t now);
     void refreshValues(const GnssData& gnss, bool fresh, uint32_t now);
@@ -144,6 +196,9 @@ private:
     bool lastKnown(uint32_t now, LastPosition::Fix& out);
 
     lv_area_t symbolArea(const Symbols& s) const;
+    lv_area_t northArea() const;
+    void refreshNorthArrow(bool show_map);
+    void drawNorthArrow(lv_layer_t* layer) const;
     void drawSymbols(lv_layer_t* layer) const;
     static void drawEvent(lv_event_t* e);
     static void setValue(lv_obj_t* label, const char* text);

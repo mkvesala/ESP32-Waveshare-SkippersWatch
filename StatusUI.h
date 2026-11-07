@@ -18,6 +18,8 @@
 // - update() refreshes the values once per second while the overlay is visible.
 // - Owned by: WatchApplication.
 
+class ChartUI;
+
 class StatusUI {
 
 public:
@@ -34,6 +36,9 @@ public:
 
     void update(uint32_t now);
 
+    // For the Chart task's stack on the stack row
+    void attachChart(const ChartUI* chart) { _chart = chart; }
+
 private:
 
     static constexpr uint32_t REFRESH_MS = 1000;
@@ -44,6 +49,7 @@ private:
     const SystemStats& _stats;
     const BatteryMonitor& _battery;
     const PmuRails& _rails;
+    const ChartUI* _chart = nullptr;
     bool _visible = false;
     bool _initialized = false;
     uint32_t _last_refresh_ms = 0;

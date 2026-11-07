@@ -16,6 +16,8 @@
 //   onLeave()            — called by ScreenManager before switching away (cleanup)
 //   update()             — called by WatchApplication at UI_UPDATE_INTERVAL_MS
 //   onButtonPress()      — called by WatchApplication on a touch TAP on the page
+//   onDoubleTap()        — called after the second of two quick TAPs near each other;
+//                          both TAPs have reached onButtonPress() already
 //
 // Touch input (dispatched by WatchApplication::handleTouch; coordinates are in the
 // panel's pixel space). A page opts into raw-touch handling only for absolute-position
@@ -44,6 +46,7 @@ public:
     virtual void onLeave(){}
     virtual void update(){}
     virtual void onButtonPress(){}
+    virtual void onDoubleTap(){}
 
     // False while the page is still fetching what its first lit frame should show. The wake
     // sequence waits for it, for a limited time, with the panel dark.

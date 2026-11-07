@@ -152,11 +152,22 @@ private:
     // (e.g. the Setup brightness slider) rather than a swipe/tap.
     bool _touch_dragging = false;
 
+    // The previous TAP on a page, for double-tap recognition (GestureClassifier::isDoubleTap)
+    bool _last_tap_valid = false;
+    uint32_t _last_tap_ms = 0;
+    int16_t _last_tap_x = 0;
+    int16_t _last_tap_y = 0;
+
     // --- Last-active page persistence (two tiers, see resolveStartPage) ---
     // Own namespace rather than SetupUI's "display": that one is its private display-
     // settings store, and a page index is not a display setting.
     static constexpr const char* NVS_NAMESPACE_UI = "watch";
     static constexpr const char* NVS_KEY_LASTPAGE = "lastpage";
+    static constexpr const char* NVS_KEY_BOWUP    = "bowup";
+
+    // The Chart page's bow-up choice, the same two tiers as the page. 0xFF = unknown.
+    uint8_t _nvs_bow_up_written = 0xFF;
+    bool    resolveBowUp();
 
     // Last value actually committed to NVS this session, so the pre-sleep flush writes
     // only when the page really changed. 0xFF = "nothing written yet / unknown".

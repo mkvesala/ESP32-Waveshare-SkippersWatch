@@ -14,8 +14,12 @@
 //   neither reads the card while awake nor spends the memory.
 // - Two RGB565 frames in PSRAM. The task writes the back frame while the page shows the
 //   front one, and takeResult() swaps them on the loop task, so a half-written view can
-//   never reach the display. The composer takes any view size: a bow-up view could later
-//   compose a larger square and rotate it.
+//   never reach the display.
+// - Bow-up (a request with a rotation): the task reads a SOURCE_PX square of palette indices
+//   around the boat into a third PSRAM buffer, allocated on the first such request, and
+//   rotates it into the back frame. While the next request's rotated view still fits in that
+//   square, only the rotation runs: a turn without much way on reads nothing from the card.
+//   North-up requests take the original path and never touch the square.
 // - The newest request wins: requests that arrive during a compose collapse into one.
 // - shutdown() on the way into deep sleep waits for a read in flight and leaves the card idle.
 //   It mounts and closes the card if that has not happened on this wake: a card never
@@ -37,6 +41,8 @@ public:
 
     struct Result {
         Status             status = Status::NO_CARD;
+        bool               rotated = false;    // a bow-up frame: grid bearing rot_deg is up
+        double             rot_deg = 0.0;
         const uint16_t*    pixels = nullptr;   // null unless a new frame came with this result
         ChartFormat::View  view = {};
         double             m_per_px = 0.0;
@@ -50,6 +56,12 @@ public:
 
     // Compose a view centered on this position. Starts the task on the first call.
     void request(double lat_deg, double lon_deg, bool night);
+
+    // The same, rotated so that grid bearing rot_deg points up
+    void requestRotated(double lat_deg, double lon_deg, bool night, double rot_deg);
+
+    // The Chart task's unused stack, in bytes; 0 before the task has started
+    uint32_t stackFreeBytes() const;
 
     // Loop task. True when a new result is ready; a new frame in it replaces the old one,
     // whose memory the task may then reuse.
@@ -67,7 +79,13 @@ private:
         double lat_deg;
         double lon_deg;
         bool   night;
+        bool   rotate;
+        double rot_deg;
     };
+
+    // The bow-up source square: 768 covers the 648 px diagonal of the view with about 60 px
+    // to spare on each side, so small moves rotate the square already read. 590 kB of PSRAM.
+    static constexpr uint16_t SOURCE_PX = 768;
 
     // Generous until the high-water mark has been measured on the watch
     static constexpr uint32_t TASK_STACK_BYTES = 8192;
@@ -96,12 +114,19 @@ private:
     uint8_t* _tile_buffer = nullptr;
     ChartFormat::Meta* _meta = nullptr;
     bool _meta_valid = false;
+    uint8_t* _source = nullptr;          // bow-up only, allocated on its first request
+    bool _source_valid = false;
+    ChartFormat::View _source_view = {};
 
     static void taskEntry(void* param);
     void run();
     void leaveCardIdle();
     bool allocate();
+    void enqueue(const Pending& p);
+    bool prepareCard(Result& r);
+    void unmountCard();
     void compose(const Pending& p);
+    void composeRotated(const Pending& p);
     void publish(const Result& r);
 
 };

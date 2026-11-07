@@ -365,12 +365,119 @@ static void testChartExpand() {
     CHECK_EQ(view[4 * 10 + 3], 0xABAB);
 }
 
+static void testBowUpGeometry() {
+    using CG = ChartGeometry;
+    CHECK_NEAR(CG::headingDelta(10.0, 350.0), 20.0, 1e-9);
+    CHECK_NEAR(CG::headingDelta(350.0, 10.0), -20.0, 1e-9);
+    CHECK_NEAR(CG::headingDelta(180.0, 0.0), 180.0, 1e-9);
+    CHECK_NEAR(CG::headingDelta(0.0, 180.0), 180.0, 1e-9);
+    CHECK_NEAR(CG::headingDelta(725.0, 5.0), 0.0, 1e-9);
+
+    CHECK_NEAR(CG::screenBearing(0.0, 90.0), 270.0, 1e-9);   // north is left when heading east
+    CHECK_NEAR(CG::screenBearing(90.0, 90.0), 0.0, 1e-9);    // the heading is up
+    CHECK_NEAR(CG::screenBearing(45.0, 0.0), 45.0, 1e-9);    // north up: unchanged
+
+    // Heading east: a point east of the boat is above it on the screen
+    CG::ScreenPoint p = CG::rotateOffset(10.0, 0.0, 90.0);
+    CHECK_NEAR(p.x, 0.0, 1e-5);
+    CHECK_NEAR(p.y, -10.0, 1e-5);
+    p = CG::rotateOffset(3.0, -4.0, 0.0);                     // north up: unchanged
+    CHECK_NEAR(p.x, 3.0, 1e-6);
+    CHECK_NEAR(p.y, -4.0, 1e-6);
+
+    // An offset and a line at the same bearing turn the same way
+    const CG::ScreenPoint grid = CG::lineEnd(0.0f, 0.0f, 70.0, 100.0f);
+    p = CG::rotateOffset(grid.x, grid.y, 25.0);
+    const CG::ScreenPoint line = CG::lineEnd(0.0f, 0.0f, CG::screenBearing(70.0, 25.0), 100.0f);
+    CHECK_NEAR(p.x, line.x, 1e-3);
+    CHECK_NEAR(p.y, line.y, 1e-3);
+}
+
+// Source index = y * 8 + x, palette value = index + 1, so each view pixel names its source
+static void testBowUpRotate() {
+    using C = ChartFormat;
+    static uint16_t palette[C::PALETTE_COUNT];
+    for (size_t i = 0; i < C::PALETTE_COUNT; ++i) palette[i] = (uint16_t)(i + 1);
+    palette[C::NO_DATA_INDEX] = 0;
+    uint8_t src[8 * 8];
+    for (int i = 0; i < 64; ++i) src[i] = (uint8_t)i;
+    uint16_t out[12 * 12];
+
+    const auto at = [&](int sx, int sy) { return (uint16_t)(sy * 8 + sx + 1); };
+    bool ok = true;
+
+    CHECK_EQ(C::rotateIndexed(src, 8, 8, 4.0, 4.0, 0.0, palette, out, 8, 8), true);
+    for (int y = 0; y < 8; ++y) for (int x = 0; x < 8; ++x) ok &= out[y * 8 + x] == at(x, y);
+    CHECK_EQ(ok, true);
+
+    // Heading east: the east edge of the source is the view's top row
+    C::rotateIndexed(src, 8, 8, 4.0, 4.0, 90.0, palette, out, 8, 8);
+    ok = true;
+    for (int y = 0; y < 8; ++y) for (int x = 0; x < 8; ++x) ok &= out[y * 8 + x] == at(7 - y, x);
+    CHECK_EQ(ok, true);
+
+    C::rotateIndexed(src, 8, 8, 4.0, 4.0, 180.0, palette, out, 8, 8);
+    ok = true;
+    for (int y = 0; y < 8; ++y) for (int x = 0; x < 8; ++x) ok &= out[y * 8 + x] == at(7 - x, 7 - y);
+    CHECK_EQ(ok, true);
+
+    // A view larger than the source: black outside it
+    C::rotateIndexed(src, 8, 8, 4.0, 4.0, 0.0, palette, out, 12, 12);
+    CHECK_EQ(out[0], 0);
+    CHECK_EQ(out[2 * 12 + 2], at(0, 0));
+    CHECK_EQ(out[11 * 12 + 11], 0);
+
+    // The four pixels around the view's center come from around the source point, whatever
+    // the angle
+    C::rotateIndexed(src, 8, 8, 4.0, 4.0, 37.0, palette, out, 8, 8);
+    ok = true;
+    for (int y = 3; y <= 4; ++y) {
+        for (int x = 3; x <= 4; ++x) {
+            const int v = out[y * 8 + x] - 1;
+            ok &= (v % 8 == 3 || v % 8 == 4) && (v / 8 == 3 || v / 8 == 4);
+        }
+    }
+    CHECK_EQ(ok, true);
+
+    // No chart data on view → false
+    std::memset(src, C::NO_DATA_INDEX, sizeof(src));
+    CHECK_EQ(C::rotateIndexed(src, 8, 8, 4.0, 4.0, 45.0, palette, out, 8, 8), false);
+}
+
+static void testBowUpIndexedSpans() {
+    using C = ChartFormat;
+    static uint8_t tile[C::TILE_BYTES];
+    for (int y = 0; y < C::TILE_PX; ++y) for (int x = 0; x < C::TILE_PX; ++x) tile[y * C::TILE_PX + x] = (uint8_t)(y * 16 + x);
+    uint8_t out[6 * 10];
+    std::memset(out, 0xAB, sizeof(out));
+    const C::Span s = { 0, 0, 3, 2, 1, 4, 2, 2 };
+    C::copySpanIndexed(s, tile + 2 * C::TILE_PX, out, 10);
+    CHECK_EQ(out[4 * 10 + 1], 2 * 16 + 3);
+    CHECK_EQ(out[5 * 10 + 2], 3 * 16 + 4);
+    CHECK_EQ(out[4 * 10 + 3], 0xAB);
+    C::blankSpanIndexed(s, out, 10);
+    CHECK_EQ(out[4 * 10 + 1], C::NO_DATA_INDEX);
+    CHECK_EQ(out[4 * 10 + 0], 0xAB);
+}
+
+static void testDoubleTap() {
+    CHECK_EQ(G::isDoubleTap(1000, 200, 250, 1300, 210, 240), true);
+    CHECK_EQ(G::isDoubleTap(1000, 200, 250, 1000 + G::DOUBLE_TAP_MS, 200, 250), true);
+    CHECK_EQ(G::isDoubleTap(1000, 200, 250, 1001 + G::DOUBLE_TAP_MS, 200, 250), false);   // too slow
+    CHECK_EQ(G::isDoubleTap(1000, 200, 250, 1200, 300, 250), false);                      // too far
+    CHECK_EQ(G::isDoubleTap(0xFFFFFF00u, 200, 250, 0x40, 200, 250), true);                // millis wrap
+}
+
 int main() {
     testChartExpand();
     testChartProjection();
     testChartSymbols();
     testChartAddressing();
     testChartSpans();
+    testBowUpGeometry();
+    testBowUpRotate();
+    testBowUpIndexedSpans();
+    testDoubleTap();
     testTapAndLongPress();
     testFourSwipeDirections();
     testDominantAxis();

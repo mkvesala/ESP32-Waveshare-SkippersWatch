@@ -1,6 +1,7 @@
 #include "StatusUI.h"
 #include "StatusFormat.h"
 #include "ESPNowReceiver.h"
+#include "ChartUI.h"
 #include "ui.h"
 #include <esp_heap_caps.h>
 
@@ -12,7 +13,7 @@ static const char* const kTitles =
     "Deep sleep\n"
     "Free heap\n"
     "Min free heap\n"
-    "Loop stack free\n"
+    "Stack loop/chart\n"
     "Loop avg / max\n"
     "ESP-NOW packets\n"
     "Resets\n"
@@ -56,7 +57,7 @@ void StatusUI::update(uint32_t now) {
 // === P R I V A T E ===
 
 void StatusUI::render() {
-    char up[24], awake[24], sleep[24], heap[16], heap_min[16], stack[16];
+    char up[24], awake[24], sleep[24], heap[16], heap_min[16], stack[40];
     StatusFormat::duration(_stats.uptimeS(), up, sizeof(up));
     StatusFormat::duration(_stats.awakeS(), awake, sizeof(awake));
     StatusFormat::duration(_stats.deepSleepS(), sleep, sizeof(sleep));
@@ -64,7 +65,16 @@ void StatusUI::render() {
     StatusFormat::kb(heap_caps_get_minimum_free_size(MALLOC_CAP_INTERNAL), heap_min, sizeof(heap_min));
     // ESP-IDF reports the high-water mark in bytes. render() runs on the loop task, so
     // NULL is the loop task's own stack.
-    StatusFormat::kb(uxTaskGetStackHighWaterMark(NULL), stack, sizeof(stack));
+    // The Chart task's stack after it: "--" until the page has started the task
+    char loop_stack[16], chart_stack[16];
+    StatusFormat::kb(uxTaskGetStackHighWaterMark(NULL), loop_stack, sizeof(loop_stack));
+    const uint32_t chart_free = _chart != nullptr ? _chart->chartTaskStackFreeBytes() : 0;
+    if (chart_free > 0) StatusFormat::kb(chart_free, chart_stack, sizeof(chart_stack));
+    else                strlcpy(chart_stack, "--", sizeof(chart_stack));
+    // "12 / 4.6 KB": one unit for both, to keep the column narrow
+    char* unit = strstr(loop_stack, " KB");
+    if (unit != nullptr && chart_free > 0) *unit = '\0';
+    snprintf(stack, sizeof(stack), "%s / %s", loop_stack, chart_stack);
 
     const uint16_t mv = _battery.cellMillivolts();
 

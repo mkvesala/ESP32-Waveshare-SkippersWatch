@@ -96,4 +96,30 @@ struct ChartGeometry {
         return { x + length_px * (float)std::sin(b), y - length_px * (float)std::cos(b) };
     }
 
+    // --- Bow-up ---
+    // A rotated view has grid bearing rot_deg pointing up on the screen. Offsets are in
+    // pixels, x to the right and y down, from the point the view is rotated about.
+
+    // Shortest signed difference a - b, in -180..180
+    static double headingDelta(double a_deg, double b_deg) {
+        double d = std::fmod(a_deg - b_deg, 360.0);
+        if (d > 180.0) d -= 360.0;
+        if (d <= -180.0) d += 360.0;
+        return d;
+    }
+
+    // A grid bearing as seen on a view rotated by rot_deg, 0..360
+    static double screenBearing(double grid_deg, double rot_deg) {
+        const double b = std::fmod(grid_deg - rot_deg, 360.0);
+        return b < 0.0 ? b + 360.0 : b;
+    }
+
+    // A chart pixel offset (east right, south down) → its offset on a view rotated by rot_deg
+    static ScreenPoint rotateOffset(double dx, double dy, double rot_deg) {
+        const double r = rot_deg * DEG_TO_RAD_D;
+        const double c = std::cos(r);
+        const double s = std::sin(r);
+        return { (float)(dx * c + dy * s), (float)(-dx * s + dy * c) };
+    }
+
 };

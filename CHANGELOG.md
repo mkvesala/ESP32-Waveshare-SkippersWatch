@@ -4,6 +4,29 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- **Chart bow-up**, toggled by a double tap on the Chart screen: the grid bearing of the
+  heading points up. The map turns in steps, not continuously: when the heading has been
+  10° or more off the map's for 2 s, at most every 3 s, and it is recentered on the boat at
+  the same time. In between the boat, ring and vectors move and turn on the map once per
+  second as in north up. A heading gap up to 21 s keeps the last angle; a longer one turns
+  the map north up until the next double tap. The choice is kept across sleep (RTC, NVS
+  backstop). A wake's first map is north up and turns when the first heading lands.
+- **North arrow** on the right edge of a turned map.
+- **Double tap** on any page (`IScreenUI::onDoubleTap()`): two TAPs within 400 ms and 60 px.
+  Both TAPs still reach `onButtonPress()` at once, so single taps are not delayed.
+- **Status:** the stack row shows the loop task and the Chart task (`Stack loop/chart`).
+
+### Changed
+
+- `ChartEngine` composes a bow-up view from a 768 × 768 square of palette indices in PSRAM
+  (590 kB, allocated on the first bow-up request only), rotated into the frame on the Chart
+  task. While the boat stays inside that square, a turn rotates it again without reading the
+  card. North up takes the unchanged path.
+
 ## [2.2.0] - 2026-11-06
 
 ### Added

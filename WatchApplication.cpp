@@ -27,6 +27,11 @@ RTC_NOINIT_ATTR uint32_t s_page_magic;
 RTC_NOINIT_ATTR uint8_t  s_last_page_index;
 static constexpr uint32_t PAGE_MAGIC = 0x5057A6E1;
 
+// The Chart page's bow-up choice, tier 1 the same way (tier 2: NVS, see resolveBowUp())
+RTC_NOINIT_ATTR uint32_t s_bow_up_magic;
+RTC_NOINIT_ATTR uint8_t  s_bow_up;
+static constexpr uint32_t BOW_UP_MAGIC = 0xB0E0A7C2;
+
 // LVGL flush: blit the dirty area to the CO5300 over QSPI. No tearing-effect sync in
 // this phase: the panel only drives TE after a TEON command, and waiting on a silent
 // TE line would stall every flush.
@@ -120,6 +125,8 @@ void WatchApplication::begin() {
     _setupUI.begin();
     _celestialUI.begin();
     _chartUI.begin();
+    _chartUI.setBowUpSelected(this->resolveBowUp());
+    _status.attachChart(&_chartUI);
     _menu.begin();          // hides ui_ContainerMenu (the export leaves it visible)
     _status.begin();         // hides ui_ContainerStatus (likewise) and writes its titles
 
@@ -303,6 +310,27 @@ uint8_t WatchApplication::resolveStartPage() {
     return page;
 }
 
+// The bow-up choice: RTC, else NVS, else north up. As with the page, a boot that did not come
+// from deep sleep forces one NVS write at the next sleep so the two tiers converge.
+bool WatchApplication::resolveBowUp() {
+    const char* src;
+    if (s_bow_up_magic == BOW_UP_MAGIC && s_bow_up <= 1) {
+        src = "rtc";
+        _nvs_bow_up_written = s_bow_up;
+    } else {
+        Preferences prefs;
+        prefs.begin(NVS_NAMESPACE_UI, true);
+        s_bow_up = prefs.getUChar(NVS_KEY_BOWUP, 0) != 0 ? 1 : 0;
+        prefs.end();
+        s_bow_up_magic = BOW_UP_MAGIC;
+        src = "nvs";
+        _nvs_bow_up_written = s_bow_up;
+    }
+    if (esp_reset_reason() != ESP_RST_DEEPSLEEP) _nvs_bow_up_written = 0xFF;
+    Serial.printf("[chart] src=%s bow-up=%u\n", src, s_bow_up);
+    return s_bow_up != 0;
+}
+
 // Tier 2 read. Returns 0 (Navigation) when the key has never been written.
 uint8_t WatchApplication::loadPageFromNvs() {
     Preferences prefs;
@@ -330,6 +358,14 @@ void WatchApplication::preSleepFlush(void* ctx) {
     if (self == nullptr) return;
     self->_chartUI.shutdown();   // always: leaves a card idle even if it was just put in
     self->_lastPosition.saveOnSleep();
+    if (self->_nvs_bow_up_written != s_bow_up) {
+        Preferences prefs;
+        prefs.begin(NVS_NAMESPACE_UI, false);
+        prefs.putUChar(NVS_KEY_BOWUP, s_bow_up);
+        prefs.end();
+        self->_nvs_bow_up_written = s_bow_up;
+        Serial.printf("[chart] persisted bow-up=%u\n", s_bow_up);
+    }
     if (self->_nvs_page_written == s_last_page_index) return;   // nothing changed
     self->savePageToNvs();
     self->_nvs_page_written = s_last_page_index;
@@ -441,6 +477,9 @@ void WatchApplication::handleTouch(const uint32_t now) {
 //   status: swipe down = close status (last-active page returns); everything else ignored
 //   page: swipe up = open status
 void WatchApplication::handleGesture(TouchGesture gesture) {
+    // A double tap is two TAPs on the page with nothing in between
+    if (gesture != TouchGesture::TAP || _status.isVisible() || _menu.isVisible()) _last_tap_valid = false;
+
     if (_status.isVisible()) {
         if (gesture == TouchGesture::SWIPE_DOWN) this->closeStatus();
         return;
@@ -460,9 +499,24 @@ void WatchApplication::handleGesture(TouchGesture gesture) {
 
     IScreenUI* screen = _screenMgr.getCurrentScreen();
     switch (gesture) {
-        case TouchGesture::TAP:
-            if (screen) screen->onButtonPress();
+        case TouchGesture::TAP: {
+            if (screen) screen->onButtonPress();   // no wait for a second tap: no delay
+            int16_t x, y;
+            _touch.point(x, y);
+            const uint32_t now = millis();
+            if (_last_tap_valid && GestureClassifier::isDoubleTap(_last_tap_ms, _last_tap_x, _last_tap_y, now, x, y)) {
+                _last_tap_valid = false;   // a third tap starts over
+                if (screen) screen->onDoubleTap();
+                s_bow_up_magic = BOW_UP_MAGIC;
+                s_bow_up = _chartUI.bowUpSelected() ? 1 : 0;
+            } else {
+                _last_tap_valid = true;
+                _last_tap_ms = now;
+                _last_tap_x = x;
+                _last_tap_y = y;
+            }
             break;
+        }
         case TouchGesture::SWIPE_LEFT:
             _screenMgr.switchNext();
             this->rememberPage();

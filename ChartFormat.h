@@ -133,6 +133,70 @@ struct ChartFormat {
         }
     }
 
+    // --- Bow-up: a square of palette indices around the boat, rotated into the view ---
+
+    // A span's palette indices into an index buffer of out_w columns, no palette applied
+    static void copySpanIndexed(const Span& s, const uint8_t* src, uint8_t* out, uint16_t out_w) {
+        for (uint16_t y = 0; y < s.h; ++y) {
+            std::memcpy(out + (size_t)(s.view_y + y) * out_w + s.view_x,
+                        src + (size_t)y * TILE_PX + s.tile_x, s.w);
+        }
+    }
+
+    static void blankSpanIndexed(const Span& s, uint8_t* out, uint16_t out_w) {
+        for (uint16_t y = 0; y < s.h; ++y) {
+            std::memset(out + (size_t)(s.view_y + y) * out_w + s.view_x, NO_DATA_INDEX, s.w);
+        }
+    }
+
+    // Fills the RGB565 view out (out_w x out_h) from the index buffer src so that grid bearing
+    // rot_deg points up, nearest neighbour. The view's center (out_w / 2, out_h / 2) shows the
+    // source point (src_cx, src_cy), in source pixels. Outside the source is black, like a
+    // hole in the chart. Fixed point 16.16, stepped along each row: two adds per pixel.
+    // True when any pixel on view has chart data.
+    static bool rotateIndexed(const uint8_t* src, uint16_t src_w, uint16_t src_h,
+                              double src_cx, double src_cy, double rot_deg,
+                              const uint16_t* palette, uint16_t* out, uint16_t out_w, uint16_t out_h) {
+        constexpr double ONE = 65536.0;
+        const double r = rot_deg * 0.017453292519943295;
+        const double c = std::cos(r);
+        const double s = std::sin(r);
+        // Screen offset (u, v) → source offset: (u c - v s, u s + v c)
+        const int32_t step_x_u = (int32_t)std::lround(c * ONE);
+        const int32_t step_y_u = (int32_t)std::lround(s * ONE);
+        const int32_t step_x_v = (int32_t)std::lround(-s * ONE);
+        const int32_t step_y_v = (int32_t)std::lround(c * ONE);
+        const int32_t lim_x = (int32_t)src_w << 16;
+        const int32_t lim_y = (int32_t)src_h << 16;
+
+        // Pixel centers: the first one is half a pixel in from the view's corner
+        const double u0 = 0.5 - out_w / 2;
+        const double v0 = 0.5 - out_h / 2;
+        int32_t row_x = (int32_t)std::lround((src_cx + u0 * c - v0 * s) * ONE);
+        int32_t row_y = (int32_t)std::lround((src_cy + u0 * s + v0 * c) * ONE);
+
+        bool any_data = false;
+        for (uint16_t y = 0; y < out_h; ++y) {
+            int32_t fx = row_x;
+            int32_t fy = row_y;
+            uint16_t* dst = out + (size_t)y * out_w;
+            for (uint16_t x = 0; x < out_w; ++x) {
+                if (fx >= 0 && fy >= 0 && fx < lim_x && fy < lim_y) {
+                    const uint8_t idx = src[(size_t)(fy >> 16) * src_w + (size_t)(fx >> 16)];
+                    any_data |= idx != NO_DATA_INDEX;
+                    dst[x] = palette[idx];
+                } else {
+                    dst[x] = 0;
+                }
+                fx += step_x_u;
+                fy += step_y_u;
+            }
+            row_x += step_x_v;
+            row_y += step_y_v;
+        }
+        return any_data;
+    }
+
     // False for a tile outside the grid: no such file can exist
     static bool blockPath(int32_t col, int32_t row, char* out, size_t len) {
         if (col < 0 || row < 0) return false;

@@ -380,7 +380,7 @@ Swipe up on any screen for a status overlay; swipe down returns to the screen yo
 | Wake time | Total awake time since power-on, the current wake included | `RTC_NOINIT` sum, added at every sleep entry, + `millis()` |
 | Deep sleep | Uptime − wake time | derived |
 | Free heap / Min free heap | Internal RAM free now / lowest during this wake | `heap_caps_*(MALLOC_CAP_INTERNAL)` |
-| Loop stack free | Loop task stack never used during this wake | `uxTaskGetStackHighWaterMark()` |
+| Stack loop/chart | Loop task and Chart task stack never used during this wake (Chart: `--` until the Chart page has been opened) | `uxTaskGetStackHighWaterMark()` |
 | Loop avg / max | Main loop pass time during this wake (LVGL rendering included) | `micros()` per `loop()` |
 | ESP-NOW packets | Valid radio frames since power-on (also counted in demo mode, where they are not shown) | receiver frame counter, `RTC_NOINIT` total |
 | Resets | Watchdog, panic and brownout resets since power-on | `RTC_NOINIT` counter |
