@@ -9,3 +9,4 @@ CLAUDE.md
 tests/host/test_runner
 PORTING.md
 SLS_project_WS/backup/*backup*.zip
+*.docx
