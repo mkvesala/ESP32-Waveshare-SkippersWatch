@@ -31,6 +31,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
   card. North up takes the unchanged path.
 - `ESPNowReceiver` receives `HALMET_OIL_DELTA`; until now its frames were ignored.
 - `tools/demo/make_demo_track.py` and `DemoTrack` carry the testlab's `oil_kpa_e1` column.
+- **Menu icons redrawn** by a new script, `tools/icons/make_icons.py`: flat navy tiles with one
+  bold white glyph each, told apart by shape at a glance (Batteries is now a lead-acid battery,
+  Attitude a seesaw). The night set uses the same glyphs in pure red on black; the old
+  recoloured icons had green and blue in them and showed pink on the AMOLED. The icons' edges
+  blend into the page background, so no black square shows around them in day mode.
 
 ## [2.2.0] - 2026-11-06
 

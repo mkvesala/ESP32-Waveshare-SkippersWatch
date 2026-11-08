@@ -285,7 +285,7 @@ Two limits still apply, deliberately:
 
 **Demo mode** (`ui_SwitchDemoMode`) — every screen shows a looping 10 min recording of the boat's instruments instead of the ESP-NOW data, for showing the watch away from the boat. Key `"demo"`. The radio keeps listening and parsing exactly as normal, so battery behaviour is the same as with real data; received frames are simply not stored. The receiver keeps one fixed slot per message type with no queue or heap, so nothing received accumulates. Switching either way clears every source, so the screens show placeholders until the new source delivers: a demo value can never pass for a real one, or the other way round. The status bar shows `DEMO`.
 
-**Night mode** (`ui_SwitchNightMode`) — everything on the panel is drawn in shades of red to keep the eyes dark-adapted: text, the status bar, sliders and switches, and the menu shows a separate set of red icons drawn in SquareLine (`ui_ImgButton*Night`, stacked on the day icons; one set is visible at a time). Key `"night"`. Applied before the first frame of a wake, so a night wake never flashes white. Black stays true black. Colors are mapped by brightness (`NightPalette`); the ones whose meaning is their hue (battery-bar states, switch on/off) use explicit red shades so they stay distinguishable. On the AMOLED, red-only drives only the red subpixels, so night mode should also draw less current (to be measured).
+**Night mode** (`ui_SwitchNightMode`) — everything on the panel is drawn in shades of red to keep the eyes dark-adapted: text, the status bar, sliders and switches, and the menu shows a separate set of pure red icons (`ui_ImgButton*Night`, stacked on the day icons; one set is visible at a time). Key `"night"`. Applied before the first frame of a wake, so a night wake never flashes white. Black stays true black. Colors are mapped by brightness (`NightPalette`); the ones whose meaning is their hue (battery-bar states, switch on/off) use explicit red shades so they stay distinguishable. On the AMOLED, red-only drives only the red subpixels, so night mode should also draw less current (to be measured).
 
 <img src="docs/night_batteries.jpeg" height="260" alt="Night mode: Batteries"> <img src="docs/night_setup.jpeg" height="260" alt="Night mode: Setup"> <img src="docs/night_menu.jpeg" height="260" alt="Night mode: page menu">
 
@@ -359,6 +359,8 @@ Screen carousel order:
 <img src="docs/menu.png" height="260" alt="Page menu (SquareLine)"> <img src="docs/menu.jpeg" height="260" alt="Page menu (on the watch)">
 
 **Page menu.** A 3×3 grid of image buttons (`ui_ContainerMenu`), one per screen. It is an overlay, not a carousel page: opening it hides the current screen without leaving it, closing it brings that screen straight back, and it is never stored as the last-active screen. While it is open, swipes left / right and taps outside the icons do nothing, and no screen update runs underneath.
+
+**Menu icons** are drawn by `tools/icons/make_icons.py`, not by hand: a navy tile with one bold white glyph per screen, and a night set of the same glyphs in pure red on black. Edit a glyph there, run it, and export from SquareLine.
 
 The last-active screen is restored on **every** boot, not just a deep-sleep wake. Two tiers: `RTC_NOINIT_ATTR` (free, always current) with an NVS backstop written once on the way into sleep. See [Last-active screen](#last-active-screen).
 
@@ -590,6 +592,7 @@ struct DepthDelta {
 | `ui.h/.c`, `ui_ScreenMain.h/.c`, `ui_helpers.h/.c`, `ui_font_*.c`, `ui_img_*.c` | SquareLine Studio generated — UI, fonts and menu icons (day and night sets) |
 | `tools/chart/build_chart.py` | Mac tool for the chart card: fetch, build, simulate, install; not part of the sketch |
 | `tools/demo/make_demo_track.py` | Cuts `DemoTrack` out of the ESP-NOW testlab's recording; not part of the sketch |
+| `tools/icons/make_icons.py` | Draws the page menu's day and night icons into `SLS_project_WS/assets` (Pillow); not part of the sketch |
 | `tests/host/` | Host unit tests for the pure logic (`make -C tests/host`); not part of the sketch |
 | `tests/celestial/` | Host tests for the celestial code against JPL Horizons and SIMBAD fixtures (`tests/celestial/run_tests.sh`) |
 | `hardware_notes_waveshare.md` | Waveshare pin map, parts, build settings, open hardware questions |
