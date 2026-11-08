@@ -348,7 +348,6 @@ void ChartUI::refreshSymbols(const GnssData& gnss, bool fresh, uint32_t now) {
     const bool show_map = _have_frame && any_position && !card_failed && !no_memory;
     if (show_map) lv_obj_remove_flag(_image, LV_OBJ_FLAG_HIDDEN);
     else          lv_obj_add_flag(_image, LV_OBJ_FLAG_HIDDEN);
-    this->refreshNorthArrow(show_map);
 
     // Symbols: a fresh fix, and a frame to place them on
     Symbols next;
@@ -385,12 +384,18 @@ void ChartUI::refreshSymbols(const GnssData& gnss, bool fresh, uint32_t now) {
             next.cog_deg = onScreen(ChartGeometry::gridBearingDeg(gnss.cog_true_x10 / 10.0, conv));
             next.cog_len = (int32_t)lroundf(ChartGeometry::cogVectorPx(gnss.getSogKnots(), _m_per_px));
         }
+        // Grid north on a turned map: tells how the map lies
+        if (_frame_rotated) {
+            next.north_valid = true;
+            next.north_deg = (int32_t)lround(ChartGeometry::screenBearing(0.0, _frame_rot_deg)) % 360;
+        }
     }
 
     const bool changed = next.visible != _drawn.visible || next.x != _drawn.x || next.y != _drawn.y ||
                          next.hdg_valid != _drawn.hdg_valid || next.hdg_deg != _drawn.hdg_deg ||
                          next.cog_valid != _drawn.cog_valid || next.cog_deg != _drawn.cog_deg ||
-                         next.cog_len != _drawn.cog_len;
+                         next.cog_len != _drawn.cog_len ||
+                         next.north_valid != _drawn.north_valid || next.north_deg != _drawn.north_deg;
     if (!changed) return;
 
     if (_drawn.visible) {
@@ -497,10 +502,12 @@ bool ChartUI::lastKnown(uint32_t now, LastPosition::Fix& out) {
 }
 
 lv_area_t ChartUI::symbolArea(const Symbols& s) const {
-    int32_t x1 = s.x - _ring_px;
-    int32_t x2 = s.x + _ring_px;
-    int32_t y1 = s.y - _ring_px;
-    int32_t y2 = s.y + _ring_px;
+    // The north dot sits on the ring and reaches past it by its radius
+    const int32_t outer = _ring_px + (s.north_valid ? NORTH_DOT_R_PX : 0);
+    int32_t x1 = s.x - outer;
+    int32_t x2 = s.x + outer;
+    int32_t y1 = s.y - outer;
+    int32_t y2 = s.y + outer;
 
     const auto include = [&](int32_t bearing, int32_t length) {
         const ChartGeometry::ScreenPoint p = ChartGeometry::lineEnd((float)s.x, (float)s.y, bearing, (float)length);
@@ -520,65 +527,7 @@ lv_area_t ChartUI::symbolArea(const Symbols& s) const {
     return a;
 }
 
-// Fixed place and size, so one area covers the arrow at any angle
-lv_area_t ChartUI::northArea() const {
-    const int32_t cx = VIEW_W - NORTH_MARGIN_PX;
-    const int32_t cy = VIEW_H / 2;
-    const int32_t r = NORTH_TIP_PX + LINE_W_PX + REDRAW_PAD_PX;
-    lv_area_t a;
-    a.x1 = cx - r;
-    a.y1 = cy - r;
-    a.x2 = cx + r;
-    a.y2 = cy + r;
-    return a;
-}
-
-// Only on a turned map, fix or not: it tells how the map lies, not where the boat is
-void ChartUI::refreshNorthArrow(bool show_map) {
-    const int32_t next = (show_map && _frame_rotated)
-        ? (int32_t)lround(ChartGeometry::screenBearing(0.0, _frame_rot_deg)) % 360 : -1;
-    if (next == _drawn_north) return;
-    _drawn_north = next;
-    const lv_area_t a = this->northArea();
-    lv_obj_invalidate_area(_symbol_layer, &a);
-}
-
-void ChartUI::drawNorthArrow(lv_layer_t* layer) const {
-    if (_drawn_north < 0) return;
-    const float cx = (float)(VIEW_W - NORTH_MARGIN_PX);
-    const float cy = (float)(VIEW_H / 2);
-    const double b = (double)_drawn_north;
-    const lv_color_t color = lv_color_hex(_night ? SYMBOL_NIGHT_RGB : SYMBOL_DAY_RGB);
-
-    lv_draw_line_dsc_t tail;
-    lv_draw_line_dsc_init(&tail);
-    tail.color = color;
-    tail.width = LINE_W_PX;
-    const ChartGeometry::ScreenPoint end = ChartGeometry::lineEnd(cx, cy, b + 180.0, (float)NORTH_TAIL_PX);
-    tail.p1.x = (lv_value_precise_t)cx;
-    tail.p1.y = (lv_value_precise_t)cy;
-    tail.p2.x = (lv_value_precise_t)end.x;
-    tail.p2.y = (lv_value_precise_t)end.y;
-    lv_draw_line(layer, &tail);
-
-    lv_draw_triangle_dsc_t head;
-    lv_draw_triangle_dsc_init(&head);
-    head.color = color;
-    head.opa = LV_OPA_COVER;
-    const ChartGeometry::ScreenPoint tip = ChartGeometry::lineEnd(cx, cy, b, (float)NORTH_TIP_PX);
-    const ChartGeometry::ScreenPoint left = ChartGeometry::lineEnd(cx, cy, b - NORTH_BASE_DEG, (float)NORTH_BASE_PX);
-    const ChartGeometry::ScreenPoint right = ChartGeometry::lineEnd(cx, cy, b + NORTH_BASE_DEG, (float)NORTH_BASE_PX);
-    head.p[0].x = (lv_value_precise_t)tip.x;
-    head.p[0].y = (lv_value_precise_t)tip.y;
-    head.p[1].x = (lv_value_precise_t)left.x;
-    head.p[1].y = (lv_value_precise_t)left.y;
-    head.p[2].x = (lv_value_precise_t)right.x;
-    head.p[2].y = (lv_value_precise_t)right.y;
-    lv_draw_triangle(layer, &head);
-}
-
 void ChartUI::drawSymbols(lv_layer_t* layer) const {
-    this->drawNorthArrow(layer);
     if (!_drawn.visible) return;
     const Symbols& s = _drawn;
     const lv_color_t color = lv_color_hex(_night ? SYMBOL_NIGHT_RGB : SYMBOL_DAY_RGB);
@@ -627,6 +576,19 @@ void ChartUI::drawSymbols(lv_layer_t* layer) const {
     boat.bg_color = color;
     boat.bg_opa = LV_OPA_COVER;
     boat.radius = LV_RADIUS_CIRCLE;
+
+    if (s.north_valid) {
+        const ChartGeometry::ScreenPoint n = ChartGeometry::lineEnd((float)s.x, (float)s.y, s.north_deg, (float)_ring_px);
+        const int32_t nx = (int32_t)lroundf(n.x);
+        const int32_t ny = (int32_t)lroundf(n.y);
+        lv_area_t north_area;
+        north_area.x1 = nx - NORTH_DOT_R_PX;
+        north_area.y1 = ny - NORTH_DOT_R_PX;
+        north_area.x2 = nx + NORTH_DOT_R_PX;
+        north_area.y2 = ny + NORTH_DOT_R_PX;
+        lv_draw_rect(layer, &boat, &north_area);
+    }
+
     lv_area_t boat_area;
     boat_area.x1 = s.x - BOAT_R_PX;
     boat_area.y1 = s.y - BOAT_R_PX;

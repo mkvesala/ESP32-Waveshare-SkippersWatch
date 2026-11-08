@@ -38,7 +38,7 @@
 //   turns the map north up for the rest of the wake, until the next double tap. The choice
 //   itself (bowUpSelected) is kept by WatchApplication across sleep. A wake has no heading at
 //   first (never stale), so its first map is north up and turns when the first heading lands.
-//   A small north arrow on the right edge shows where north is on a turned map.
+//   A dot on the range ring shows where north is on a turned map.
 // - Card reads run on ChartEngine's task on core 0, started by the first visit of a wake, so a
 //   wake that stays off this page reads nothing and leaves the PSRAM frames unallocated. Every
 //   sleep still mounts and closes the card once (ChartEngine::shutdown).
@@ -93,11 +93,7 @@ private:
     static constexpr uint32_t ROTATE_CONFIRM_MS        = 2000;    // ...without a break for this long
     static constexpr uint32_t HEADING_LOST_FALLBACK_MS = 21000;   // then north up until a double tap
 
-    static constexpr int32_t NORTH_TIP_PX    = 20;   // north arrow, from its center
-    static constexpr int32_t NORTH_BASE_PX   = 12;
-    static constexpr double  NORTH_BASE_DEG  = 150.0;
-    static constexpr int32_t NORTH_TAIL_PX   = 14;
-    static constexpr int32_t NORTH_MARGIN_PX = 30;   // its center from the right edge
+    static constexpr int32_t NORTH_DOT_R_PX = 6;   // north marker on the range ring
 
     static constexpr double RECENTER_MIN_MOVE_PX = 2.0;
     static constexpr float  COG_MIN_SOG_KNOTS    = 0.5f;
@@ -122,6 +118,8 @@ private:
         bool    cog_valid = false;
         int32_t cog_deg   = 0;
         int32_t cog_len   = 0;
+        bool    north_valid = false;   // turned map only
+        int32_t north_deg   = 0;
     };
 
     ESPNowReceiver& _receiver;
@@ -176,7 +174,6 @@ private:
     uint32_t _last_symbol_ms = 0;
     Symbols _drawn;
     int32_t _ring_px = 0;
-    int32_t _drawn_north = -1;       // north arrow's screen bearing, -1: hidden
 
     char _label_text[24] = "";
     lv_opa_t _top_bar_opa = LV_OPA_TRANSP;   // the SquareLine value, used on this page only
@@ -196,9 +193,6 @@ private:
     bool lastKnown(uint32_t now, LastPosition::Fix& out);
 
     lv_area_t symbolArea(const Symbols& s) const;
-    lv_area_t northArea() const;
-    void refreshNorthArrow(bool show_map);
-    void drawNorthArrow(lv_layer_t* layer) const;
     void drawSymbols(lv_layer_t* layer) const;
     static void drawEvent(lv_event_t* e);
     static void setValue(lv_obj_t* label, const char* text);

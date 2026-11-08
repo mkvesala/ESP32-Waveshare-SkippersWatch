@@ -15,7 +15,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
   second as in north up. A heading gap up to 21 s keeps the last angle; a longer one turns
   the map north up until the next double tap. The choice is kept across sleep (RTC, NVS
   backstop). A wake's first map is north up and turns when the first heading lands.
-- **North arrow** on the right edge of a turned map.
+- **North marker** on a turned map: a dot on the range ring, in the symbols' colour, toward
+  grid north. Hidden with the ring when there is no fresh fix.
 - **Double tap** on any page (`IScreenUI::onDoubleTap()`): two TAPs within 400 ms and 60 px.
   Both TAPs still reach `onButtonPress()` at once, so single taps are not delayed.
 - **Status:** the stack row shows the loop task and the Chart task (`Stack loop/chart`).
