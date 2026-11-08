@@ -42,7 +42,7 @@ Screens (carousel, plus a page menu for direct access):
 - **Clock** — local date + weekday, local and UTC time (GNSS-disciplined, no RTC chip, no NTP)
 - **Setup** — display brightness, wake time, prevent sleep, demo mode and night mode, all persisted to NVS
 - **Celestial** — computed altitude and azimuth (Hc, Zn) of the Sun, Moon and twilight bodies for sextant practice, with UTC time, pressure, temperature and position
-- **Chart** — Traficom's nautical chart from a microSD card, north up, with the boat, heading, COG vector and a 0.25 NM range ring on top
+- **Chart** — Traficom's nautical chart from a microSD card, north up or bow-up (double tap), with the boat, heading, COG vector and a 0.25 NM range ring on top
 
 Developed on:
 - [Waveshare ESP32-S3-Touch-AMOLED-2.06](https://docs.waveshare.com/ESP32-S3-Touch-AMOLED-2.06) (SKU 31957)
@@ -310,15 +310,16 @@ A sight-reduction aid for sextant practice: the computed altitude **Hc** and tru
 
 ### Chart screen
 
-<img src="docs/chart.jpeg" height="260" alt="Chart (on the watch), day"> <img src="docs/night_chart.jpeg" height="260" alt="Chart (on the watch), night">
+<img src="docs/chart.jpeg" height="260" alt="Chart (on the watch), day"> <img src="docs/chart_bowup.jpeg" height="260" alt="Chart (on the watch), bow-up"> <img src="docs/night_chart.jpeg" height="260" alt="Chart (on the watch), night">
 
 <img src="docs/chart.png" height="260" alt="Chart, illustration with a fictional chart, day"> <img src="docs/night_chart.png" height="260" alt="Chart, illustration with a fictional chart, night">
 
 > The photos show the watch with Traficom's chart (see [Nautical chart data](#nautical-chart-data)). The two images below them are illustrations of the screen, with symbols at the watch's sizes on a randomly generated, fictional chart. They contain no Traficom data and do not show a real place.
 
-Traficom's nautical chart series A from a microSD card, about 1 NM across the display's height at a fixed 4 m/px. North up, with no zoom or pan. The firmware never fetches anything: a tool on a Mac prepares the card once (see [Chart card](#chart-card)).
+Traficom's nautical chart series A from a microSD card, about 1 NM across the display's height at a fixed 4 m/px. North up or bow-up, with no zoom or pan. The firmware never fetches anything: a tool on a Mac prepares the card once (see [Chart card](#chart-card)).
 
 - **Symbols:** the boat, a fixed 0.25 NM range ring that doubles as the scale, a solid heading line out to the ring and a dashed COG vector showing the distance covered in 3 min at SOG. True bearings are turned to the chart's grid north with the meridian convergence, which is about 2–3.5° in western Finland
+- **Bow-up:** a double tap on the screen switches between north up and bow-up, where the heading's grid bearing points up and a red north arrow on the right edge shows north. The map turns in steps, not continuously: when the heading has been 10° or more off the map's for 2 s, at most every 3 s, recentered on the boat at the same time. In between the symbols move and turn on the map as in north up. A heading gap up to 21 s keeps the last angle; a longer one turns the map north up until the next double tap. The choice is kept across sleep; a wake's first map is north up and turns when the first heading lands
 - **Values:** COG, HDG, SOG and DPT in the corners, on half-transparent backgrounds and under the same freshness rules as the [Navigation screen](#navigation-screen)
 - **Recentering:** the map centers on the boat when the screen opens, on a wake or boot, and when the page menu or status screen closes, then again after 21 s if the display is still on, or at once if the boat is off the view. In between the map stands still and the boat moves on it, about once per second
 - **Freshness:** without a fresh fix all symbols are hidden, since a stale boat on a chart invites a wrong decision. The map may stay on the [last known position](#celestial-screen), up to 1 h old, marked `No fix *` (up to 15 min) or `No fix **` (up to 1 h). A fresh fix takes over at once. The heading line needs compass data under 5 s old, and the COG vector needs SOG of at least 0.5 kn
