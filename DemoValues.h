@@ -32,6 +32,7 @@ struct DemoSnapshot {
     float exhaust_k;
     float fuel_ratio;         // 0..1
     float water_ratio;        // 0..1
+    float oil_pa;             // oil pressure, Pa
 };
 
 struct DemoValues {
@@ -75,6 +76,7 @@ struct DemoValues {
         d.exhaust_k   = r.exhaust_k_e2 / 100.0f;
         d.fuel_ratio  = r.fuel_e4 / 1e4f;
         d.water_ratio = r.water_e4 / 1e4f;
+        d.oil_pa      = r.oil_kpa_e1 * 100.0f;   // kPa x 10 → Pa
         return d;
     }
 

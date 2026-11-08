@@ -138,7 +138,8 @@ static void testDemoValues() {
                 && inRange(d.house_soc_pct, 0, 100) && inRange(d.start_v, 24, 30)
                 && inRange(d.temperature_c, 0, 30) && inRange(d.pressure_hpa, 980, 1050)
                 && inRange(d.humidity_pct, 0, 100) && inRange(d.exhaust_k, 300, 400)
-                && inRange(d.fuel_ratio, 0, 1) && inRange(d.water_ratio, 0, 1);
+                && inRange(d.fuel_ratio, 0, 1) && inRange(d.water_ratio, 0, 1)
+                && inRange(d.oil_pa, 200000, 600000);
     }
     CHECK_EQ(ok, true);
     // START_LAT/LON_DEG name the track's first row

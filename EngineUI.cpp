@@ -1,5 +1,6 @@
 #include "EngineUI.h"
 #include "ui.h"
+#include <cmath>
 
 // === P U B L I C ===
 
@@ -37,6 +38,19 @@ void EngineUI::update() {
         lv_label_set_text(ui_LabelExhaustCValue, "---");
     }
 
+    // --- Oil pressure (Pa → bar). The sender skips stale or uncalibrated values, so a
+    //     missing frame ages out here ---
+    HALMETOilDelta oil = _receiver.getOilData();
+    uint32_t oil_rx = _receiver.lastOilRxMillis();
+    bool oil_ok = (oil_rx > 0) && ((now - oil_rx) < OIL_TIMEOUT_MS) && std::isfinite(oil.oil_pressure_pa);
+    if (oil_ok) {
+        char buf[16];
+        snprintf(buf, sizeof(buf), "%.1f", oil.oil_pressure_pa / PA_PER_BAR);
+        lv_label_set_text(ui_LabelOilPressureValue, buf);
+    } else {
+        lv_label_set_text(ui_LabelOilPressureValue, "---");
+    }
+
     // --- Fuel (ratio 0..1 → liters) ---
     HALMETTankDelta tank = _receiver.getTankData();
     uint32_t tank_rx = _receiver.lastTankRxMillis();
@@ -66,6 +80,7 @@ void EngineUI::update() {
 
 void EngineUI::showWaiting() {
     lv_label_set_text(ui_LabelExhaustCValue, "---");
+    lv_label_set_text(ui_LabelOilPressureValue, "---");
     lv_label_set_text(ui_LabelFuelLValue, "---");
     lv_label_set_text(ui_LabelFreshwaterLValue, "---");
 }

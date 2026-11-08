@@ -9,7 +9,8 @@
 // - Demo mode's data: 10 min of M/V Frida's recorded instruments,
 //   one row per second. Cut from the ESP-NOW testlab's table, whose clock runs 2 h behind the
 //   recording: the rows were recorded 2026-10-20 at 10:15 EEST and play as 08:15 EEST.
-// - Depth gaps in the recording are bridged in a straight line.
+// - Depth gaps in the recording are bridged in a straight line. Oil pressure was not recorded:
+//   it is the testlab's synthetic curve.
 
 namespace DemoTrack {
 
@@ -36,6 +37,7 @@ namespace DemoTrack {
         uint16_t exhaust_k_e2;    // K x 100
         uint16_t fuel_e4;         // ratio x 1e4
         uint16_t water_e4;        // ratio x 1e4
+        uint16_t oil_kpa_e1;      // kPa x 10, synthetic in the testlab
     };
 
     extern const Row TRACK[ROWS];

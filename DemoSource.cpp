@@ -68,6 +68,10 @@ void DemoSource::sendAll(uint32_t now) {
     HALMETWaterDelta water;
     water.water_level_ratio = d.water_ratio;
     this->send(ESPNowMsgType::HALMET_WATER_DELTA, water);
+
+    HALMETOilDelta oil;
+    oil.oil_pressure_pa = d.oil_pa;
+    this->send(ESPNowMsgType::HALMET_OIL_DELTA, oil);
 }
 
 // === P R I V A T E ===

@@ -44,6 +44,8 @@ extern lv_obj_t *ui_LabelPressureTitle;
 extern lv_obj_t *ui_LabelPressureValue;
 extern lv_obj_t *ui_LabelWeather;
 extern lv_obj_t *ui_ContainerEngineroom;
+extern lv_obj_t *ui_LabelOilPressureTitle;
+extern lv_obj_t *ui_LabelOilPressureValue;
 extern lv_obj_t *ui_LabelExhaustCTitle;
 extern lv_obj_t *ui_LabelExhaustCValue;
 extern lv_obj_t *ui_LabelFuelLValue;

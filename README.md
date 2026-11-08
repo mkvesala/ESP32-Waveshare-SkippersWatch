@@ -29,7 +29,7 @@ Receives via ESP-NOW broadcast:
 - Pitch and roll from [CMPS14-ESP32-SignalK-gateway](https://github.com/mkvesala/CMPS14-ESP32-SignalK-gateway)
 - House and starter battery from [VEDirect-ESP32-SignalK-gateway](https://github.com/mkvesala/VEDirect-ESP32-SignalK-gateway)
 - Temperature, air pressure and relative humidity from [BME280-ESP32-SignalK-gateway](https://github.com/mkvesala/BME280-ESP32-SignalK-gateway)
-- Engine exhaust temperature, fuel tank and fresh-water tank levels from [HALMET-ESP32-SignalK-gateway](https://github.com/mkvesala/HALMET-ESP32-SignalK-gateway)
+- Engine exhaust temperature, oil pressure, fuel tank and fresh-water tank levels from [HALMET-ESP32-SignalK-gateway](https://github.com/mkvesala/HALMET-ESP32-SignalK-gateway)
 
 Values are shown on an LVGL UI. Interaction is by **capacitive touch**: swipe left / right through the screens, swipe down for a page menu, swipe up for a status screen, tap and slider drag. The **PWR button** wakes the watch from deep sleep (see [Input](#input)).
 
@@ -37,7 +37,7 @@ Screens (carousel, plus a page menu for direct access):
 - **Navigation** — POS (lat/lon), true heading (HDG), COG, SOG, depth below surface (DPT)
 - **Batteries** — house voltage / current / SoC and starter voltage
 - **Weather** — temperature, air pressure, relative humidity
-- **Engine** — exhaust temperature, fuel and fresh-water tank litres
+- **Engine** — exhaust temperature, oil pressure (bar), fuel and fresh-water tank litres
 - **Attitude** — artificial horizon with pitch and roll
 - **Clock** — local date + weekday, local and UTC time (GNSS-disciplined, no RTC chip, no NTP)
 - **Setup** — display brightness, wake time, prevent sleep, demo mode and night mode, all persisted to NVS
@@ -59,7 +59,7 @@ Integrated via ESP-NOW with:
 - [CMPS14-ESP32-SignalK-gateway](https://github.com/mkvesala/CMPS14-ESP32-SignalK-gateway) — attitude sender
 - [VEDirect-ESP32-SignalK-gateway](https://github.com/mkvesala/VEDirect-ESP32-SignalK-gateway) — battery sender
 - [BME280-ESP32-SignalK-gateway](https://github.com/mkvesala/BME280-ESP32-SignalK-gateway) — weather sender
-- [HALMET-ESP32-SignalK-gateway](https://github.com/mkvesala/HALMET-ESP32-SignalK-gateway) — engine, fuel and fresh-water sender
+- [HALMET-ESP32-SignalK-gateway](https://github.com/mkvesala/HALMET-ESP32-SignalK-gateway) — engine, oil pressure, fuel and fresh-water sender
 
 ## Purpose of the project
 
@@ -105,7 +105,7 @@ Adds the [Celestial screen](#celestial-screen) and brings the deep-sleep floor d
 - Owned by: `WatchApplication`
 
 **`ESPNowReceiver`:**
-- Responsible for: receiving `GnssDelta`, `DateTimeDelta`, `HeadingDelta`, `BatteryDelta`, `WeatherDelta`, `HALMETEngineDelta`, `HALMETTankDelta`, `HALMETWaterDelta` and `DepthDelta` broadcasts (receive-only), with per-source RX timestamps for freshness
+- Responsible for: receiving `GnssDelta`, `DateTimeDelta`, `HeadingDelta`, `BatteryDelta`, `WeatherDelta`, `HALMETEngineDelta`, `HALMETTankDelta`, `HALMETWaterDelta`, `HALMETOilDelta` and `DepthDelta` broadcasts (receive-only), with per-source RX timestamps for freshness
 - Owned by: `WatchApplication`
 
 **`TouchInput`:**
@@ -240,8 +240,9 @@ In demo mode the percentage reads e.g. `80 % DEMO`. The bar, the percentage and 
 <img src="docs/engineroom.png" height="260" alt="Engine (SquareLine)"> <img src="docs/engineroom.jpeg" height="260" alt="Engine (on the watch)">
 
 - Exhaust temperature (°C, converted from Kelvin)
+- Oil pressure (bar, converted from Pa). The sender skips the frame while its value is stale or uncalibrated, so the value turns to `---` 6 s after the last frame
 - Fuel tank litres and fresh-water tank litres (ratio × capacity; tank capacities are constants in `EngineUI.h`, on the vessel: fuel 400 L, water 80 L)
-- Sources: `HALMETEngineDelta`, `HALMETTankDelta`, `HALMETWaterDelta`
+- Sources: `HALMETEngineDelta`, `HALMETOilDelta`, `HALMETTankDelta`, `HALMETWaterDelta`
 
 ### Attitude screen
 
@@ -495,7 +496,7 @@ struct ESPNowPacket {
 } __attribute__((packed));
 ```
 
-`espnow_protocol.h` is a single fleet-wide file, copied verbatim into every project (senders and receivers). `ESPNowMsgType` is one shared number space. The watch **receives** types 1–9; type 10 (engine oil pressure) belongs to the fleet protocol but is not used by the watch, and frames of it are ignored:
+`espnow_protocol.h` is a single fleet-wide file, copied verbatim into every project (senders and receivers). `ESPNowMsgType` is one shared number space. The watch **receives** types 1–10:
 
 ```cpp
 enum class ESPNowMsgType : uint8_t {
@@ -508,7 +509,7 @@ enum class ESPNowMsgType : uint8_t {
     HALMET_WATER_DELTA   = 7,  // HALMET-ESP32-SignalK-gateway   (fresh water)
     DEPTH_DELTA          = 8,  // SignalK-ESP-NOW-gateway        (relayed depth)
     DATETIME_DELTA       = 9,  // UBLOX-ESP32-SignalK-gateway    (UTC → system clock)
-    HALMET_OIL_DELTA     = 10, // HALMET-ESP32-SignalK-gateway   (not used by the watch)
+    HALMET_OIL_DELTA     = 10, // HALMET-ESP32-SignalK-gateway   (engine oil pressure)
 };
 ```
 

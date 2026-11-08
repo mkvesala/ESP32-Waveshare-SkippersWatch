@@ -14,7 +14,8 @@ using namespace ESPNow;
 //
 // - Provides public API to manage incoming instrument data (receive-only)
 // - Receives: HEADING_DELTA (compass/attitude), WEATHER_DELTA (weather sensor), BATTERY_DELTA,
-//   GNSS_DELTA, HALMET_ENGINE_DELTA, HALMET_TANK_DELTA, HALMET_WATER_DELTA, DEPTH_DELTA
+//   GNSS_DELTA, HALMET_ENGINE_DELTA, HALMET_TANK_DELTA, HALMET_WATER_DELTA, HALMET_OIL_DELTA,
+//   DEPTH_DELTA
 // - Init: _receiver.begin(channel)
 // - Owned by: WatchApplication
 
@@ -33,6 +34,7 @@ public:
     HALMETEngineDelta getEngineData();
     HALMETTankDelta getTankData();
     HALMETWaterDelta getWaterData();
+    HALMETOilDelta getOilData();
     DepthDelta getDepthData();
     bool hasNewDatetimeData() const;
     DateTimeDelta getDatetimeData();
@@ -47,6 +49,7 @@ public:
     uint32_t lastEngineRxMillis() const;
     uint32_t lastTankRxMillis() const;
     uint32_t lastWaterRxMillis() const;
+    uint32_t lastOilRxMillis() const;
     uint32_t lastDepthRxMillis() const;
     uint32_t lastDatetimeRxMillis() const;
 
@@ -102,6 +105,11 @@ private:
     // Static variables for HALMET fresh water tank data handling
     inline static HALMETWaterDelta s_latest_water = {};
     inline static volatile uint32_t  s_last_water_millis = 0;
+
+    // Static variables for HALMET oil pressure handling. The sender skips the frame while the
+    // value is stale or uncalibrated, so the UI ages it out by its timestamp.
+    inline static HALMETOilDelta s_latest_oil = {};
+    inline static volatile uint32_t s_last_oil_millis = 0;
 
     // Static variables for depth data handling. NOTE: depth is relayed, so freshness is
     // two-fold — s_last_depth_millis is ESP-NOW gateway liveness; DepthDelta.age_ms inside

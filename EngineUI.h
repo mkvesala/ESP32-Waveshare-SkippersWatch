@@ -7,9 +7,9 @@
 
 // === C L A S S  E N G I N E U I ===
 //
-// - Engine room page adapter: Exhaust °C / Fuel L / Water L
-// - Sources: HALMET_ENGINE_DELTA (exhaust temp, Kelvin) + HALMET_TANK_DELTA (fuel ratio 0..1)
-//   + HALMET_WATER_DELTA (fresh water ratio 0..1)
+// - Engine room page adapter: Exhaust °C / Oil bar / Fuel L / Water L
+// - Sources: HALMET_ENGINE_DELTA (exhaust temp, Kelvin) + HALMET_OIL_DELTA (oil pressure, Pa)
+//   + HALMET_TANK_DELTA (fuel ratio 0..1) + HALMET_WATER_DELTA (fresh water ratio 0..1)
 // - Fuel/water arrive as a 0..1 ratio → liters via FUEL/WATER_TANK_CAPACITY_L (confirm real capacity)
 // - Realizes IScreenUI over container ui_ContainerEngineroom
 // - Owned by: WatchApplication
@@ -35,6 +35,9 @@ private:
     static constexpr uint32_t ENGINE_TIMEOUT_MS = 6000;
     static constexpr uint32_t TANK_TIMEOUT_MS   = 6000;
     static constexpr uint32_t WATER_TIMEOUT_MS  = 6000;
+    static constexpr uint32_t OIL_TIMEOUT_MS    = 6000;
+
+    static constexpr float PA_PER_BAR = 100000.0f;
 
     // Vessel tank capacities in liters (fuel confirmed 2026-07-28; fresh water measured 2026-08-21).
     static constexpr float FUEL_TANK_CAPACITY_L  = 400.0f;

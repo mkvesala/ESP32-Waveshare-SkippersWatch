@@ -53,6 +53,7 @@ void ESPNowReceiver::setDemoMode(bool on) {
         s_last_engine_millis = 0;
         s_last_tank_millis = 0;
         s_last_water_millis = 0;
+        s_last_oil_millis = 0;
         s_last_depth_millis = 0;
     }
     portEXIT_CRITICAL(&s_spinlock);
@@ -206,6 +207,19 @@ void ESPNowReceiver::dispatch(const uint8_t* data, int data_len, bool from_demo)
             break;
         }
 
+        case ESPNowMsgType::HALMET_OIL_DELTA: {
+            if (hdr.payload_len != sizeof(HALMETOilDelta)) return;
+            HALMETOilDelta oil;
+            memcpy(&oil, payload, sizeof(HALMETOilDelta));
+            portENTER_CRITICAL(&s_spinlock);
+            if (acceptLocked(from_demo)) {
+                s_latest_oil = oil;
+                s_last_oil_millis = millis();
+            }
+            portEXIT_CRITICAL(&s_spinlock);
+            break;
+        }
+
         case ESPNowMsgType::DEPTH_DELTA: {
             if (hdr.payload_len != sizeof(DepthDelta)) return;
             DepthDelta depth;
@@ -291,6 +305,15 @@ HALMETWaterDelta ESPNowReceiver::getWaterData() {
     return data;
 }
 
+// Returns the latest HALMET oil pressure packet received via ESP-NOW
+HALMETOilDelta ESPNowReceiver::getOilData() {
+    HALMETOilDelta data;
+    portENTER_CRITICAL(&s_spinlock);
+    data = s_latest_oil;
+    portEXIT_CRITICAL(&s_spinlock);
+    return data;
+}
+
 // Returns the latest depth data packet received via ESP-NOW
 DepthDelta ESPNowReceiver::getDepthData() {
     DepthDelta data;
@@ -340,6 +363,9 @@ uint32_t ESPNowReceiver::lastTankRxMillis() const {
 }
 uint32_t ESPNowReceiver::lastWaterRxMillis() const {
     uint32_t v; portENTER_CRITICAL(&s_spinlock); v = s_last_water_millis;   portEXIT_CRITICAL(&s_spinlock); return v;
+}
+uint32_t ESPNowReceiver::lastOilRxMillis() const {
+    uint32_t v; portENTER_CRITICAL(&s_spinlock); v = s_last_oil_millis;     portEXIT_CRITICAL(&s_spinlock); return v;
 }
 uint32_t ESPNowReceiver::lastDepthRxMillis() const {
     uint32_t v; portENTER_CRITICAL(&s_spinlock); v = s_last_depth_millis;   portEXIT_CRITICAL(&s_spinlock); return v;

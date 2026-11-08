@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [2.3.0] - unreleased
 
 ### Added
 
@@ -19,6 +19,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - **Double tap** on any page (`IScreenUI::onDoubleTap()`): two TAPs within 400 ms and 60 px.
   Both TAPs still reach `onButtonPress()` at once, so single taps are not delayed.
 - **Status:** the stack row shows the loop task and the Chart task (`Stack loop/chart`).
+- **Engine oil pressure** in bar on the Engine page, from `HALMETOilDelta`. The sender skips the
+  frame while its value is stale or uncalibrated, so the page shows `---` 6 s after the last one.
+  Demo mode plays the testlab's synthetic oil pressure, about 3.4–3.6 bar.
 
 ### Changed
 
@@ -26,6 +29,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
   (590 kB, allocated on the first bow-up request only), rotated into the frame on the Chart
   task. While the boat stays inside that square, a turn rotates it again without reading the
   card. North up takes the unchanged path.
+- `ESPNowReceiver` receives `HALMET_OIL_DELTA`; until now its frames were ignored.
+- `tools/demo/make_demo_track.py` and `DemoTrack` carry the testlab's `oil_kpa_e1` column.
 
 ## [2.2.0] - 2026-11-06
 
