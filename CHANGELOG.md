@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [2.3.0] - unreleased
+## [2.3.0] - 2026-11-08
 
 ### Added
 
@@ -297,6 +297,7 @@ First release, on the **Elecrow CrowPanel 2.01" Watch Display**. Running on hard
 - `hardware_notes.md` as the authoritative pin map, build/toolchain notes and power-guard reference.
 - Issue and pull-request templates, contribution guide, and third-party licence notes.
 
+[2.3.0]: https://github.com/mkvesala/ESP32-Waveshare-SkippersWatch/compare/v2.2.0...v2.3.0
 [2.2.0]: https://github.com/mkvesala/ESP32-Waveshare-SkippersWatch/compare/v2.1.0...v2.2.0
 [2.1.0]: https://github.com/mkvesala/ESP32-Waveshare-SkippersWatch/compare/v2.0.0...v2.1.0
 [2.0.0]: https://github.com/mkvesala/ESP32-Waveshare-SkippersWatch/compare/v1.0.0...v2.0.0

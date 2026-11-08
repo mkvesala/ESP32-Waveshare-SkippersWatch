@@ -71,7 +71,9 @@ This is one of my individual digital boat projects. Use at your own risk. Not fo
 
 ## Project status
 
-**Version 2.2.0** (2026-11-06) — adds the [Chart screen](#chart-screen). Tested at home in demo mode, not yet on the boat. See [CHANGELOG.md](CHANGELOG.md).
+**Version 2.3.0** (2026-11-08) — bow-up on the [Chart screen](#chart-screen) (double tap), oil pressure on the [Engine screen](#engine-screen) and redrawn menu icons. Tested at home in demo mode and against last summer's recorded boat data sent over ESP-NOW, not yet on the boat. See [CHANGELOG.md](CHANGELOG.md).
+
+**Version 2.2.0** (2026-11-06) — adds the [Chart screen](#chart-screen).
 
 **Version 2.1.0** (2026-11-04).
 
