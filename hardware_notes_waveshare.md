@@ -331,9 +331,22 @@ All three now default to his behaviour (`false`). The codec state survives every
 
 | Test | Firmware | Drain | Decision |
 |---|---|---|---|
-| H | `tools/sleep-floor-control` (his libraries, unmodified) | — | ≤ 3.5 mA: the extra load is in our firmware. ≥ 5 mA: board or gauge method, stop. |
+| H | `tools/sleep-floor-control` (his libraries, unmodified) | **4.41 mA** (10.9 h, ended 87 %, 4007 mV, 2026-11-12) | ≤ 3.5 mA: the extra load is in our firmware. ≥ 5 mA: board or gauge method, stop. |
 | I | watch, all three switches `false` | — | < 3 mA: target met |
 | J | I + `SLEEP_DEFINE_PADS = true` | — | optional: do the pads matter |
+
+Test H landed between the two limits. His own sleep path reads 4.41 mA on our board with our gauge
+method, against his 2.2–2.4 mA on a PPK2. About 2 mA of the gap is therefore the board or the gauge
+method, not firmware, and firmware alone is unlikely to take the gauge reading below 3 mA. Our
+~6 mA is about 1.6 mA above the control, which is close to his +1.85 mA for the codec stop
+sequences. Test I now aims at the control level (~4.4 mA). One gauge step is 4 mAh, so over
+11 h the resolution is about ±0.4 mA.
+
+PMIC register diff, test I firmware against the control (`axp2101-control.txt`), both on USB:
+registers 0x10..0x9F are identical except 0x34..0x3D, which are live ADC readings, and the IRQ
+enables 0x41/0x42 (control `CC 18`, watch `00 00`) plus the IRQ status 0x49. The PMIC IRQ line is
+not a wake source, so the PMIC configuration is not the difference. After the power cycle the watch
+logged `codecs left untouched: ES7210 answers, ES8311 answers`.
 
 ## To measure first on the bench [M]
 1. Active current at several brightness levels, on a typical (mostly black) screen.
