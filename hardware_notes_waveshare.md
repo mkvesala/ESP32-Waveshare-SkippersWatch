@@ -294,6 +294,47 @@ Results from the Status screen's **Avg drain** row on battery (2026-10-31…11-0
   therefore restarts whenever the gauge reads above it. Start a test by unplugging USB
   only.
 
+### Comparison with chipguyhere's libraries (2026-11-12)
+
+chipguyhere reports **2.2–2.4 mA** on this board, measured with a PPK2 on the cell. Sources:
+
+- [power library README-engineering.md](https://github.com/chipguyhere/ESP32-S3-Touch-AMOLED-2.06_power/blob/main/README-engineering.md#preparing-for-sleep)
+- the display library's README-engineering.md
+
+His sleep path is in `prepareForSleep()` and `deepSleep()`:
+
+- It switches the unused rails off. These are the same ones we switch off.
+- It sets QMI8658 `CTRL7` = 0.
+- It drives LCD_RST and TP_RST high and holds them.
+- It calls `gpio_deep_sleep_hold_en()`.
+- It arms ext0 on BOOT and ext1 on GPIO10.
+- The panel goes through DISPOFF, SLPIN, 120 ms, then `4F` = 01. This is the same as ours.
+
+His measured differences that matter to us:
+
+- **Codecs.** He writes nothing to them. The esp_codec_dev stop sequences measured **+1.85 mA**, ES7210 power-down +0.55 mA and ES8311 standby +0.27 mA. The codecs draw least at their power-up defaults. Until v2.3.0 we wrote exactly those stop sequences (`PmuRails::codecsPowerDown`).
+- **Pads.** He holds no QSPI or I2S pads. We held all of them (`definePads`).
+- **Measured as no effect:** ADCs and gauge off, CLKOUT off, FT3168 hibernate.
+- **Measured as harmful:**
+  - ALDO2 off: +13 mA.
+  - ALDO1 off: +3 mA, and the bus is dead.
+  - Panel held in reset: +0.35 mA.
+  - Touch held in reset: +0.28 mA.
+
+Switches for the next tests:
+
+- `PmuRails::SLEEP_CODEC_POWERDOWN`
+- `PmuRails::SLEEP_IMU_CTRL1_DISABLE`
+- `PowerManager::SLEEP_DEFINE_PADS`
+
+All three now default to his behaviour (`false`). The codec state survives everything except a PMIC power cycle, so every test starts with the procedure in [tools/sleep-floor-control/README.md](tools/sleep-floor-control/README.md): a PWR 6 s power cycle on USB, back to 100 %, then unplug USB.
+
+| Test | Firmware | Drain | Decision |
+|---|---|---|---|
+| H | `tools/sleep-floor-control` (his libraries, unmodified) | — | ≤ 3.5 mA: the extra load is in our firmware. ≥ 5 mA: board or gauge method, stop. |
+| I | watch, all three switches `false` | — | < 3 mA: target met |
+| J | I + `SLEEP_DEFINE_PADS = true` | — | optional: do the pads matter |
+
 ## To measure first on the bench [M]
 1. Active current at several brightness levels, on a typical (mostly black) screen.
 2. Deep-sleep floor and board-off draw with a real meter (so far gauge-based only).

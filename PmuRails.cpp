@@ -47,7 +47,7 @@ void PmuRails::beginAwake() {
     _pmu->enableSystemVoltageMeasure();
 
     this->unusedRailsOff();
-    this->codecsPowerDown();
+    if (SLEEP_CODEC_POWERDOWN) this->codecsPowerDown();
     this->imuPowerDown();
 }
 
@@ -90,10 +90,22 @@ void PmuRails::logState() const {
     Serial.printf("[rails] batt %u mV, sys %u mV, vbus %u mV, gauge %d %%\n",
                   _pmu->getBattVoltage(), _pmu->getSystemVoltage(), _pmu->getVbusVoltage(),
                   _pmu->getBatteryPercent());
-    Serial.printf("[rails] power-down this boot: ES7210 %s (%d failed), ES8311 %s (%d failed), QMI8658 %s (%d failed)\n",
-                  _es7210_fails < 0 ? "not found" : "done", _es7210_fails < 0 ? 0 : _es7210_fails,
-                  _es8311_fails < 0 ? "not found" : "done", _es8311_fails < 0 ? 0 : _es8311_fails,
+    if (SLEEP_CODEC_POWERDOWN) {
+        Serial.printf("[rails] power-down this boot: ES7210 %s (%d failed), ES8311 %s (%d failed)\n",
+                      _es7210_fails < 0 ? "not found" : "done", _es7210_fails < 0 ? 0 : _es7210_fails,
+                      _es8311_fails < 0 ? "not found" : "done", _es8311_fails < 0 ? 0 : _es8311_fails);
+    } else {
+        Serial.printf("[rails] codecs left untouched: ES7210 %s, ES8311 %s\n",
+                      this->probe(ES7210_ADDR) ? "answers" : "NOT answering",
+                      this->probe(ES8311_ADDR) ? "answers" : "NOT answering");
+    }
+    Serial.printf("[rails] QMI8658 power-down %s (%d failed)\n",
                   _imu_fails < 0 ? "not found" : "done", _imu_fails < 0 ? 0 : _imu_fails);
+    for (int base = 0x10; base <= 0x90; base += 0x10) {
+        Serial.printf("[rails] reg %02X:", base);
+        for (int r = base; r < base + 0x10; ++r) Serial.printf(" %02X", _pmu->readRegister((uint8_t)r) & 0xFF);
+        Serial.println();
+    }
 }
 
 // === P R I V A T E ===
@@ -150,8 +162,9 @@ void PmuRails::imuPowerDown() {
     }
     uint8_t fails = 0;
     if (!this->writeReg(QMI8658_ADDR, QMI_REG_CTRL7, 0x00)) fails++;
-    if (!this->readReg(QMI8658_ADDR, QMI_REG_CTRL1, ctrl1) ||
-        !this->writeReg(QMI8658_ADDR, QMI_REG_CTRL1, ctrl1 | QMI_CTRL1_SENSOR_DISABLE)) fails++;
+    if (SLEEP_IMU_CTRL1_DISABLE &&
+        (!this->readReg(QMI8658_ADDR, QMI_REG_CTRL1, ctrl1) ||
+        !this->writeReg(QMI8658_ADDR, QMI_REG_CTRL1, ctrl1 | QMI_CTRL1_SENSOR_DISABLE))) fails++;
     _imu_fails = (int8_t)fails;
 }
 

@@ -145,6 +145,11 @@ public:
     // docked display, with no display timeout AND no awake ceiling.
     static constexpr bool STAY_AWAKE_ON_USB = true;
 
+    // Sleep-floor experiment switch (2026-11): true = latch every panel QSPI and I2S pad
+    // through deep sleep (definePads). chipguyhere's sleep path, measured at 2.2-2.4 mA,
+    // holds only the LCD and touch reset lines. false = match that.
+    static constexpr bool SLEEP_DEFINE_PADS = false;
+
     // Idle dim shared by BOTH stay-awake modes (USB and the prevent-sleep switch):
     // the panel is dimmed rather than slept after this long without input. Named for
     // the behaviour, not the power source — prevent sleep runs it on battery too.

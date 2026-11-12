@@ -48,8 +48,20 @@ public:
     // 0x80 (DCDC on/off), 0x90 and 0x91 (LDO on/off), raw hex. "--" without a PMIC.
     void summary(char* out, size_t len) const;
 
-    // Full decoded rail and ADC dump to Serial (only seen on USB)
+    // Full decoded rail and ADC dump to Serial (only seen on USB), followed by a raw
+    // dump of AXP2101 registers 0x10..0x9F for diffing against other firmware
     void logState() const;
+
+    // Sleep-floor experiment switches (2026-11, see hardware_notes_waveshare.md
+    // "Deep-sleep floor"). chipguyhere measured on this board with a PPK2 that the
+    // esp_codec_dev stop sequences RAISE the deep-sleep current by ~1.85 mA: the codecs
+    // draw least at their power-up defaults. false = leave both codecs untouched.
+    // Their register state survives everything but a PMIC power cycle (ALDO1 stays on),
+    // so a test of this switch starts with PWR held ~6 s.
+    static constexpr bool SLEEP_CODEC_POWERDOWN = false;
+    // QMI8658: CTRL7 = 0 (sensors off) always; true also sets CTRL1 sensor-disable,
+    // which chipguyhere's sleep path does not do
+    static constexpr bool SLEEP_IMU_CTRL1_DISABLE = false;
 
 private:
 

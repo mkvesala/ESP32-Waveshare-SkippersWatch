@@ -212,7 +212,7 @@ void PowerManager::gatePeripherals() {
     }
     if (_touch != nullptr) _touch->hibernate();
     if (_rails != nullptr) _rails->enterSleep();   // last I2C traffic of this wake
-    this->definePads();
+    if (SLEEP_DEFINE_PADS) this->definePads();
 
     pinMode(PIN_LCD_RST, OUTPUT);
     digitalWrite(PIN_LCD_RST, HIGH);   // not in reset: the panel stays in sleep-in
