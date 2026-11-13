@@ -4,6 +4,32 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+
+- **Deep-sleep floor about 3.3 mA** once the gauge has left the top of the charge, down from
+  about 6 mA (400 mAh cell, gauge-based: 85 → 75 % in 12 h; 5.7 mA over the first 10.5 h and
+  4.5 mA over 22.5 h from a full charge).
+- **The audio codecs get no writes.** ES7210 and ES8311 draw least at their power-up defaults;
+  the esp_codec_dev stop sequences written on every wake since v2.1.0 cost more than they
+  saved, as measured by chipguyhere with a PPK2. A written state survives deep sleep and
+  resets until the PMIC cuts the power, so **after updating, hold PWR ~6 s once** and press
+  PWR to start again.
+- The panel QSPI and I2S pads are no longer held at defined levels through sleep; only the
+  panel and touch reset lines (high) and the amp enable (low) are held.
+- The QMI8658 is put to sleep with `CTRL7` = 0 only; the extra `CTRL1` write is dropped.
+- The three changes above are `constexpr` switches (`PmuRails::SLEEP_CODEC_POWERDOWN`,
+  `PmuRails::SLEEP_IMU_CTRL1_DISABLE`, `PowerManager::SLEEP_DEFINE_PADS`), all `false`.
+- On USB the serial rail log adds a raw AXP2101 dump of registers 0x10..0x9F and the
+  codecs' presence on I2C.
+
+### Added
+
+- `tools/sleep-floor-control/`: a measurement sketch that runs chipguyhere's sleep path for
+  this board on our board and shows the gauge drain on every PWR wake, with the procedure
+  for overnight floor tests. Not part of the watch build.
+
 ## [2.3.0] - 2026-11-08
 
 ### Added

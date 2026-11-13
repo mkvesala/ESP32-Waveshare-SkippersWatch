@@ -8,7 +8,7 @@ class XPowersAXP2101;   // XPowersLib, included only in the .cpp files
 // === C L A S S  P M U R A I L S ===
 //
 // - Board power MECHANISM for the Waveshare ESP32-S3-Touch-AMOLED-2.06: which AXP2101
-//   rails are on while awake and in deep sleep, plus the audio codecs' power-down. The
+//   rails are on while awake and in deep sleep, plus the IMU's power-down. The
 //   policy (when to sleep) stays in PowerManager; the driver object stays owned by
 //   BatteryMonitor, which hands it over with pmu().
 // - Rail-to-load map, read from the schematic (Schematic V1.0, 2026-10-31):
@@ -16,7 +16,7 @@ class XPowersAXP2101;   // XPowersLib, included only in the .cpp files
 //                     I2C pull-ups. NEVER touched.
 //     ALDO1 = A3V3    ES7210 (all supplies) + ES8311 AVDD. Left ON: cutting it while the
 //                     ES7210's I2C pins sit on 3.3 V pull-ups would back-power it through
-//                     its ESD diodes. The codecs are powered down by register instead.
+//                     its ESD diodes. The codecs are left at their power-up defaults.
 //     ALDO2           only DSI_PWR_EN (10k pull-up): the AMOLED module's own supply
 //                     enable. Left ON: cutting it in sleep measured +30-40 mA, and no
 //                     gain with the CO5300 in deep standby.

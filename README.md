@@ -103,7 +103,7 @@ Adds the [Celestial screen](#celestial-screen) and brings the deep-sleep floor d
 
 **`PmuRails`:**
 - Uses: `XPowersAXP2101` (owned by `BatteryMonitor`), the shared I2C bus
-- Responsible for: the AXP2101 rail state from the traced rail-to-load map (unused rails off, VBUS/system ADC only while awake) and the I2C power-down of the audio codecs and the IMU on every wake. Mechanism only — when to sleep stays in `PowerManager`
+- Responsible for: the AXP2101 rail state from the traced rail-to-load map (unused rails off, VBUS/system ADC only while awake) and the I2C power-down of the IMU on every wake. The audio codecs are left at their power-up defaults, where they draw least. Mechanism only — when to sleep stays in `PowerManager`
 - Owned by: `WatchApplication`
 
 **`ESPNowReceiver`:**
@@ -402,7 +402,7 @@ All power-on counters survive deep sleep, watchdog, panic and software resets, a
 
 The whole architecture resolves one contradiction: **in deep sleep the radio is off, so no ESP-NOW packet can be received.** You cannot both deep-sleep and listen.
 
-**Model B (deep-sleep, wake-to-fetch).** Deep sleep is the resting default. A PWR-button press wakes the watch; only *then* does it bring the radio up, catch a broadcast, render, and — after a short display-on timeout (the Setup **wake time**, 2–20 s, default 10 s, shortened automatically as the cell empties) of no interaction — soft-ramp the brightness down and return to deep sleep. On sleep entry the AMOLED is switched off and put into sleep-in and deep standby, the FT3168 into hibernate, the panel and touch reset lines are held high, the panel QSPI and I2S pads at defined levels and the speaker amp enable (GPIO46) low through sleep; the PWR button (GPIO10, RTC-capable, **active-high**) is armed as the `ext1` wake source. `PmuRails` keeps the unused AXP2101 rails off and powers the audio codecs and the IMU down over I2C on every wake.
+**Model B (deep-sleep, wake-to-fetch).** Deep sleep is the resting default. A PWR-button press wakes the watch; only *then* does it bring the radio up, catch a broadcast, render, and — after a short display-on timeout (the Setup **wake time**, 2–20 s, default 10 s, shortened automatically as the cell empties) of no interaction — soft-ramp the brightness down and return to deep sleep. On sleep entry the AMOLED is switched off and put into sleep-in and deep standby, the FT3168 into hibernate, the panel and touch reset lines are held high and the speaker amp enable (GPIO46) low through sleep; the PWR button (GPIO10, RTC-capable, **active-high**) is armed as the `ext1` wake source. `PmuRails` keeps the unused AXP2101 rails off and powers the IMU down over I2C on every wake. The audio codecs get no writes at all: they draw least at their power-up defaults, and a written state survives until the PMIC cuts the power.
 
 **microSD card.** The card shares the main 3.3 V rail with the ESP32-S3, so the firmware cannot cut its power. A card that has not been initialised since it got power draws far more in deep sleep, so the pre-sleep hook mounts and closes it on every sleep, about 47 ms with a card and 58 ms without one, and leaves its pins as inputs. A card pushed in while the watch sleeps stays uninitialised until the watch has woken and gone back to sleep.
 
@@ -455,18 +455,20 @@ Boot logs the reset reason and which tier supplied the page (`[page] reset=… s
 
 ### Consumption measurements
 
-Measured on the Waveshare board from the AXP2101 fuel gauge over overnight tests, not with a meter, assuming a 400 mAh cell (2026-10-29…11-04, see `hardware_notes_waveshare.md`):
+Measured on the Waveshare board from the AXP2101 fuel gauge over overnight tests, not with a meter, assuming a 400 mAh cell (2026-10-29…11-13, see `hardware_notes_waveshare.md`):
 
 | State | Draw |
 |---|---|
-| Deep sleep | **about 6 mA** (6.0 mA over 13 h; ~5 mA without the first hour after a full charge) |
+| Deep sleep | **about 3.3 mA** once the gauge has left the top of the charge (85 → 75 % in 12 h); 5.7 mA over the first 10.5 h and 4.5 mA over 22.5 h from a full charge |
 | Powered off (PWR held ~6 s) | at most ~0.4 mA (1 % over 9.5 h) |
 | Deep sleep, card fitted, closed before sleep | 8.4 mA over 3 h and 9.4 mA over 4 h from a full charge, including the gauge's fast first hour; a long reading is still open |
 | Deep sleep, card fitted, never initialised | 42 mA over 8 h, which is why the card is closed before every sleep |
 | Chart screen awake | not yet measured |
 | Active | not yet measured |
 
-The original target of 2 mA was not reached. Every peripheral the firmware can reach is asleep or unpowered, and the remaining load has not been located; about 6 mA is accepted for now. To store the watch, power it off: hold PWR ~6 s, and press PWR to start it again.
+The gauge drops fast in the first hours after a full charge, so a short window from 100 % always reads higher than the steady floor. Only windows of equal length from the same start compare.
+
+The original target of 2 mA was not reached, but the floor is about half of the 2.1.0 figure. For comparison, chipguyhere's own sleep path for this board ([ESP32-S3-Touch-AMOLED-2.06_power](https://github.com/chipguyhere/ESP32-S3-Touch-AMOLED-2.06_power)), run on the same board and read from the same gauge, gave 4.41 mA over 10.9 h, against his 2.2–2.4 mA on a PPK2. Part of the remaining gap is the gauge method. To store the watch, power it off: hold PWR ~6 s, and press PWR to start it again.
 
 Active current still needs a meter, battery only (USB unplugged): a DMM's 10 A jack in series. The mA ranges' burden voltage browns the board out; the 10 A range does not. Measure at several brightness levels on a typical (mostly black) screen.
 
@@ -474,7 +476,7 @@ For reference, v1.0.0 on the CrowPanel measured a **2.16 mA** deep-sleep floor a
 
 ### Endurance
 
-Daily budget = sleep floor × 24 h + glances per day × active current × glance length (10 s window + ~0.5 s wake). The target is one to two days on the fitted cell with nightly charging. At 6 mA, deep sleep alone takes 144 mAh per day, so 400 mAh lasts about 66 h before any wakes. The glance share follows once the active current has been measured.
+Daily budget = sleep floor × 24 h + glances per day × active current × glance length (10 s window + ~0.5 s wake). The target is one to two days on the fitted cell with nightly charging. At about 3.3 mA, deep sleep alone takes about 80 mAh per day, so 400 mAh lasts about 5 days before any wakes. The glance share follows once the active current has been measured.
 
 On the CrowPanel, Model B met the 24 h + nightly-charge requirement with a 2.7–4.8× margin, so a hybrid light-sleep "watch mode" (Model C) was dropped; whether that still holds here follows from the active-current measurement.
 
@@ -559,7 +561,7 @@ struct DepthDelta {
 | `WatchApplication.h/.cpp` | Class `WatchApplication`, the "app" — owns all instances, display stack, staggered wake, gesture dispatch, GNSS time sync |
 | `PowerManager.h/.cpp` | Class `PowerManager` — Model B deep-sleep, display timeout, peripheral sleep, PWR-button wake arming, and the power guards (awake ceiling, watchdog, low-charge ladder, stuck-button guard) |
 | `BatteryMonitor.h/.cpp` | Class `BatteryMonitor` — AXP2101 battery voltage + fuel gauge, VBUS detection, status-bar indicator, charge-level classification |
-| `PmuRails.h/.cpp` | Class `PmuRails` — AXP2101 rail state, codec and IMU power-down over I2C |
+| `PmuRails.h/.cpp` | Class `PmuRails` — AXP2101 rail state and IMU power-down over I2C; codecs left at their defaults |
 | `BatteryLevel.h` | Charge levels, the low-charge ladder thresholds and the display-timeout cap (pure, host-tested) |
 | `DemoSource.h/.cpp`, `DemoValues.h`, `DemoTrack.h/.cpp` | Class `DemoSource` — demo-mode frames injected into the receiver; `DemoValues` is the pure value generator (host-tested) over `DemoTrack`, the generated recording |
 | `ThemeController.h/.cpp`, `NightPalette.h` | Class `ThemeController` — day / night palette switch; `NightPalette` is the pure color mapping (host-tested) |
@@ -596,6 +598,7 @@ struct DepthDelta {
 | `tools/chart/build_chart.py` | Mac tool for the chart card: fetch, build, simulate, install; not part of the sketch |
 | `tools/demo/make_demo_track.py` | Cuts `DemoTrack` out of the ESP-NOW testlab's recording; not part of the sketch |
 | `tools/icons/make_icons.py` | Draws the page menu's day and night icons into `SLS_project_WS/assets` (Pillow); not part of the sketch |
+| `tools/sleep-floor-control/` | Measurement sketch: chipguyhere's sleep path with the gauge drain on screen, for comparing floors; not part of the sketch |
 | `tests/host/` | Host unit tests for the pure logic (`make -C tests/host`); not part of the sketch |
 | `tests/celestial/` | Host tests for the celestial code against JPL Horizons and SIMBAD fixtures (`tests/celestial/run_tests.sh`) |
 | `hardware_notes_waveshare.md` | Waveshare pin map, parts, build settings, open hardware questions |

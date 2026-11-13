@@ -332,7 +332,7 @@ All three now default to his behaviour (`false`). The codec state survives every
 | Test | Firmware | Drain | Decision |
 |---|---|---|---|
 | H | `tools/sleep-floor-control` (his libraries, unmodified) | **4.41 mA** (10.9 h, ended 87 %, 4007 mV, 2026-11-12) | ≤ 3.5 mA: the extra load is in our firmware. ≥ 5 mA: board or gauge method, stop. |
-| I | watch, all three switches `false` | — | < 3 mA: target met |
+| I | watch, all three switches `false` | **5.7 mA** / 10.5 h (100 → 85 %, 3.964 V); **4.5 mA** / 22.5 h (→ 75 %, 3.891 V), 2026-11-12…13 | < 3 mA: target met |
 | J | I + `SLEEP_DEFINE_PADS = true` | — | optional: do the pads matter |
 
 Test H landed between the two limits. His own sleep path reads 4.41 mA on our board with our gauge
@@ -347,6 +347,23 @@ registers 0x10..0x9F are identical except 0x34..0x3D, which are live ADC reading
 enables 0x41/0x42 (control `CC 18`, watch `00 00`) plus the IRQ status 0x49. The PMIC IRQ line is
 not a wake source, so the PMIC configuration is not the difference. After the power cycle the watch
 logged `codecs left untouched: ES7210 answers, ES8311 answers`.
+
+Test I against the earlier nights: at about 10 h it reads 5.7 mA, against 6.3 mA (D) and 6.0 mA
+(F). That is a 0.3–0.6 mA gain at most, inside the gauge resolution, not the 1.85 mA his PPK2
+showed. Against the control at the same point (H, 4.41 mA after 10.9 h from a 99 % baseline) the
+watch is still about 1–1.3 mA higher.
+
+The 22.5 h figure must not be compared with the 10 h figures. The gauge drops fast in the first
+hours after a full charge, so a longer window gives a lower average. Between 10.5 h and 22.5 h the
+watch fell 85 → 75 %, which is 40 mAh in 12 h or **3.3 mA ± 0.7 mA**. That segment is the
+cleanest estimate of the real floor so far. Only windows of equal length from the same start can
+be compared.
+
+- **Accepted** (2026-11-13): the test I firmware is the new default, all three switches `false`.
+  The floor is about 3.3 mA once the gauge has left the top of the charge. A 22 h rerun of the
+  control was not done, so whether our firmware still carries ~1 mA over his sleep path is
+  open. Test J was skipped. Fielded watches keep the old codec state until a PMIC power cycle,
+  so the CHANGELOG tells users to hold PWR ~6 s once after updating.
 
 ## To measure first on the bench [M]
 1. Active current at several brightness levels, on a typical (mostly black) screen.
