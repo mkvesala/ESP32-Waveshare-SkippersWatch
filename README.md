@@ -71,6 +71,8 @@ This is one of my individual digital boat projects. Use at your own risk. Not fo
 
 ## Project status
 
+**Version 2.3.1** (2026-11-14) — deep-sleep floor down to about 3.3 mA: the audio codecs are left at their power-up defaults. After updating, hold PWR ~6 s once. See [Power management](#power-management).
+
 **Version 2.3.0** (2026-11-08) — bow-up on the [Chart screen](#chart-screen) (double tap), oil pressure on the [Engine screen](#engine-screen) and redrawn menu icons. Tested at home in demo mode and against last summer's recorded boat data sent over ESP-NOW, not yet on the boat. See [CHANGELOG.md](CHANGELOG.md).
 
 **Version 2.2.0** (2026-11-06) — adds the [Chart screen](#chart-screen).
@@ -461,7 +463,7 @@ Measured on the Waveshare board from the AXP2101 fuel gauge over overnight tests
 |---|---|
 | Deep sleep | **about 3.3 mA** once the gauge has left the top of the charge (85 → 75 % in 12 h); 5.7 mA over the first 10.5 h and 4.5 mA over 22.5 h from a full charge |
 | Powered off (PWR held ~6 s) | at most ~0.4 mA (1 % over 9.5 h) |
-| Deep sleep, card fitted, closed before sleep | 8.4 mA over 3 h and 9.4 mA over 4 h from a full charge, including the gauge's fast first hour; a long reading is still open |
+| Deep sleep, card fitted, closed before sleep | 5.2 mA over 10.75 h from a full charge (100 → 86 %, 3.970 V), against 5.7 mA over 10.5 h without a card: the card adds nothing measurable |
 | Deep sleep, card fitted, never initialised | 42 mA over 8 h, which is why the card is closed before every sleep |
 | Chart screen awake | not yet measured |
 | Active | not yet measured |

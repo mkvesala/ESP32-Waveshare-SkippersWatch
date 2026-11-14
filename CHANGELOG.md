@@ -4,13 +4,14 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [2.3.1] - 2026-11-14
 
 ### Changed
 
 - **Deep-sleep floor about 3.3 mA** once the gauge has left the top of the charge, down from
   about 6 mA (400 mAh cell, gauge-based: 85 → 75 % in 12 h; 5.7 mA over the first 10.5 h and
-  4.5 mA over 22.5 h from a full charge).
+  4.5 mA over 22.5 h from a full charge). With a card fitted: 5.2 mA over 10.75 h from a full
+  charge, so the card adds nothing the gauge can resolve.
 - **The audio codecs get no writes.** ES7210 and ES8311 draw least at their power-up defaults;
   the esp_codec_dev stop sequences written on every wake since v2.1.0 cost more than they
   saved, as measured by chipguyhere with a PPK2. A written state survives deep sleep and
@@ -323,6 +324,7 @@ First release, on the **Elecrow CrowPanel 2.01" Watch Display**. Running on hard
 - `hardware_notes.md` as the authoritative pin map, build/toolchain notes and power-guard reference.
 - Issue and pull-request templates, contribution guide, and third-party licence notes.
 
+[2.3.1]: https://github.com/mkvesala/ESP32-Waveshare-SkippersWatch/compare/v2.3.0...v2.3.1
 [2.3.0]: https://github.com/mkvesala/ESP32-Waveshare-SkippersWatch/compare/v2.2.0...v2.3.0
 [2.2.0]: https://github.com/mkvesala/ESP32-Waveshare-SkippersWatch/compare/v2.1.0...v2.2.0
 [2.1.0]: https://github.com/mkvesala/ESP32-Waveshare-SkippersWatch/compare/v2.0.0...v2.1.0

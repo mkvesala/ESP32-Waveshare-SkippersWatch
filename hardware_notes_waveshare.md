@@ -333,7 +333,8 @@ All three now default to his behaviour (`false`). The codec state survives every
 |---|---|---|---|
 | H | `tools/sleep-floor-control` (his libraries, unmodified) | **4.41 mA** (10.9 h, ended 87 %, 4007 mV, 2026-11-12) | ≤ 3.5 mA: the extra load is in our firmware. ≥ 5 mA: board or gauge method, stop. |
 | I | watch, all three switches `false` | **5.7 mA** / 10.5 h (100 → 85 %, 3.964 V); **4.5 mA** / 22.5 h (→ 75 %, 3.891 V), 2026-11-12…13 | < 3 mA: target met |
-| J | I + `SLEEP_DEFINE_PADS = true` | — | optional: do the pads matter |
+| J | I + `SLEEP_DEFINE_PADS = true` | — (skipped) | optional: do the pads matter |
+| K | v2.3.1 release build (= I), card fitted | **5.2 mA** / 10.75 h (100 → 86 %, 3.970 V), 2026-11-13…14 | ≤ ~7 mA at 10–11 h: the card path is fine |
 
 Test H landed between the two limits. His own sleep path reads 4.41 mA on our board with our gauge
 method, against his 2.2–2.4 mA on a PPK2. About 2 mA of the gap is therefore the board or the gauge
