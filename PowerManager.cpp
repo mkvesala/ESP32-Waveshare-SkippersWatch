@@ -7,6 +7,10 @@
 #include <driver/rtc_io.h>
 #include <esp_task_wdt.h>
 
+// Glance wakes in a row that ended without a touch (see GLANCE_IDLE_LIMIT). RTC_DATA_ATTR:
+// survives deep sleep; any other reset starts it over at 0, glance wake enabled.
+RTC_DATA_ATTR static uint8_t s_glance_idle_streak = 0;
+
 // === P U B L I C ===
 
 PowerManager::PowerManager(PanelBrightness& brightness)
@@ -56,6 +60,9 @@ void PowerManager::begin(esp_sleep_wakeup_cause_t cause) {
         case ESP_SLEEP_WAKEUP_ULP:   Serial.println("[power] wake: glance");   break;
         default:                     Serial.println("[power] cold boot");      break;
     }
+    // The PWR button is a deliberate wake: it lifts the glance brake
+    _glance_session = (cause == ESP_SLEEP_WAKEUP_ULP);
+    if (cause == ESP_SLEEP_WAKEUP_EXT1) s_glance_idle_streak = 0;
 
     _state = PowerState::DISPLAY_HOLD;
     _last_activity = millis();
@@ -69,6 +76,7 @@ void PowerManager::begin(esp_sleep_wakeup_cause_t cause) {
 }
 
 void PowerManager::notifyActivity() {
+    _touched = true;
     _last_activity = millis();
     _state = PowerState::ACTIVE;
 }
@@ -197,7 +205,8 @@ void PowerManager::enterDeepSleep(bool ramp_brightness) {
     // Glance wake last: armWakeSource() clears every wake source, and from arm() on the
     // ULP owns the I2C bus. Not for a held button (the timer recheck must stay cheap) or
     // the low-battery sleep.
-    if (GLANCE_WAKE && button_armed && !_protective_sleep) this->armGlanceWake();
+    if (GLANCE_WAKE && button_armed && !_protective_sleep && this->glanceAllowed())
+        this->armGlanceWake();
 
     esp_deep_sleep_start();       // full power-down; next wake re-runs setup()
 }
@@ -305,6 +314,27 @@ bool PowerManager::armWakeSource() {
 // IMU into accel-only low power, then hand the bus to the ULP. Needs the rails (and so
 // the bus) attached, which the timer-recheck path never has. A failure leaves the
 // PWR-button wake armed alone, which is the pre-glance behaviour.
+// Glance brake bookkeeping at sleep entry. true = the glance wake may be armed. A glance
+// wake with a touch resets the streak; one without adds to it. At GLANCE_IDLE_LIMIT the
+// glance wake stays off until the next PWR wake (begin() clears the streak).
+bool PowerManager::glanceAllowed() {
+    if (_glance_session) {
+        if (_touched) {
+            s_glance_idle_streak = 0;
+        } else {
+            SystemStats::onGlanceUnused();
+            if (s_glance_idle_streak < 255) s_glance_idle_streak++;
+            if (s_glance_idle_streak == GLANCE_IDLE_LIMIT) SystemStats::onGlanceBrake();
+        }
+    }
+    if (s_glance_idle_streak >= GLANCE_IDLE_LIMIT) {
+        Serial.printf("[power] glance: %u wakes without a touch -> PWR button only\n",
+                      s_glance_idle_streak);
+        return false;
+    }
+    return true;
+}
+
 void PowerManager::armGlanceWake() {
     if (_rails == nullptr || _rails->wire() == nullptr) return;
     if (!_rails->imuGlanceMode()) {

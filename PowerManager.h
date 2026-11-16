@@ -154,6 +154,11 @@ public:
     // that wakes the watch when it is held in the glance pose. Never armed for the
     // protective (low-battery) sleep or the stuck-button timer recheck.
     static constexpr bool GLANCE_WAKE = true;
+    // Brake: after this many glance wakes in a row that end without a touch, the next
+    // sleep is armed on the PWR button only, and a PWR wake re-enables the glance wake.
+    // Covers a watch lying at the edge of the pose on a rocking boat, which would
+    // otherwise wake every time the swell carries it back into the window.
+    static constexpr uint8_t GLANCE_IDLE_LIMIT = 3;
 
     // Idle dim shared by BOTH stay-awake modes (USB and the prevent-sleep switch):
     // the panel is dimmed rather than slept after this long without input. Named for
@@ -171,6 +176,7 @@ private:
     void definePads();
     bool armWakeSource();   // true = PWR button armed, false = stuck-button timer
     void armGlanceWake();
+    bool glanceAllowed();
     void initWatchdog();
 
     bool chargingNow() const { return _battery != nullptr && _battery->charging(); }
@@ -207,8 +213,10 @@ private:
     uint32_t _wake_ms = 0;          // start of this awake session (the ceiling's origin)
     bool _was_charging = false;     // for the unplug edge (grants a fresh display window)
     bool _wdt_armed = false;
-    bool _protective_sleep = false;
-    bool _no_pmu_logged = false;   // low-battery sleep: PWR button only, no glance wake
+    bool _protective_sleep = false;   // low-battery sleep: PWR button only, no glance wake
+    bool _no_pmu_logged = false;
+    bool _glance_session = false;     // this wake came from the glance pose
+    bool _touched = false;            // notifyActivity() ran this wake (touch or unplug)
 
     // PWR button state line (SYS_OUT) — RTC-capable, ACTIVE-HIGH (high = pressed), the
     // deep-sleep wake source (ext1 ANY_HIGH). Touch cannot wake from deep sleep on this board: the FT3168 INT is GPIO38, not an RTC pin. The same key is the AXP2101 power

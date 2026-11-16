@@ -18,9 +18,14 @@ namespace {
         uint32_t drain_valid;
         uint32_t drain_base_pct;
         uint64_t drain_base_s;
+        // Raise to wake (GlanceWake): wakes on the pose, those that ended without a
+        // touch, and how often PowerManager's brake turned the glance wake off
+        uint32_t glance_wakes;
+        uint32_t glance_unused;
+        uint32_t glance_brakes;
     };
     RTC_NOINIT_ATTR PowerOnStats s_stats;
-    constexpr uint32_t STATS_MAGIC = 0x57A75C03;
+    constexpr uint32_t STATS_MAGIC = 0x57A75C04;
 }
 
 // === P U B L I C ===
@@ -34,6 +39,7 @@ void SystemStats::onBoot(esp_sleep_wakeup_cause_t cause, esp_reset_reason_t reas
     // A user wake is the PWR button or the glance pose; the stuck-button guard's timer
     // wakes are not
     if (cause == ESP_SLEEP_WAKEUP_EXT1 || cause == ESP_SLEEP_WAKEUP_ULP) s_stats.wakeups++;
+    if (cause == ESP_SLEEP_WAKEUP_ULP) s_stats.glance_wakes++;
     if (StatusFormat::isUnexpected((int)reason)) s_stats.unexpected_resets++;
 }
 
@@ -51,6 +57,14 @@ void SystemStats::onSleepEntry(uint32_t radio_frames_this_wake) {
     if (s_stats.magic != STATS_MAGIC) return;
     s_stats.awake_ms += millis();
     s_stats.radio_frames += radio_frames_this_wake;
+}
+
+void SystemStats::onGlanceUnused() {
+    if (s_stats.magic == STATS_MAGIC) s_stats.glance_unused++;
+}
+
+void SystemStats::onGlanceBrake() {
+    if (s_stats.magic == STATS_MAGIC) s_stats.glance_brakes++;
 }
 
 void SystemStats::trackDrain(bool on_usb, uint8_t soc) {
@@ -108,3 +122,7 @@ uint32_t SystemStats::unexpectedResets() const {
 uint32_t SystemStats::radioFramesTotal(uint32_t this_wake) const {
     return (uint32_t)(s_stats.radio_frames + this_wake);
 }
+
+uint32_t SystemStats::glanceWakes() const  { return s_stats.glance_wakes; }
+uint32_t SystemStats::glanceUnused() const { return s_stats.glance_unused; }
+uint32_t SystemStats::glanceBrakes() const { return s_stats.glance_brakes; }

@@ -33,6 +33,12 @@ public:
     // Fold this wake's awake time and radio frame count into the power-on totals
     static void onSleepEntry(uint32_t radio_frames_this_wake);
 
+    // Raise to wake, from PowerManager at sleep entry: a glance wake that ended without
+    // a touch, and the brake turning the glance wake off after too many of them. The
+    // glance wakes themselves are counted in onBoot().
+    static void onGlanceUnused();
+    static void onGlanceBrake();
+
     // Call each loop after BatteryMonitor::update(). On USB the baseline is dropped; the
     // first call on battery takes a new one, so it always starts at an unplug or a
     // power-on on battery. A gauge reading above the baseline restarts it there.
@@ -46,6 +52,9 @@ public:
     uint64_t deepSleepS() const;
     uint32_t wakeups() const;
     uint32_t unexpectedResets() const;
+    uint32_t glanceWakes() const;
+    uint32_t glanceUnused() const;
+    uint32_t glanceBrakes() const;
     uint32_t radioFramesTotal(uint32_t this_wake) const;
     int      lastResetReason() const { return (int)_reason; }
 

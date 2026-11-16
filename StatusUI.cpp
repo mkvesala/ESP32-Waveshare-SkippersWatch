@@ -9,6 +9,7 @@
 static const char* const kTitles =
     "Uptime\n"
     "Wake-ups\n"
+    "Raise/idle/brake\n"
     "Wake time\n"
     "Deep sleep\n"
     "Free heap\n"
@@ -87,9 +88,12 @@ void StatusUI::render() {
 
     char buf[448];
     snprintf(buf, sizeof(buf),
-             "%s\n%lu\n%s\n%s\n%s\n%s\n%s\n%.1f / %.0f ms\n%lu\n%lu\n%s\n%.0f °C\n%u.%03u V\n%s\n%s",
+             "%s\n%lu\n%lu / %lu / %lu\n%s\n%s\n%s\n%s\n%s\n%.1f / %.0f ms\n%lu\n%lu\n%s\n%.0f °C\n%u.%03u V\n%s\n%s",
              up,
              (unsigned long)_stats.wakeups(),
+             (unsigned long)_stats.glanceWakes(),
+             (unsigned long)_stats.glanceUnused(),
+             (unsigned long)_stats.glanceBrakes(),
              awake,
              sleep,
              heap,
