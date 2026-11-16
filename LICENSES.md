@@ -44,6 +44,12 @@ This project uses the following open-source libraries:
 - **Not distributed with this repository.** Screenshots and photographs may show portions of the chart data rendered by the application
 - **Not for navigation.** Does not meet the requirements of an official nautical chart. This project is independent and is not affiliated with or endorsed by Traficom
 
+## ULP orientation-wake program (local)
+- **Source:** `src/amoled206_orient_ulp.c/.h` from [chipguyhere/ESP32-S3-Touch-AMOLED-2.06_board](https://github.com/chipguyhere/ESP32-S3-Touch-AMOLED-2.06_board), commit 2f3fd06
+- **Author:** chipguyhere
+- **License:** MIT
+- **File:** `amoled206_orient_ulp.c/.h` in this repository, unchanged apart from a provenance header. Our own wrapper around it is `GlanceWake.h/.cpp`
+
 ## AXS5106L touch driver (local)
 - **Source:** adapted from Elecrow's Lesson03 example for this board
 - **Author:** Elecrow (example code)

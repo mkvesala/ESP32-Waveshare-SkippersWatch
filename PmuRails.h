@@ -44,6 +44,17 @@ public:
     // sleep-in, as the last bus traffic before the wake source is armed.
     void enterSleep();
 
+    // QMI8658 for GlanceWake: soft reset, address auto-increment on (the ULP reads six
+    // bytes in one burst, little-endian as after reset), accelerometer only, +-4 g,
+    // low-power 21 Hz; waits for the first sample. Settings as in chipguyhere's
+    // AMOLED206_IMU::_reset() and AMOLED206_OrientationWatch::arm(). Call after
+    // enterSleep(), as the last bus traffic before GlanceWake::arm(). The next
+    // beginAwake() switches the sensors off again. false = IMU missing or not answering.
+    bool imuGlanceMode();
+
+    // The shared bus, for GlanceWake::arm() to release
+    TwoWire* wire() const { return _wire; }
+
     // Compact rail state for the Status screen: "DC 01 LDO 03 00" = AXP2101 registers
     // 0x80 (DCDC on/off), 0x90 and 0x91 (LDO on/off), raw hex. "--" without a PMIC.
     void summary(char* out, size_t len) const;
@@ -90,6 +101,18 @@ private:
     static constexpr uint8_t QMI_REG_CTRL1 = 0x02;
     static constexpr uint8_t QMI_CTRL1_SENSOR_DISABLE = 0x01;
     static constexpr uint8_t QMI_REG_CTRL7 = 0x08;
+    // For imuGlanceMode(): CTRL1 bit6 = address auto-increment; CTRL2 = accel range
+    // (b6:4, 1 = +-4 g) and ODR (b3:0, 13 = low-power 21 Hz); STATUS0 bit0 = accel data
+    // ready; RESET 0x60 <- 0xB0, done when RST_RESULT 0x4D reads 0x80
+    static constexpr uint8_t QMI_CTRL1_ADDR_AI = 0x40;
+    static constexpr uint8_t QMI_REG_CTRL2 = 0x03;
+    static constexpr uint8_t QMI_CTRL2_GLANCE = (1 << 4) | 13;
+    static constexpr uint8_t QMI_CTRL7_ACCEL = 0x01;
+    static constexpr uint8_t QMI_REG_STATUS0 = 0x2E;
+    static constexpr uint8_t QMI_REG_RESET = 0x60;
+    static constexpr uint8_t QMI_RESET_CMD = 0xB0;
+    static constexpr uint8_t QMI_REG_RST_RESULT = 0x4D;
+    static constexpr uint8_t QMI_RST_DONE = 0x80;
 
     void unusedRailsOff();
     void codecsPowerDown();

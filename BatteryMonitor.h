@@ -54,6 +54,10 @@ public:
     // True while the watch is on external USB power (AXP2101 VBUS present)
     bool charging() const { return _charging; }
 
+    // False if the AXP2101 did not answer at boot. charging() then reports true as a fail
+    // safe for the low-charge ladder, but nothing is actually known about the power source.
+    bool pmuPresent() const { return _pmu != nullptr; }
+
     // Current charge level. Escalates only within one awake session (see _level) and
     // is forced back to OK whenever the watch is on USB power.
     Level level() const { return _level; }

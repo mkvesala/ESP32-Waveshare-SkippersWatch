@@ -31,8 +31,9 @@ void SystemStats::onBoot(esp_sleep_wakeup_cause_t cause, esp_reset_reason_t reas
         s_stats = {};
         s_stats.magic = STATS_MAGIC;
     }
-    // A user wake is the PWR button; the stuck-button guard's timer wakes are not
-    if (cause == ESP_SLEEP_WAKEUP_EXT1) s_stats.wakeups++;
+    // A user wake is the PWR button or the glance pose; the stuck-button guard's timer
+    // wakes are not
+    if (cause == ESP_SLEEP_WAKEUP_EXT1 || cause == ESP_SLEEP_WAKEUP_ULP) s_stats.wakeups++;
     if (StatusFormat::isUnexpected((int)reason)) s_stats.unexpected_resets++;
 }
 

@@ -1,4 +1,5 @@
 #include "WatchApplication.h"
+#include "GlanceWake.h"
 #include <Wire.h>
 #include <esp_heap_caps.h>
 #include <esp_system.h>
@@ -74,6 +75,11 @@ void WatchApplication::begin() {
     // Read the wake cause once, up front: it decides both the stuck-button path and, at
     // the end, _power.begin().
     const esp_sleep_wakeup_cause_t cause = esp_sleep_get_wakeup_cause();
+
+    // VERY FIRST bus-related step: if the last sleep armed the glance wake, the ULP still
+    // owns GPIO14/15 and keeps bit-banging them. Stop it and take the pins back before
+    // anything (Wire, the PMIC, touch) touches the bus. A no-op otherwise.
+    GlanceWake::reclaimBus();
 
     // FIRST: release the GPIO holds from the previous deep sleep (panel/touch reset lines,
     // amp enable), so the reset pulses below actually reach the chips.
@@ -242,11 +248,17 @@ void WatchApplication::loop() {
     this->checkBatteryCutoff();   // near-empty cell → charge prompt + protective sleep
     _stats.trackDrain(_battery.charging(), _battery.soc());   // Status "Avg drain" baseline
 
-    // Rail dump once per USB session, after the host has had time to open the port
+    // Rail dump once per USB session, after the host has had time to open the port. Any
+    // byte received on Serial repeats it: lines written before the host reads get dropped.
+    if (Serial.available() > 0) {
+        while (Serial.available() > 0) Serial.read();
+        _rails_logged = false;
+    }
     if (!_battery.charging()) {
         _rails_logged = false;
     } else if (!_rails_logged && now >= RAILS_LOG_DELAY_MS) {
         _rails.logState();
+        GlanceWake::log();
         _rails_logged = true;
     }
 

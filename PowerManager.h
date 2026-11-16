@@ -150,6 +150,11 @@ public:
     // holds only the LCD and touch reset lines. false = match that.
     static constexpr bool SLEEP_DEFINE_PADS = false;
 
+    // Raise-to-wake prototype (2026-11, bench only): true = also arm GlanceWake, the ULP
+    // that wakes the watch when it is held in the glance pose. Never armed for the
+    // protective (low-battery) sleep or the stuck-button timer recheck.
+    static constexpr bool GLANCE_WAKE = true;
+
     // Idle dim shared by BOTH stay-awake modes (USB and the prevent-sleep switch):
     // the panel is dimmed rather than slept after this long without input. Named for
     // the behaviour, not the power source — prevent sleep runs it on battery too.
@@ -164,7 +169,8 @@ private:
     void rampBrightnessDown();
     void gatePeripherals();
     void definePads();
-    void armWakeSource();
+    bool armWakeSource();   // true = PWR button armed, false = stuck-button timer
+    void armGlanceWake();
     void initWatchdog();
 
     bool chargingNow() const { return _battery != nullptr && _battery->charging(); }
@@ -201,6 +207,8 @@ private:
     uint32_t _wake_ms = 0;          // start of this awake session (the ceiling's origin)
     bool _was_charging = false;     // for the unplug edge (grants a fresh display window)
     bool _wdt_armed = false;
+    bool _protective_sleep = false;
+    bool _no_pmu_logged = false;   // low-battery sleep: PWR button only, no glance wake
 
     // PWR button state line (SYS_OUT) — RTC-capable, ACTIVE-HIGH (high = pressed), the
     // deep-sleep wake source (ext1 ANY_HIGH). Touch cannot wake from deep sleep on this board: the FT3168 INT is GPIO38, not an RTC pin. The same key is the AXP2101 power

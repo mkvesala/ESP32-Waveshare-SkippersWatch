@@ -168,6 +168,32 @@ void PmuRails::imuPowerDown() {
     _imu_fails = (int8_t)fails;
 }
 
+bool PmuRails::imuGlanceMode() {
+    if (_wire == nullptr) return false;
+    if (!this->writeReg(QMI8658_ADDR, QMI_REG_RESET, QMI_RESET_CMD)) return false;
+    bool reset_done = false;
+    for (int i = 0; i < 50 && !reset_done; i++) {   // up to 500 ms
+        delay(10);
+        uint8_t r = 0;
+        reset_done = this->readReg(QMI8658_ADDR, QMI_REG_RST_RESULT, r) && r == QMI_RST_DONE;
+    }
+    uint8_t ctrl1 = 0;
+    if (!reset_done || !this->readReg(QMI8658_ADDR, QMI_REG_CTRL1, ctrl1)) return false;
+    bool ok = this->writeReg(QMI8658_ADDR, QMI_REG_CTRL1, ctrl1 | QMI_CTRL1_ADDR_AI);
+    ok &= this->writeReg(QMI8658_ADDR, QMI_REG_CTRL7, 0x00);
+    ok &= this->writeReg(QMI8658_ADDR, QMI_REG_CTRL2, QMI_CTRL2_GLANCE);
+    ok &= this->writeReg(QMI8658_ADDR, QMI_REG_CTRL7, QMI_CTRL7_ACCEL);
+    if (!ok) return false;
+    // Reconfiguring before the first sample lands leaves the accelerometer reading zero
+    // (chipguyhere), so wait for data-ready
+    for (int i = 0; i < 60; i++) {   // up to 300 ms
+        delay(5);
+        uint8_t st = 0;
+        if (this->readReg(QMI8658_ADDR, QMI_REG_STATUS0, st) && (st & 0x01)) return true;
+    }
+    return false;
+}
+
 bool PmuRails::probe(uint8_t addr) const {
     _wire->beginTransmission(addr);
     return _wire->endTransmission() == 0;

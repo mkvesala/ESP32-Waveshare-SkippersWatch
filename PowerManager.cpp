@@ -2,6 +2,7 @@
 #include "PmuRails.h"
 #include "SystemStats.h"
 #include "ESPNowReceiver.h"
+#include "GlanceWake.h"
 #include <driver/gpio.h>
 #include <driver/rtc_io.h>
 #include <esp_task_wdt.h>
@@ -52,6 +53,7 @@ void PowerManager::begin(esp_sleep_wakeup_cause_t cause) {
     switch (cause) {
         case ESP_SLEEP_WAKEUP_EXT1:  Serial.println("[power] wake: button");   break;
         case ESP_SLEEP_WAKEUP_TIMER: Serial.println("[power] wake: timer");    break;
+        case ESP_SLEEP_WAKEUP_ULP:   Serial.println("[power] wake: glance");   break;
         default:                     Serial.println("[power] cold boot");      break;
     }
 
@@ -91,7 +93,17 @@ void PowerManager::loop(uint32_t now) {
 
     // On external power: never time out, never apply the awake ceiling. The panel is
     // dimmed instead (see brightnessCeiling()), so a docked watch stays readable.
-    if (charging && STAY_AWAKE_ON_USB) return;
+    // Only when the PMIC actually confirmed it: without a PMIC (dead I2C bus at boot,
+    // seen once with the glance wake) charging() is a fail-safe guess, and trusting it
+    // here kept the watch awake on battery until the cell was flat. The timeout and the
+    // ceiling below stay armed instead.
+    if (charging && STAY_AWAKE_ON_USB) {
+        if (_battery->pmuPresent()) return;
+        if (!_no_pmu_logged) {
+            Serial.println("[power] no PMIC: power source unknown -> battery timeouts stay armed");
+            _no_pmu_logged = true;
+        }
+    }
 
     // Absolute ceiling: fires regardless of how often notifyActivity() was called, so a
     // stuck input source cannot hold the board at active current until the cell is flat. This
@@ -122,6 +134,7 @@ void PowerManager::loop(uint32_t now) {
 // to wake at all would read as a bricked watch.
 void PowerManager::enterProtectiveSleep() {
     Serial.println("[power] LOW BATTERY -> protective sleep");
+    _protective_sleep = true;
     _state = PowerState::SLEEP_PREP;
     this->enterDeepSleep();   // does not return
 }
@@ -180,7 +193,11 @@ void PowerManager::enterDeepSleep(bool ramp_brightness) {
 
     if (ramp_brightness) this->rampBrightnessDown();  // soft-shed the panel first
     this->gatePeripherals();     // panel + touch asleep, reset/amp lines latched
-    this->armWakeSource();       // PWR button (GPIO10), or a timer if it is held
+    const bool button_armed = this->armWakeSource();   // PWR (GPIO10), or a timer if held
+    // Glance wake last: armWakeSource() clears every wake source, and from arm() on the
+    // ULP owns the I2C bus. Not for a held button (the timer recheck must stay cheap) or
+    // the low-battery sleep.
+    if (GLANCE_WAKE && button_armed && !_protective_sleep) this->armGlanceWake();
 
     esp_deep_sleep_start();       // full power-down; next wake re-runs setup()
 }
@@ -262,7 +279,7 @@ void PowerManager::definePads() {
 // current that would empty the cell in a few hours. So if the button is held, arm a
 // timer instead and let handleTimerRecheck() look again in 30 s without lighting the
 // watch up. Each recheck is a few hundred ms at boot current.
-void PowerManager::armWakeSource() {
+bool PowerManager::armWakeSource() {
     // Wake sources are cumulative within one boot — clear before arming so a timer
     // recheck can never leave a stale timer source alongside a freshly armed ext1.
     esp_sleep_disable_wakeup_source(ESP_SLEEP_WAKEUP_ALL);
@@ -274,7 +291,7 @@ void PowerManager::armWakeSource() {
         Serial.println("[power] arm: wake button held -> timer recheck in 30 s");
         Serial.flush();
         esp_sleep_enable_timer_wakeup(STUCK_BUTTON_RECHECK_US);
-        return;
+        return false;
     }
 
     esp_sleep_disable_ext1_wakeup_io(0);   // drop any earlier ext1 pin set
@@ -282,6 +299,21 @@ void PowerManager::armWakeSource() {
     // would keep on. No internal pull (it would not survive that domain anyway):
     // T1 holds SYS_OUT low at rest and R11 pulls it high on a press.
     esp_sleep_enable_ext1_wakeup_io(1ULL << WAKE_BUTTON_PIN, ESP_EXT1_WAKEUP_ANY_HIGH);
+    return true;
+}
+
+// IMU into accel-only low power, then hand the bus to the ULP. Needs the rails (and so
+// the bus) attached, which the timer-recheck path never has. A failure leaves the
+// PWR-button wake armed alone, which is the pre-glance behaviour.
+void PowerManager::armGlanceWake() {
+    if (_rails == nullptr || _rails->wire() == nullptr) return;
+    if (!_rails->imuGlanceMode()) {
+        Serial.println("[power] glance: IMU set-up failed -> PWR button only");
+        return;
+    }
+    if (!GlanceWake::arm(*_rails->wire())) {
+        Serial.println("[power] glance: ULP program failed -> PWR button only");
+    }
 }
 
 // Subscribe the Arduino loop task to the task watchdog. The awake ceiling only fires
