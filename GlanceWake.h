@@ -46,13 +46,16 @@ public:
 
 private:
 
-    // Fixed pose for now (no teach UI yet): face 45 degrees up from flat toward +X,
-    // +-350 mg on every axis. chipguyhere's README-orientation default; a pose taught
-    // by eye on his unit came out at X +0.73, Y +0.05, Z -0.70 g. Face-up is -Z.
-    static constexpr int POSE_X_MG = 707;
+    // Fixed pose (no teach UI): face tilted 30 degrees from flat toward +X, +-300 mg on
+    // every axis. Face-up is -Z. chipguyhere's default was 45 degrees +-350 mg; our
+    // bench and wrist wakes (2026-11-16) came out at 20-34 degrees: X +343..+593,
+    // Y -31..+187, Z -781..-1000 mg, with the left and the right wrist on the same side
+    // of X, so one pose serves both hands. The window X ~+200..+800 mg (~12-53 degrees)
+    // keeps a watch lying flat (X ~0) outside it.
+    static constexpr int POSE_X_MG = 500;
     static constexpr int POSE_Y_MG = 0;
-    static constexpr int POSE_Z_MG = -707;
-    static constexpr int TOLERANCE_MG = 350;
+    static constexpr int POSE_Z_MG = -870;
+    static constexpr int TOLERANCE_MG = 300;
     static constexpr int DWELL = 2;               // consecutive in-window samples
     static constexpr uint32_t PERIOD_MS = 200;    // ULP sample period (~0.4 s hold)
 
