@@ -100,6 +100,53 @@ bool GlanceWake::arm(TwoWire& wire) {
     return true;
 }
 
+// Bench diagnostic, awake: run the sleep-time program for ~1 s with the CPU watching the
+// bus between runs. The question it answers: does SDA stay LOW after a run (a slave left
+// mid-byte), which in deep sleep would draw ~1.5 mA through the 2.2k pull-up for the
+// whole night? Samples the SDA pad every 2 ms; a run is well under 1 ms, so nearly every
+// sample falls in the idle gap between runs.
+void GlanceWake::selfTest(TwoWire& wire) {
+    amoled206_orient_params_t prm = {};
+    for (int i = 0; i < 3; i++) { prm.lo[i] = 0; prm.hi[i] = 255; }   // window: anything
+    prm.dwell = 100;          // never reached in a 1 s test
+    prm.wake_enabled = 0;
+    prm.require_exit = 0;
+    for (int w = AMOLED206_ORIENT_DATA_BASE; w < 128; w++) RTC_SLOW_MEM[w] = 0;
+    const int words = amoled206_orient_ulp_build(&prm);
+    if (words <= 0 || amoled206_orient_ulp_load() != 0) {
+        Serial.printf("[glance] self-test: build/load failed (%d)\n", words);
+        return;
+    }
+
+    wire.end();
+    const gpio_num_t pins[2] = { (gpio_num_t)PIN_SCL, (gpio_num_t)PIN_SDA };
+    for (gpio_num_t p : pins) {
+        rtc_gpio_init(p);
+        rtc_gpio_set_level(p, 0);
+        rtc_gpio_set_direction(p, RTC_GPIO_MODE_INPUT_ONLY);
+        rtc_gpio_pullup_dis(p);
+        rtc_gpio_pulldown_dis(p);
+    }
+    s_armed = true;
+    amoled206_orient_ulp_start(PERIOD_MS * 1000u);
+
+    uint16_t samples = 0, sda_low = 0;
+    const uint32_t t0 = millis();
+    while (millis() - t0 < 1000) {
+        if (rtc_gpio_get_level((gpio_num_t)PIN_SDA) == 0) sda_low++;
+        samples++;
+        delay(2);
+    }
+    reclaimBus();             // stops the ULP, captures runs and sample, recovers the bus
+    wire.begin(PIN_SDA, PIN_SCL);
+
+    Serial.printf("[glance] self-test: %d words, %u runs, SDA low in %u of %u idle samples, "
+                  "last sample X %d Y %d Z %d mg\n",
+                  words, s_runs, sda_low, samples, s_x, s_y, s_z);
+    Serial.printf("[glance] self-test: bus at reclaim: SDA %s, %u recovery clocks\n",
+                  s_sda_was_low ? "LOW" : "high", s_clocks);
+}
+
 bool GlanceWake::wokeByGlance() {
     return esp_sleep_get_wakeup_cause() == ESP_SLEEP_WAKEUP_ULP;
 }

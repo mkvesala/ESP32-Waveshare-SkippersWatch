@@ -1,6 +1,15 @@
-// Vendored unchanged from chipguyhere/ESP32-S3-Touch-AMOLED-2.06_board
+// Vendored from chipguyhere/ESP32-S3-Touch-AMOLED-2.06_board
 // src/amoled206_orient_ulp.c @ 2f3fd06 (read 2026-11-16).
 // Copyright (c) 2026 chipguyhere, MIT License. Our wrapper: GlanceWake.
+//
+// LOCAL CHANGE (2026-11-17, Skipper's Watch): the 9-clock bus recovery moved from the
+// START of each run to the END, just before HALT, on every exit path. On our board the
+// QMI8658 holds SDA low after every run (GlanceWake::selfTest(): SDA low in 499 of 500
+// samples between runs, 7-8 clocks to free it), so SDA sat low for the whole 200 ms idle
+// gap, ~1.5 mA through the 2.2k pull-up all night (overnight test: 7.4 mA against ~5.3 mA
+// without the glance wake). Recovering at the end leaves the bus released between runs;
+// a run cut short by sleep entry is still cleaned up by the next run's end. Costs one
+// instruction (R2 must now be zeroed explicitly). Search "LOCAL CHANGE" for the diff.
 //
 // amoled206_orient_ulp.c -- the ULP-FSM program behind
 // AMOLED206_OrientationWatch: watch the QMI8658 accelerometer while the
@@ -26,7 +35,7 @@
 // ---------------------------------------------------------------------------
 // What one run does (the ULP timer restarts it every period)
 // ---------------------------------------------------------------------------
-//   1. I2C bus recovery: 9 SCL clocks with SDA released, then STOP
+//   1. (LOCAL CHANGE: the I2C bus recovery runs at the END now, see the top)
 //   2. count the run (ORIENT_RUNS)
 //   3. START, 0x6B+W, register 0x35 (AX_L), repeated START, 0x6B+R
 //   4. read 6 bytes (AX..AZ, little endian), ACK 5 / NACK the last, STOP;
@@ -142,18 +151,11 @@ int amoled206_orient_ulp_build(const amoled206_orient_params_t *p) {
     // slave left mid-byte -- which happens when deep-sleep entry cuts a ULP
     // transaction short (seen on the bench: SDA stuck low, every later read
     // ~0).  Harmless when nothing is stuck.
-    E((ulp_insn_t)SDA_HI);
-    E((ulp_insn_t)I_MOVI(R2, 9));
-    LABEL(L_CLR);
-    E((ulp_insn_t)SCL_LO); DLY(d); E((ulp_insn_t)SCL_HI); DLY(d);
-    E((ulp_insn_t)I_SUBI(R2, R2, 1));
-    BXZ(L_CLRDONE);
-    BX(L_CLR);
-    LABEL(L_CLRDONE);
-    E((ulp_insn_t)SCL_LO); E((ulp_insn_t)SDA_LO); E((ulp_insn_t)SCL_HI); E((ulp_insn_t)SDA_HI);
+    // LOCAL CHANGE: the recovery block itself moved to L_DONE below.
+    E((ulp_insn_t)I_MOVI(R2, 0));
 
-    // Count the run.  R2 is 0 here (the recovery loop counted it down), and
-    // stays 0 as the base register for every data word below.
+    // Count the run.  R2 is 0 here (LOCAL CHANGE: zeroed above, no longer by
+    // the recovery loop), and stays 0 as the base register for every data word below.
     E((ulp_insn_t)I_LD(R0, R2, AMOLED206_ORIENT_RUNS));
     E((ulp_insn_t)I_ADDI(R0, R0, 1));
     E((ulp_insn_t)I_ST(R0, R2, AMOLED206_ORIENT_RUNS));
@@ -219,6 +221,16 @@ int amoled206_orient_ulp_build(const amoled206_orient_params_t *p) {
     LABEL(L_ERR);                                  // NACK: STOP, count the error
     E((ulp_insn_t)SDA_LO); E((ulp_insn_t)SCL_HI); DLY(d); E((ulp_insn_t)SDA_HI);
     LABEL(L_DONE);
+    // LOCAL CHANGE: bus recovery at the end of every run (was at the start)
+    E((ulp_insn_t)SDA_HI);
+    E((ulp_insn_t)I_MOVI(R2, 9));
+    LABEL(L_CLR);
+    E((ulp_insn_t)SCL_LO); DLY(d); E((ulp_insn_t)SCL_HI); DLY(d);
+    E((ulp_insn_t)I_SUBI(R2, R2, 1));
+    BXZ(L_CLRDONE);
+    BX(L_CLR);
+    LABEL(L_CLRDONE);
+    E((ulp_insn_t)SCL_LO); E((ulp_insn_t)SDA_LO); E((ulp_insn_t)SCL_HI); E((ulp_insn_t)SDA_HI);
     E((ulp_insn_t)I_HALT());
 
     // ---- SEND: byte in R1, MSB first; returns ACK bit in R0 (0 = ACK) -------

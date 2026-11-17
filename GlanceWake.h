@@ -38,6 +38,10 @@ public:
     // program did not fit or load.
     static bool arm(TwoWire& wire);
 
+    // Bench diagnostic over Serial: run the program awake for ~1 s and report whether SDA
+    // stays low between runs. The IMU must be in glance mode first. Leaves the bus with Wire.
+    static void selfTest(TwoWire& wire);
+
     // True if this boot is a glance wake
     static bool wokeByGlance();
 

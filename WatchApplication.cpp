@@ -250,9 +250,16 @@ void WatchApplication::loop() {
 
     // Rail dump once per USB session, after the host has had time to open the port. Any
     // byte received on Serial repeats it: lines written before the host reads get dropped.
+    // 't' runs the GlanceWake bench self-test instead.
     if (Serial.available() > 0) {
-        while (Serial.available() > 0) Serial.read();
-        _rails_logged = false;
+        bool self_test = false;
+        while (Serial.available() > 0) self_test |= (Serial.read() == 't');
+        if (self_test) {
+            if (_rails.imuGlanceMode()) GlanceWake::selfTest(Wire);
+            else Serial.println("[glance] self-test: IMU set-up failed");
+        } else {
+            _rails_logged = false;
+        }
     }
     if (!_battery.charging()) {
         _rails_logged = false;

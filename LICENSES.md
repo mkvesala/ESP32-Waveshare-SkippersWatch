@@ -48,7 +48,8 @@ This project uses the following open-source libraries:
 - **Source:** `src/amoled206_orient_ulp.c/.h` from [chipguyhere/ESP32-S3-Touch-AMOLED-2.06_board](https://github.com/chipguyhere/ESP32-S3-Touch-AMOLED-2.06_board), commit 2f3fd06
 - **Author:** chipguyhere
 - **License:** MIT
-- **File:** `amoled206_orient_ulp.c/.h` in this repository, unchanged apart from a provenance header. Our own wrapper around it is `GlanceWake.h/.cpp`
+- **File:** `amoled206_orient_ulp.c/.h` in this repository. Our own wrapper around it is `GlanceWake.h/.cpp`
+- **Local change:** the I2C bus recovery moved from the start of each ULP run to its end (marked `LOCAL CHANGE` in the source), because on this board the QMI8658 otherwise held SDA low between runs
 
 ## AXS5106L touch driver (local)
 - **Source:** adapted from Elecrow's Lesson03 example for this board
