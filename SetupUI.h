@@ -9,13 +9,14 @@
 
 // === C L A S S  S E T U P U I ===
 //
-// - Setup page adapter, TOUCH-ONLY. Five controls:
+// - Setup page adapter, TOUCH-ONLY. Six controls:
 //     * ui_SliderBrightness    — drag to set panel brightness
 //     * ui_SliderWaketime      — drag to set the wake time (display-on window, 2..20 s);
 //                                disabled while prevent sleep is on (no timeout to set)
 //     * ui_SwitchPreventSleep  — tap to keep the watch awake on battery
 //     * ui_SwitchDemoMode      — tap to show recorded demo data instead of ESP-NOW data
 //     * ui_SwitchNightMode     — tap to draw the whole UI in red
+//     * ui_SwitchRaiseToWake   — tap to let the glance pose wake the watch (GlanceWake)
 // - All settings persist to NVS (namespace "display")
 // - Brightness reaches the AMOLED through PanelBrightness (a panel command, 0..255);
 //   there is no backlight LED on this board.
@@ -57,6 +58,10 @@ public:
     uint32_t waketimeMs() const { return (uint32_t)_waketime_s * 1000UL; }
 
     bool demoMode() const  { return _demo_mode; }
+    // Raise to wake: read every loop by the app and handed to PowerManager, which decides
+    // at sleep entry whether GlanceWake is armed (never for the low-battery sleep, and not
+    // while its brake is on)
+    bool raiseToWake() const { return _raise_to_wake; }
     bool nightMode() const { return _night_mode; }
 
     // Touch: the only way this page is operated. interceptsTouchAt() claims a touch-down
@@ -71,7 +76,8 @@ private:
 
     // Which control the in-flight touch was claimed for
     enum class TouchTarget {
-        NONE, SLIDER_BRIGHTNESS, SLIDER_WAKETIME, SWITCH_PREVENT, SWITCH_DEMO, SWITCH_NIGHT
+        NONE, SLIDER_BRIGHTNESS, SLIDER_WAKETIME, SWITCH_PREVENT, SWITCH_DEMO, SWITCH_NIGHT,
+        SWITCH_RAISE
     };
 
     bool _initialized = false;
@@ -83,6 +89,7 @@ private:
     bool _prevent_sleep = false;
     bool _demo_mode = false;
     bool _night_mode = false;
+    bool _raise_to_wake = false;
     PanelBrightness& _brightness;
 
     void applyBrightness();
@@ -100,7 +107,7 @@ private:
     bool waketimeEnabled() const { return !_prevent_sleep; }
 
     // Paint every widget this page owns from the current state and palette: slider
-    // tracks/indicators/knobs (rest, dragging, disabled) and the three switches.
+    // tracks/indicators/knobs (rest, dragging, disabled) and the four switches.
     void applyVisuals();
     void styleSlider(lv_obj_t* slider, bool active, bool enabled);
     void styleSwitch(lv_obj_t* sw, bool checked);
@@ -122,7 +129,7 @@ private:
     static constexpr uint32_t ADJUST_ACCENT = 0xFF9800;  // amber (dragging)
     static constexpr uint32_t SLIDER_OFF    = 0x444444;  // dark grey (disabled)
 
-    // Switch colors, shared by all three switches. Knob carries the bright hue, the track
+    // Switch colors, shared by all four switches. Knob carries the bright hue, the track
     // the darker shade of the same hue. Red/green match the battery bar buckets in
     // BatteryMonitor, so the whole UI shares one palette. Night mode has its own explicit
     // table: off/on must stay distinguishable when hue is gone, so it is done by brightness.
@@ -154,6 +161,7 @@ private:
     static constexpr const char* NVS_KEY_WAKETIME = "waketime";
     static constexpr const char* NVS_KEY_DEMO = "demo";
     static constexpr const char* NVS_KEY_NIGHT = "night";
+    static constexpr const char* NVS_KEY_RAISE = "raisewake";
     static constexpr int8_t DEFAULT_BRIGHTNESS_PERCENT = 20;  // ~51/255 — readable in
                                                              // daylight, low continuous draw
                                                              // (AMOLED draw vs level: [M]).

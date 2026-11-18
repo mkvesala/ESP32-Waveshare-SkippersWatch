@@ -277,6 +277,7 @@ void WatchApplication::loop() {
     // whether they may be honoured as such (the low-charge ladder overrides both).
     _power.setPreventSleep(_setupUI.preventSleep());
     _power.setDisplayTimeout(_setupUI.waketimeMs());
+    _power.setRaiseToWake(_setupUI.raiseToWake());
 
     // Backlight clamp for the current power state: low-charge ladder on battery, idle
     // dim in either stay-awake mode. No-ops unless the ceiling actually moved.

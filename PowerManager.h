@@ -100,6 +100,13 @@ public:
     // ladder may shorten it further — see displayTimeoutMs().
     void setDisplayTimeout(uint32_t ms) { _user_timeout_ms = ms; }
 
+    // User's "Raise to wake" choice (SetupUI switch), pushed in every loop by the app.
+    // true = sleep entry also arms GlanceWake, the ULP that wakes the watch when it is
+    // held in the glance pose. Never armed for the protective (low-battery) sleep, for
+    // the stuck-button timer, or while the glance brake is on. Kept in RTC memory, so a
+    // sleep entered before the app pushes it (the stuck-button recheck) still knows it.
+    void setRaiseToWake(bool on);
+
     // Call once at end of app.begin(); records why we woke, starts the idle timer and
     // the awake ceiling, and subscribes the Arduino loop task to the task watchdog
     void begin(esp_sleep_wakeup_cause_t cause);
@@ -150,10 +157,6 @@ public:
     // holds only the LCD and touch reset lines. false = match that.
     static constexpr bool SLEEP_DEFINE_PADS = false;
 
-    // Raise-to-wake prototype (2026-11, bench only): true = also arm GlanceWake, the ULP
-    // that wakes the watch when it is held in the glance pose. Never armed for the
-    // protective (low-battery) sleep or the stuck-button timer recheck.
-    static constexpr bool GLANCE_WAKE = true;
     // Brake: after this many glance wakes in a row that end without a touch, the next
     // sleep is armed on the PWR button only, and a PWR wake re-enables the glance wake.
     // Covers a watch lying at the edge of the pose on a rocking boat, which would

@@ -17,7 +17,7 @@
 //   so a watch put down face-up does not wake, time out and wake again.
 // - Cost: +80 uA over the floor at 5 Hz (chipguyhere, PPK2). That is below what our
 //   gauge can resolve. What matters for the budget is how often it wakes for nothing.
-// - Mechanism only. PowerManager decides whether to arm it (PowerManager::GLANCE_WAKE).
+// - Mechanism only. PowerManager decides whether to arm it (the Setup switch "Raise to wake", via PowerManager::setRaiseToWake()).
 // - Contract: arm() is the LAST thing before esp_deep_sleep_start(). From there on the
 //   ULP owns the I2C pins. reclaimBus() must run FIRST on every boot, before anything
 //   touches the bus.

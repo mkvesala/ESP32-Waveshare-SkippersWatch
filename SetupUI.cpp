@@ -28,6 +28,7 @@ void SetupUI::begin() {
     _prevent_sleep = loadBool(NVS_KEY_PREVENT_SLEEP, false);
     _demo_mode     = loadBool(NVS_KEY_DEMO, false);
     _night_mode    = loadBool(NVS_KEY_NIGHT, false);
+    _raise_to_wake = loadBool(NVS_KEY_RAISE, false);
 
     // Do NOT light the backlight here — the panel stays dark through init/first
     // render; the app calls rampBacklightUp() afterwards (staggered wake).
@@ -71,6 +72,7 @@ bool SetupUI::interceptsTouchAt(int16_t x, int16_t y) {
     if      (hitsSwitch(ui_SwitchPreventSleep, x, y)) _touch_target = TouchTarget::SWITCH_PREVENT;
     else if (hitsSwitch(ui_SwitchDemoMode, x, y))     _touch_target = TouchTarget::SWITCH_DEMO;
     else if (hitsSwitch(ui_SwitchNightMode, x, y))    _touch_target = TouchTarget::SWITCH_NIGHT;
+    else if (hitsSwitch(ui_SwitchRaiseToWake, x, y))  _touch_target = TouchTarget::SWITCH_RAISE;
     else if (hitsSlider(ui_SliderBrightness, x, y))   _touch_target = TouchTarget::SLIDER_BRIGHTNESS;
     else if (this->waketimeEnabled() && hitsSlider(ui_SliderWaketime, x, y))
                                                       _touch_target = TouchTarget::SLIDER_WAKETIME;
@@ -147,6 +149,12 @@ void SetupUI::onTouchEnd() {
             Serial.printf("[setup] night mode %s\n", _night_mode ? "ON" : "OFF");
             break;
 
+        case TouchTarget::SWITCH_RAISE:
+            _raise_to_wake = !_raise_to_wake;
+            saveBool(NVS_KEY_RAISE, _raise_to_wake);
+            Serial.printf("[setup] raise to wake %s\n", _raise_to_wake ? "ON" : "OFF");
+            break;
+
         default:
             break;
     }
@@ -198,6 +206,7 @@ void SetupUI::applyVisuals() {
     this->styleSwitch(ui_SwitchPreventSleep, _prevent_sleep);
     this->styleSwitch(ui_SwitchDemoMode, _demo_mode);
     this->styleSwitch(ui_SwitchNightMode, _night_mode);
+    this->styleSwitch(ui_SwitchRaiseToWake, _raise_to_wake);
 }
 
 // Slider look, code-owned (overrides the SquareLine colors): track, then indicator + knob

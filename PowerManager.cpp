@@ -10,6 +10,8 @@
 // Glance wakes in a row that ended without a touch (see GLANCE_IDLE_LIMIT). RTC_DATA_ATTR:
 // survives deep sleep; any other reset starts it over at 0, glance wake enabled.
 RTC_DATA_ATTR static uint8_t s_glance_idle_streak = 0;
+// User's raise-to-wake choice, as last pushed by the app (see setRaiseToWake())
+RTC_DATA_ATTR static bool s_raise_to_wake = false;
 
 // === P U B L I C ===
 
@@ -73,6 +75,10 @@ void PowerManager::begin(esp_sleep_wakeup_cause_t cause) {
     // dark ESP-NOW listen window and the brightness ramp all run before this, so none of
     // them has to feed the watchdog.
     this->initWatchdog();
+}
+
+void PowerManager::setRaiseToWake(bool on) {
+    s_raise_to_wake = on;
 }
 
 void PowerManager::notifyActivity() {
@@ -205,7 +211,7 @@ void PowerManager::enterDeepSleep(bool ramp_brightness) {
     // Glance wake last: armWakeSource() clears every wake source, and from arm() on the
     // ULP owns the I2C bus. Not for a held button (the timer recheck must stay cheap) or
     // the low-battery sleep.
-    if (GLANCE_WAKE && button_armed && !_protective_sleep && this->glanceAllowed())
+    if (s_raise_to_wake && button_armed && !_protective_sleep && this->glanceAllowed())
         this->armGlanceWake();
 
     esp_deep_sleep_start();       // full power-down; next wake re-runs setup()
