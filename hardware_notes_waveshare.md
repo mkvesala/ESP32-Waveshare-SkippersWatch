@@ -180,7 +180,8 @@ Update the marks as the port progresses.
 |---|---|---|---|---|
 | PWR button | 10 | yes [D] | high = pressed | **in use** (ext1 ANY_HIGH), replaces encoder button GPIO18 |
 | BOOT button | 0 | yes [D] | low = pressed | secondary |
-| IMU INT1 | 21 | yes [D] | set in QMI8658 | wrist-raise, if ever wanted |
+| IMU INT1 | 21 | yes [D] | set in QMI8658 | not used: its motion interrupt wakes on every arm swing |
+| ULP | — (reads I2C on 14/15) | — | — | **in use** when Setup's Raise to wake is on: the ULP-FSM reads the QMI8658 and wakes on the glance pose. See "Raise to wake" below |
 | Timer | — | — | — | stuck-button recheck |
 | Touch INT | 38 | **no** | — | light sleep only |
 | RTC INT | 39 | **no** | — | light sleep only |
@@ -193,6 +194,52 @@ Update the marks as the port progresses.
   applies. [D]
 - Alternative resting state: AXP2101 `shutdown()` (full power-off, PWR button cold
   boots). No timer wake, RTC memory lost. Floor current vs. deep sleep: [M]
+
+## Raise to wake — ULP orientation wake (2026-11)
+
+Source: chipguyhere's `src/amoled206_orient_ulp.c` from
+[ESP32-S3-Touch-AMOLED-2.06_board](https://github.com/chipguyhere/ESP32-S3-Touch-AMOLED-2.06_board)
+@ 2f3fd06 (MIT), vendored with one local change. Our wrapper is `GlanceWake`; arming is
+`PowerManager`'s, behind the Setup switch.
+
+- **Core support** [V]: core 3.3.12 has `CONFIG_ULP_COPROC_ENABLED`, `..._TYPE_FSM` and
+  `..._RESERVE_MEM` = 512. No ULP toolchain in the Arduino core, so the program is built at
+  run time from the `ulp.h` macros: 120 of 121 program words, data words 121–127. The
+  linker places `RTC_DATA_ATTR` variables from 0x50000200, after the reserved area [V].
+- **One run** (every 200 ms): bit-banged I2C on GPIO14/15 (RTC pins, open drain, the
+  board's 2.2 kΩ pull-ups), 6 bytes from QMI8658 0x6B register 0x35, high bytes kept
+  (1/32 g at ±4 g), window test per axis, wake after 2 in-window samples once
+  `RTC_CNTL_RDY_FOR_WAKEUP` is set. Exit-first after arming.
+- **IMU for glance mode** [V]: soft reset (0x60 ← 0xB0, wait for 0x4D = 0x80), CTRL1 |=
+  0x40 (address auto-increment), CTRL7 = 0, CTRL2 = 0x1D (±4 g, low-power 21 Hz),
+  CTRL7 = 0x01, wait for STATUS0 (0x2E) bit 0. `PmuRails::imuGlanceMode()`, the last bus
+  traffic before arming. The next wake's `beginAwake()` switches the IMU off again.
+- **Arming**: `Wire.end()`, both pins `rtc_gpio_init`, level 0, input only, no pulls,
+  `gpio_sleep_sel_dis()`; `ulp_set_wakeup_period` + `ulp_run`, `esp_sleep_enable_ulp_wakeup()`,
+  RTC_PERIPH kept on. Armed after `armWakeSource()` (which clears all wake sources), never
+  for the protective sleep or the stuck-button timer.
+- **Reclaim, first thing on every boot** [V]: `ulp_timer_stop`, 2 ms, program overwritten
+  with `HALT` (stopping the timer does not stop a run that is spinning on the wake
+  handshake), `rtc_gpio_deinit` on both pins, then a digital 9-clock recovery + STOP
+  before `Wire.begin()`. Without it the bus was dead after a glance wake: no PMIC, so the
+  battery bar showed USB and the watch never slept (since then a missing PMIC no longer
+  suspends the timeouts).
+- **SDA held low between runs** [V, 2026-11-17]: the QMI8658 kept SDA low after every ULP
+  read, until the next run's recovery 200 ms later. `GlanceWake::selfTest()` (`t` on
+  Serial): SDA low in 499 of 500 samples between runs, 7–8 clocks to free it. Cause not
+  pinned down; the most likely is the final NACK being seen as an ACK. Through the 2.2 kΩ
+  pull-up that is ~1.5 mA all night. **Local change**: the recovery (9 clocks + STOP) moved
+  from the start of each run to its end, before `HALT`, on every exit path. After it: 0 of
+  500, and 0 clocks needed at reclaim.
+- **Pose** [M → measured]: raises came out at 20–34° (X +343…+593, Y −31…+187, Z −781…
+  −1000 mg), the left and right wrist with X on the same side. chipguyhere's 45° default
+  woke only at its edge, so the window is X +500, Y 0, Z −870 mg, ±300 mg (about 12–53°).
+  Bench: 10/10 raises woke it; face up on a table for 10 min it did not.
+- **Glance brake**: 3 wakes in a row without a touch → PWR only until a PWR wake.
+  A watch at the edge of the pose on a rocking boat is the case it covers.
+- **Floor** (gauge, overnight from 100 %): with the SDA bug 7.4 mA over 13 h; after the
+  fix 4.8 mA over 11 h, against test I's 5.7 mA over 10.5 h. Nothing measurable, which
+  fits chipguyhere's +80 µA (PPK2). 0 unwanted wakes on both nights.
 
 ## Libraries (as shipped in the vendor repo, `examples/arduino/libraries`) [V]
 | Library | Version in repo |

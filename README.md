@@ -31,7 +31,7 @@ Receives via ESP-NOW broadcast:
 - Temperature, air pressure and relative humidity from [BME280-ESP32-SignalK-gateway](https://github.com/mkvesala/BME280-ESP32-SignalK-gateway)
 - Engine exhaust temperature, oil pressure, fuel tank and fresh-water tank levels from [HALMET-ESP32-SignalK-gateway](https://github.com/mkvesala/HALMET-ESP32-SignalK-gateway)
 
-Values are shown on an LVGL UI. Interaction is by **capacitive touch**: swipe left / right through the screens, swipe down for a page menu, swipe up for a status screen, tap and slider drag. The **PWR button** wakes the watch from deep sleep (see [Input](#input)).
+Values are shown on an LVGL UI. Interaction is by **capacitive touch**: swipe left / right through the screens, swipe down for a page menu, swipe up for a status screen, tap and slider drag. The **PWR button** wakes the watch from deep sleep, and so does lifting it to look at it when **Raise to wake** is on (see [Input](#input) and [Raise to wake](#raise-to-wake)).
 
 Screens (carousel, plus a page menu for direct access):
 - **Navigation** — POS (lat/lon), true heading (HDG), COG, SOG, depth below surface (DPT)
@@ -40,7 +40,7 @@ Screens (carousel, plus a page menu for direct access):
 - **Engine** — exhaust temperature, oil pressure (bar), fuel and fresh-water tank litres
 - **Attitude** — artificial horizon with pitch and roll
 - **Clock** — local date + weekday, local and UTC time (GNSS-disciplined, no RTC chip, no NTP)
-- **Setup** — display brightness, wake time, prevent sleep, demo mode and night mode, all persisted to NVS
+- **Setup** — display brightness, wake time, prevent sleep, demo mode, night mode and raise to wake, all persisted to NVS
 - **Celestial** — computed altitude and azimuth (Hc, Zn) of the Sun, Moon and twilight bodies for sextant practice, with UTC time, pressure, temperature and position
 - **Chart** — Traficom's nautical chart from a microSD card, north up or bow-up (double tap), with the boat, heading, COG vector and a 0.25 NM range ring on top
 
@@ -71,6 +71,8 @@ This is one of my individual digital boat projects. Use at your own risk. Not fo
 
 ## Project status
 
+**Version 2.4.0** (2026-11-18) — [raise to wake](#raise-to-wake): with the new Setup switch on, lifting the watch to look at it wakes it, read by the ULP coprocessor through deep sleep, at no measurable cost to the sleep floor. See [CHANGELOG.md](CHANGELOG.md).
+
 **Version 2.3.1** (2026-11-14) — deep-sleep floor down to about 3.3 mA: the audio codecs are left at their power-up defaults. After updating, hold PWR ~6 s once. See [Power management](#power-management).
 
 **Version 2.3.0** (2026-11-08) — bow-up on the [Chart screen](#chart-screen) (double tap), oil pressure on the [Engine screen](#engine-screen) and redrawn menu icons. Tested at home in demo mode and against last summer's recorded boat data sent over ESP-NOW, not yet on the boat. See [CHANGELOG.md](CHANGELOG.md).
@@ -94,8 +96,8 @@ Adds the [Celestial screen](#celestial-screen) and brings the deep-sleep floor d
 - Responsible for: orchestrating everything within the main program, including the staggered wake sequence (with the startup screen on a true power-on), gesture dispatch (carousel and page menu), GNSS time discipline and applying Setup's demo and night switches
 
 **`PowerManager`:**
-- Uses: `BatteryMonitor` (read-only, for the low-charge ladder and the USB stay-awake rule), `PanelBrightness`, `TouchInput` (hibernate) and the panel (sleep) at sleep entry
-- Responsible for: Model B deep-sleep power ownership — display-on timeout, putting the panel and touch to sleep + GPIO holds on sleep entry, PWR-button wake arming — and for all policy that can force a sleep decision: the absolute awake ceiling, the task watchdog, the low-charge ladder and the stuck-wake-button guard (see [Power guards](#power-guards))
+- Uses: `BatteryMonitor` (read-only, for the low-charge ladder and the USB stay-awake rule), `PanelBrightness`, `TouchInput` (hibernate) and the panel (sleep) at sleep entry, `PmuRails` and `GlanceWake` for raise to wake
+- Responsible for: Model B deep-sleep power ownership — display-on timeout, putting the panel and touch to sleep + GPIO holds on sleep entry, PWR-button and raise-to-wake arming (with the glance brake) — and for all policy that can force a sleep decision: the absolute awake ceiling, the task watchdog, the low-charge ladder and the stuck-wake-button guard (see [Power guards](#power-guards))
 - Owned by: `WatchApplication`
 
 **`BatteryMonitor`:**
@@ -105,8 +107,13 @@ Adds the [Celestial screen](#celestial-screen) and brings the deep-sleep floor d
 
 **`PmuRails`:**
 - Uses: `XPowersAXP2101` (owned by `BatteryMonitor`), the shared I2C bus
-- Responsible for: the AXP2101 rail state from the traced rail-to-load map (unused rails off, VBUS/system ADC only while awake) and the I2C power-down of the IMU on every wake. The audio codecs are left at their power-up defaults, where they draw least. Mechanism only — when to sleep stays in `PowerManager`
+- Responsible for: the AXP2101 rail state from the traced rail-to-load map (unused rails off, VBUS/system ADC only while awake) and the I2C power-down of the IMU on every wake, or its accelerometer-only glance mode before a raise-to-wake sleep. The audio codecs are left at their power-up defaults, where they draw least. Mechanism only — when to sleep stays in `PowerManager`
 - Owned by: `WatchApplication`
+
+**`GlanceWake`:**
+- Uses: `amoled206_orient_ulp` (chipguyhere's ULP program builder, MIT, with one local change), the shared I2C bus
+- Responsible for: raise to wake — loading the ULP program that reads the IMU through deep sleep, handing GPIO14/15 to it before sleep, and taking the bus back first thing on every boot (stop the ULP, return the pins, clock out a slave left holding SDA). Mechanism only — whether to arm it is `PowerManager`'s decision
+- Used by: `PowerManager` (arming), `WatchApplication` (reclaiming the bus); static, not owned
 
 **`ESPNowReceiver`:**
 - Responsible for: receiving `GnssDelta`, `DateTimeDelta`, `HeadingDelta`, `BatteryDelta`, `WeatherDelta`, `HALMETEngineDelta`, `HALMETTankDelta`, `HALMETWaterDelta`, `HALMETOilDelta` and `DepthDelta` broadcasts (receive-only), with per-source RX timestamps for freshness
@@ -133,7 +140,7 @@ Adds the [Celestial screen](#celestial-screen) and brings the deep-sleep floor d
 
 **`SystemStats`:**
 - Uses: `StatusFormat` (pure, host-tested)
-- Responsible for: the Status screen's data — uptime from the RTC timer, and power-on counters (wake-ups, total awake time, ESP-NOW frames, unexpected resets) in `RTC_NOINIT` memory, plus this wake's loop runtime
+- Responsible for: the Status screen's data — uptime from the RTC timer, and power-on counters (wake-ups, raise-to-wake wakes, idle wakes and brake trips, total awake time, ESP-NOW frames, unexpected resets) in `RTC_NOINIT` memory, plus this wake's loop runtime
 - Owned by: `WatchApplication`
 
 **`StatusUI`:**
@@ -270,7 +277,7 @@ In demo mode the percentage reads e.g. `80 % DEMO`. The bar, the percentage and 
 
 <img src="docs/setup.png" height="260" alt="Setup (SquareLine)"> <img src="docs/setup.jpeg" height="260" alt="Setup (on the watch)">
 
-**Touch-only**, like the rest of the UI. Two sliders and three switches; every setting is saved to NVS (namespace `"display"`). The slider position and the switch colour show the state directly, so the SquareLine value labels are hidden and never written — except the wake time label, which reads `Wake time N s`. All three switches share the same look: red knob = off, green = on.
+**Touch-only**, like the rest of the UI. Two sliders and four switches; every setting is saved to NVS (namespace `"display"`). The slider position and the switch colour show the state directly, so the SquareLine value labels are hidden and never written — except the wake time label, which reads `Wake time N s`. All four switches share the same look: red knob = off, green = on.
 
 **Display brightness** (`ui_SliderBrightness`) — drag the slider; applies instantly, saves to NVS on release. Range 2 %–100 % (the 2 % minimum keeps the screen from going fully dark); default 20 % (readable in daylight, low continuous draw), with the NVS-stored value always winning. Persistence: namespace `"display"`, key `"brightness"`. The AMOLED has no backlight: brightness is a panel command (CO5300 `0x51`, 0..255) sent by `PanelBrightness`.
 
@@ -290,6 +297,8 @@ Two limits still apply, deliberately:
 **Demo mode** (`ui_SwitchDemoMode`) — every screen shows a looping 10 min recording of the boat's instruments instead of the ESP-NOW data, for showing the watch away from the boat. Key `"demo"`. The radio keeps listening and parsing exactly as normal, so battery behaviour is the same as with real data; received frames are simply not stored. The receiver keeps one fixed slot per message type with no queue or heap, so nothing received accumulates. Switching either way clears every source, so the screens show placeholders until the new source delivers: a demo value can never pass for a real one, or the other way round. The status bar shows `DEMO`.
 
 **Night mode** (`ui_SwitchNightMode`) — everything on the panel is drawn in shades of red to keep the eyes dark-adapted: text, the status bar, sliders and switches, and the menu shows a separate set of pure red icons (`ui_ImgButton*Night`, stacked on the day icons; one set is visible at a time). Key `"night"`. Applied before the first frame of a wake, so a night wake never flashes white. Black stays true black. Colors are mapped by brightness (`NightPalette`); the ones whose meaning is their hue (battery-bar states, switch on/off) use explicit red shades so they stay distinguishable. On the AMOLED, red-only drives only the red subpixels, so night mode should also draw less current (to be measured).
+
+**Raise to wake** (`ui_SwitchRaiseToWake`) — tap to let the watch wake when you lift it to look at it, besides the PWR button. Key `"raisewake"`, off by default like every switch. The watch wakes when its face has been tilted about 12–53° toward you (30° in the middle) for about 0.4 s; swinging the arm or a rolling boat alone does not wake it. Lying flat face up, or face down, it never wakes. Not armed for the low-battery sleep. See [Raise to wake](#raise-to-wake) for how it works and what it costs.
 
 <img src="docs/night_batteries.jpeg" height="260" alt="Night mode: Batteries"> <img src="docs/night_setup.jpeg" height="260" alt="Night mode: Setup"> <img src="docs/night_menu.jpeg" height="260" alt="Night mode: page menu">
 
@@ -342,7 +351,7 @@ After a **true power-on** (the AXP2101 cut the power, e.g. after holding PWR for
 
 ## Input
 
-All interaction is by touch; the PWR button is the wake source.
+All interaction is by touch. The PWR button wakes the watch, and so does raising it when [Raise to wake](#raise-to-wake) is on.
 
 | Action | Gesture |
 |---|---|
@@ -354,8 +363,9 @@ All interaction is by touch; the PWR button is the wake source.
 | Close the status screen, back to the last screen | Swipe down |
 | Jump to a screen | Tap its icon in the page menu |
 | Screen action | Tap |
-| Adjust brightness / wake time, toggle prevent sleep / demo / night | Drag a slider, tap a switch (Setup) |
+| Adjust brightness / wake time, toggle prevent sleep / demo / night / raise to wake | Drag a slider, tap a switch (Setup) |
 | Wake from deep sleep | Press the **PWR** button (GPIO10, `ext1`) |
+| Wake by looking at it | Raise the watch, face about 30° toward you, hold ~0.4 s (Raise to wake on, ULP) |
 
 Screen carousel order:
 - **Swipe left:** Navigation → Batteries → Weather → Engine → Attitude → Clock → Setup → Celestial → Chart → Navigation
@@ -384,7 +394,8 @@ Swipe up on any screen for a status overlay; swipe down returns to the screen yo
 | Row | Meaning | Source |
 |---|---|---|
 | Uptime | Time since the last true power-on, deep sleep included | ESP32 RTC timer (`esp_rtc_get_time_us()`), runs through deep sleep |
-| Wake-ups | PWR-button wakes since power-on (stuck-button timer rechecks are not counted) | `RTC_NOINIT` counter |
+| Wake-ups | PWR-button and raise-to-wake wakes since power-on (stuck-button timer rechecks are not counted) | `RTC_NOINIT` counter |
+| Raise/idle/brake | Raise-to-wake wakes / those that ended without a touch / times the glance brake turned raise to wake off, since power-on | `RTC_NOINIT` counters |
 | Wake time | Total awake time since power-on, the current wake included | `RTC_NOINIT` sum, added at every sleep entry, + `millis()` |
 | Deep sleep | Uptime − wake time | derived |
 | Free heap / Min free heap | Internal RAM free now / lowest during this wake | `heap_caps_*(MALLOC_CAP_INTERNAL)` |
@@ -404,7 +415,7 @@ All power-on counters survive deep sleep, watchdog, panic and software resets, a
 
 The whole architecture resolves one contradiction: **in deep sleep the radio is off, so no ESP-NOW packet can be received.** You cannot both deep-sleep and listen.
 
-**Model B (deep-sleep, wake-to-fetch).** Deep sleep is the resting default. A PWR-button press wakes the watch; only *then* does it bring the radio up, catch a broadcast, render, and — after a short display-on timeout (the Setup **wake time**, 2–20 s, default 10 s, shortened automatically as the cell empties) of no interaction — soft-ramp the brightness down and return to deep sleep. On sleep entry the AMOLED is switched off and put into sleep-in and deep standby, the FT3168 into hibernate, the panel and touch reset lines are held high and the speaker amp enable (GPIO46) low through sleep; the PWR button (GPIO10, RTC-capable, **active-high**) is armed as the `ext1` wake source. `PmuRails` keeps the unused AXP2101 rails off and powers the IMU down over I2C on every wake. The audio codecs get no writes at all: they draw least at their power-up defaults, and a written state survives until the PMIC cuts the power.
+**Model B (deep-sleep, wake-to-fetch).** Deep sleep is the resting default. A PWR-button press wakes the watch, and with Setup's Raise to wake on so does the glance pose ([Raise to wake](#raise-to-wake)); only *then* does it bring the radio up, catch a broadcast, render, and — after a short display-on timeout (the Setup **wake time**, 2–20 s, default 10 s, shortened automatically as the cell empties) of no interaction — soft-ramp the brightness down and return to deep sleep. On sleep entry the AMOLED is switched off and put into sleep-in and deep standby, the FT3168 into hibernate, the panel and touch reset lines are held high and the speaker amp enable (GPIO46) low through sleep; the PWR button (GPIO10, RTC-capable, **active-high**) is armed as the `ext1` wake source. `PmuRails` keeps the unused AXP2101 rails off and powers the IMU down over I2C on every wake. The audio codecs get no writes at all: they draw least at their power-up defaults, and a written state survives until the PMIC cuts the power.
 
 **microSD card.** The card shares the main 3.3 V rail with the ESP32-S3, so the firmware cannot cut its power. A card that has not been initialised since it got power draws far more in deep sleep, so the pre-sleep hook mounts and closes it on every sleep, about 47 ms with a card and 58 ms without one, and leaves its pins as inputs. A card pushed in while the watch sleeps stays uninitialised until the watch has woken and gone back to sleep.
 
@@ -432,9 +443,22 @@ With a comfortable average budget, what actually threatens endurance is not the 
 
 On the CrowPanel, shortening the **timeout** was the real lever, not the brightness clamp, because the active baseline dominated the backlight. An AMOLED's draw depends on lit pixels and brightness instead, so which lever matters on this board is part of the open measurements; the constants are unchanged until then. The cutoff check deliberately runs *before* the radio is brought up — RF bring-up is the sharpest current edge on the board and the last thing a near-empty cell should be asked for. Button wake stays armed at cutoff on purpose: a press just repeats the short prompt cycle, and plugging in USB restores a normal boot, whereas refusing to wake would read as a bricked watch.
 
-**On USB power the watch does not sleep.** With external power present (AXP2101 VBUS) there is no endurance to protect, so the display timeout and the awake ceiling are both suspended and the watch works as a docked display; after `STAYAWAKE_DIM_IDLE_MS` (60 s) without input the panel dims to `STAYAWAKE_DIM_PERCENT` (5 %) instead of sleeping. Unplugging grants a fresh display window and restarts the awake ceiling. The clamp is applied as a *ceiling* on what reaches the panel — the user's stored brightness and the Setup slider are never overwritten.
+**On USB power the watch does not sleep.** With external power present (AXP2101 VBUS) there is no endurance to protect, so the display timeout and the awake ceiling are both suspended and the watch works as a docked display; after `STAYAWAKE_DIM_IDLE_MS` (60 s) without input the panel dims to `STAYAWAKE_DIM_PERCENT` (5 %) instead of sleeping. Unplugging grants a fresh display window and restarts the awake ceiling. External power has to be confirmed by the PMIC: if the AXP2101 did not answer at boot (a dead I2C bus), the battery bar shows the fail-safe charging state, but the display timeout and the awake ceiling stay armed, so the watch cannot stay awake on battery until the cell is flat. The clamp is applied as a *ceiling* on what reaches the panel — the user's stored brightness and the Setup slider are never overwritten.
 
 **The Setup screen's prevent-sleep switch is the battery-powered version of the same behaviour** — same dim, no display timeout — with one deliberate difference: the 120 s awake ceiling stays armed, and the low-charge ladder overrides the switch from `CRITICAL` down. See [Setup screen](#setup-screen) for the endurance cost.
+
+### Raise to wake
+
+With the Setup switch on, the watch also wakes when you lift it to look at it. The QMI8658's own motion interrupt was rejected earlier because it wakes on every arm swing, and on a boat it would wake all the time. This uses the ESP32-S3's **ULP-FSM coprocessor** instead, which keeps running while the CPU is in deep sleep. The program is chipguyhere's (`amoled206_orient_ulp.c`, MIT), our wrapper is `GlanceWake`.
+
+- **What the ULP does.** Every 200 ms it bit-bangs the shared I2C bus (GPIO14/15 are RTC pins), reads the accelerometer's high bytes (1/32 g at ±4 g) and checks the gravity vector against a pose window. It wakes the CPU only after two samples in a row inside the window, so the pose has to be held for about 0.4 s. Motion alone never wakes it.
+- **The pose.** Face tilted toward you by 30° (X +500, Y 0, Z −870 mg, ±300 mg per axis, about 12–53°). Measured raises came out at 20–34°, with the left and right wrist on the same side of X, so one fixed pose serves both hands.
+- **Exit first.** After arming, a pose counts only once the watch has been outside it, so a watch lying in the pose does not wake, time out and wake again.
+- **Glance brake.** After 3 raise-to-wake wakes in a row that end without a touch, the next sleep is armed on the PWR button only, and a PWR wake turns raise to wake back on. A touch after a raise-to-wake wake resets the count. This covers a watch lying at the edge of the pose on a rocking boat; to be sure, put it face down. The Status screen shows the counts (`Raise/idle/brake`).
+- **Not armed** for the low-battery sleep or the stuck-button timer.
+- **The bus.** From sleep entry the ULP owns GPIO14/15. On every boot the bus is taken back before anything touches it: stop the ULP, overwrite its program with `HALT`, return the pins, clock out a slave left holding SDA.
+- **Cost.** The deep-sleep floor did not move measurably: 4.8 mA over 11 h from a full charge with raise to wake on, against 5.7 mA over 10.5 h with it off (see [Consumption measurements](#consumption-measurements)). chipguyhere measured +80 µA with a PPK2. What costs is a wake: each one runs the display for the wake time.
+- **Local change to the ULP program.** On this board the QMI8658 held SDA low after every ULP read, until the next run's bus recovery 200 ms later: about 1.5 mA through the 2.2 kΩ pull-up all night (7.4 mA over 13 h in the first overnight test). The recovery now runs at the end of each run instead of the start. `GlanceWake::selfTest()` (send `t` on Serial while on USB) runs the program awake for a second and reports how often SDA is low between runs.
 
 ### Freshness
 
@@ -462,6 +486,7 @@ Measured on the Waveshare board from the AXP2101 fuel gauge over overnight tests
 | State | Draw |
 |---|---|
 | Deep sleep | **about 3.3 mA** once the gauge has left the top of the charge (85 → 75 % in 12 h); 5.7 mA over the first 10.5 h and 4.5 mA over 22.5 h from a full charge |
+| Deep sleep, raise to wake on | 4.8 mA over 11 h from a full charge (100 → 86 %, 3.967 V), against 5.7 mA over 10.5 h with it off: nothing measurable |
 | Powered off (PWR held ~6 s) | at most ~0.4 mA (1 % over 9.5 h) |
 | Deep sleep, card fitted, closed before sleep | 5.2 mA over 10.75 h from a full charge (100 → 86 %, 3.970 V), against 5.7 mA over 10.5 h without a card: the card adds nothing measurable |
 | Deep sleep, card fitted, never initialised | 42 mA over 8 h, which is why the card is closed before every sleep |
@@ -561,9 +586,11 @@ struct DepthDelta {
 |---------|-------------|
 | `ESP32-Waveshare-SkippersWatch.ino` | Owns `WatchApplication app`, contains `setup()` and `loop()` |
 | `WatchApplication.h/.cpp` | Class `WatchApplication`, the "app" — owns all instances, display stack, staggered wake, gesture dispatch, GNSS time sync |
-| `PowerManager.h/.cpp` | Class `PowerManager` — Model B deep-sleep, display timeout, peripheral sleep, PWR-button wake arming, and the power guards (awake ceiling, watchdog, low-charge ladder, stuck-button guard) |
+| `PowerManager.h/.cpp` | Class `PowerManager` — Model B deep-sleep, display timeout, peripheral sleep, PWR-button and raise-to-wake arming with the glance brake, and the power guards (awake ceiling, watchdog, low-charge ladder, stuck-button guard) |
+| `GlanceWake.h/.cpp` | Class `GlanceWake` — raise to wake: arms the ULP program, reclaims the I2C bus on boot, bench self-test |
+| `amoled206_orient_ulp.h/.c` | chipguyhere's ULP orientation-wake program builder (MIT), vendored with one local change (bus recovery at the end of each run) |
 | `BatteryMonitor.h/.cpp` | Class `BatteryMonitor` — AXP2101 battery voltage + fuel gauge, VBUS detection, status-bar indicator, charge-level classification |
-| `PmuRails.h/.cpp` | Class `PmuRails` — AXP2101 rail state and IMU power-down over I2C; codecs left at their defaults |
+| `PmuRails.h/.cpp` | Class `PmuRails` — AXP2101 rail state, IMU power-down or glance mode over I2C; codecs left at their defaults |
 | `BatteryLevel.h` | Charge levels, the low-charge ladder thresholds and the display-timeout cap (pure, host-tested) |
 | `DemoSource.h/.cpp`, `DemoValues.h`, `DemoTrack.h/.cpp` | Class `DemoSource` — demo-mode frames injected into the receiver; `DemoValues` is the pure value generator (host-tested) over `DemoTrack`, the generated recording |
 | `ThemeController.h/.cpp`, `NightPalette.h` | Class `ThemeController` — day / night palette switch; `NightPalette` is the pure color mapping (host-tested) |
@@ -589,7 +616,7 @@ struct DepthDelta {
 | `ChartStore.h/.cpp` | Class `ChartStore` — chart files on the microSD card over SD_MMC |
 | `ChartGeometry.h`, `ChartFormat.h` | WGS84 → TM35FIN, convergence and symbol geometry; card format and block addressing (pure, host-tested) |
 | `astronomy.h/.c` | Astronomy Engine 2.1.19 (C), copied unchanged from ESP32-Crowpanel-compass |
-| `SetupUI.h/.cpp` | Class `SetupUI` — brightness and wake-time sliders, prevent-sleep / demo / night switches (touch), realizes `IScreenUI` |
+| `SetupUI.h/.cpp` | Class `SetupUI` — brightness and wake-time sliders, prevent-sleep / demo / night / raise-to-wake switches (touch), realizes `IScreenUI` |
 | `MenuUI.h/.cpp` | Class `MenuUI` — page menu overlay and its hit-testing |
 | `TouchInput.h/.cpp` | Class `TouchInput` — touch polling, held/released state, drag points |
 | `GestureClassifier.h` | Software gesture rules (pure, host-tested) |
@@ -713,7 +740,7 @@ Software and libraries used are documented in the sections above.
 
 Companion project to my always-on helm display [ESP32-Crowpanel-compass](https://github.com/mkvesala/ESP32-Crowpanel-compass), and to the ESP-NOW sender projects [UBLOX-ESP32-SignalK-gateway](https://github.com/mkvesala/UBLOX-ESP32-SignalK-gateway), [CMPS14-ESP32-SignalK-gateway](https://github.com/mkvesala/CMPS14-ESP32-SignalK-gateway), [VEDirect-ESP32-SignalK-gateway](https://github.com/mkvesala/VEDirect-ESP32-SignalK-gateway), [BME280-ESP32-SignalK-gateway](https://github.com/mkvesala/BME280-ESP32-SignalK-gateway) and [HALMET-ESP32-SignalK-gateway](https://github.com/mkvesala/HALMET-ESP32-SignalK-gateway).
 
-Board bring-up follows [Waveshare's example code](https://github.com/waveshareteam/ESP32-S3-Touch-AMOLED-2.06); the local `ft3168_touch` driver uses the register map of its `Arduino_FT3x68`. v1.0.0 was inspired by [example source code by Elecrow](https://github.com/Elecrow-RD/CrowPanel_2.01_inch-HMI_ESP32_Watch_Display_240_296).
+Board bring-up follows [Waveshare's example code](https://github.com/waveshareteam/ESP32-S3-Touch-AMOLED-2.06); the local `ft3168_touch` driver uses the register map of its `Arduino_FT3x68`. Raise to wake runs chipguyhere's ULP orientation-wake program from [ESP32-S3-Touch-AMOLED-2.06_board](https://github.com/chipguyhere/ESP32-S3-Touch-AMOLED-2.06_board) (MIT), and the deep-sleep floor work followed his measurements on the same board. v1.0.0 was inspired by [example source code by Elecrow](https://github.com/Elecrow-RD/CrowPanel_2.01_inch-HMI_ESP32_Watch_Display_240_296).
 
 <!-- TODO(credits): add icon/font attributions here if used in the UI -->
 

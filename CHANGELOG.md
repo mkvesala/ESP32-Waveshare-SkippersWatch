@@ -4,6 +4,43 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.4.0] - 2026-11-18
+
+### Added
+
+- **Raise to wake**, a Setup switch (`ui_SwitchRaiseToWake`, NVS key `raisewake`, off by
+  default). With it on, the watch also wakes when lifted to look at it: face tilted about 30°
+  toward you (12–53°) and held for about 0.4 s. An arm swing or a rolling boat alone does not
+  wake it. The ESP32-S3's ULP coprocessor reads the QMI8658 over I2C every 200 ms through deep
+  sleep. The program is chipguyhere's `amoled206_orient_ulp.c` (MIT), vendored with one local
+  change, and our wrapper is `GlanceWake`. It is not armed for the low-battery sleep or the
+  stuck-button timer.
+- **Glance brake.** After 3 raise-to-wake wakes in a row with no touch, only PWR wakes the
+  watch until the next PWR wake.
+- **Status:** a new row, `Raise/idle/brake`, counts raise-to-wake wakes, those that ended
+  without a touch, and brake trips since power-on. `Wake-ups` now counts raise-to-wake wakes
+  too.
+- `GlanceWake::selfTest()`: send `t` on Serial while on USB. It runs the ULP program awake
+  for 1 s and reports how often SDA is low between runs. Any other byte on Serial repeats the
+  rail and glance log dump.
+
+### Changed
+
+- **Local change to chipguyhere's ULP program:** the I2C bus recovery now runs at the end of
+  each run instead of the start. On this board the QMI8658 held SDA low between runs, which
+  cost about 1.5 mA through the pull-up (first overnight test 7.4 mA over 13 h). After the
+  fix: 4.8 mA over 11 h from a full charge, against 5.7 mA over 10.5 h with raise to wake
+  off. The floor cost is nothing measurable.
+- Every boot after a raise-to-wake sleep first takes the I2C bus back. It stops the ULP,
+  overwrites its program with `HALT`, returns the pins, and clocks out a slave left holding
+  SDA, all before `Wire.begin()`.
+
+### Fixed
+
+- If the AXP2101 does not answer at boot, the display timeout and the awake ceiling stay
+  armed. Before, a dead I2C bus looked like USB power, and the watch stayed awake on battery
+  until the cell was flat.
+
 ## [2.3.1] - 2026-11-14
 
 ### Changed
@@ -324,6 +361,7 @@ First release, on the **Elecrow CrowPanel 2.01" Watch Display**. Running on hard
 - `hardware_notes.md` as the authoritative pin map, build/toolchain notes and power-guard reference.
 - Issue and pull-request templates, contribution guide, and third-party licence notes.
 
+[2.4.0]: https://github.com/mkvesala/ESP32-Waveshare-SkippersWatch/compare/v2.3.1...v2.4.0
 [2.3.1]: https://github.com/mkvesala/ESP32-Waveshare-SkippersWatch/compare/v2.3.0...v2.3.1
 [2.3.0]: https://github.com/mkvesala/ESP32-Waveshare-SkippersWatch/compare/v2.2.0...v2.3.0
 [2.2.0]: https://github.com/mkvesala/ESP32-Waveshare-SkippersWatch/compare/v2.1.0...v2.2.0
