@@ -5,7 +5,7 @@
 
 #include "ui.h"
 
-lv_obj_t *ui_ScreenMain = NULL;lv_obj_t *ui_ContainerNavigation = NULL;lv_obj_t *ui_LabelCOGTitle = NULL;lv_obj_t *ui_LabelCOGValue = NULL;lv_obj_t *ui_LabelHDGValue = NULL;lv_obj_t *ui_LabelHDGTitle = NULL;lv_obj_t *ui_LabelSOGTitle = NULL;lv_obj_t *ui_LabelSOGValue = NULL;lv_obj_t *ui_LabelDPTValue = NULL;lv_obj_t *ui_LabelDPTTitle = NULL;lv_obj_t *ui_LabelPOSValue = NULL;lv_obj_t *ui_LabelPOSTitle = NULL;lv_obj_t *ui_ContainerBatteries = NULL;lv_obj_t *ui_LabelHouseVTitle = NULL;lv_obj_t *ui_LabelHouseVValue = NULL;lv_obj_t *ui_LabelStartVValue = NULL;lv_obj_t *ui_LabelStartVTitle = NULL;lv_obj_t *ui_LabelHouseSOCTitle = NULL;lv_obj_t *ui_LabelHouseSOCValue = NULL;lv_obj_t *ui_LabelHouseATitle = NULL;lv_obj_t *ui_LabelHouseAValue = NULL;lv_obj_t *ui_LabelBatteries = NULL;lv_obj_t *ui_ContainerWeather = NULL;lv_obj_t *ui_LabelTemperatureTitle = NULL;lv_obj_t *ui_LabelTemperatureValue = NULL;lv_obj_t *ui_LabelHumidityValue = NULL;lv_obj_t *ui_LabelHumidityTitle = NULL;lv_obj_t *ui_LabelPressureTitle = NULL;lv_obj_t *ui_LabelPressureValue = NULL;lv_obj_t *ui_LabelWeather = NULL;lv_obj_t *ui_ContainerEngineroom = NULL;lv_obj_t *ui_LabelOilPressureTitle = NULL;lv_obj_t *ui_LabelOilPressureValue = NULL;lv_obj_t *ui_LabelExhaustCTitle = NULL;lv_obj_t *ui_LabelExhaustCValue = NULL;lv_obj_t *ui_LabelFuelLValue = NULL;lv_obj_t *ui_LabelFuelLTitle = NULL;lv_obj_t *ui_LabelFreshwaterLTitle = NULL;lv_obj_t *ui_LabelFreshwaterLValue = NULL;lv_obj_t *ui_LabelEngineroom = NULL;lv_obj_t *ui_ContainerAttitude = NULL;lv_obj_t *ui_LabelBowUpTitle = NULL;lv_obj_t *ui_LabelBowUpValue = NULL;lv_obj_t *ui_LabelStbdValue = NULL;lv_obj_t *ui_LabelStbdTitle = NULL;lv_obj_t *ui_LabelBowDownTitle = NULL;lv_obj_t *ui_LabelBowDownValue = NULL;lv_obj_t *ui_LabelAttitude = NULL;lv_obj_t *ui_LabelPortTitle = NULL;lv_obj_t *ui_LabelPortValue = NULL;lv_obj_t *ui_ContainerSetup = NULL;lv_obj_t *ui_LabelBrightness = NULL;lv_obj_t *ui_LabelBrightnessValue = NULL;lv_obj_t *ui_LabelSetup = NULL;lv_obj_t *ui_SliderBrightness = NULL;lv_obj_t *ui_SwitchPreventSleep = NULL;lv_obj_t *ui_LabelPreventSleepValue = NULL;lv_obj_t *ui_LabelPreventSleep = NULL;lv_obj_t *ui_SwitchDemoMode = NULL;lv_obj_t *ui_LabelDemoMode = NULL;lv_obj_t *ui_SliderWaketime = NULL;lv_obj_t *ui_LabelWaketime = NULL;lv_obj_t *ui_SwitchNightMode = NULL;lv_obj_t *ui_LabelNightMode = NULL;lv_obj_t *ui_ContainerClock = NULL;lv_obj_t *ui_LabelTimeLocal = NULL;lv_obj_t *ui_LabelDay = NULL;lv_obj_t *ui_LabelDate = NULL;lv_obj_t *ui_LabelTimeUTC = NULL;lv_obj_t *ui_LabelDateUTC = NULL;lv_obj_t *ui_ContainerMenu = NULL;lv_obj_t *ui_ImgButtonNavigation = NULL;lv_obj_t *ui_ImgButtonBatteries = NULL;lv_obj_t *ui_ImgButtonEngine = NULL;lv_obj_t *ui_ImgButtonWeather = NULL;lv_obj_t *ui_ImgButtonSetup = NULL;lv_obj_t *ui_ImgButtonClock = NULL;lv_obj_t *ui_ImgButtonAttitude = NULL;lv_obj_t *ui_ImgButtonCelestial = NULL;lv_obj_t *ui_ImgButtonChart = NULL;lv_obj_t *ui_ImgButtonBatteriesNight = NULL;lv_obj_t *ui_ImgButtonNavigationNight = NULL;lv_obj_t *ui_ImgButtonEngineNight = NULL;lv_obj_t *ui_ImgButtonWeatherNight = NULL;lv_obj_t *ui_ImgButtonSetupNight = NULL;lv_obj_t *ui_ImgButtonClockNight = NULL;lv_obj_t *ui_ImgButtonAttitudeNight = NULL;lv_obj_t *ui_ImgButtonCelestialNight = NULL;lv_obj_t *ui_ImgButtonChartNight = NULL;lv_obj_t *ui_ContainerStartup = NULL;lv_obj_t *ui_LabelSkippersWatch = NULL;lv_obj_t *ui_LabelVersion = NULL;lv_obj_t *ui_ContainerStatus = NULL;lv_obj_t *ui_ContainerStatusInfo = NULL;lv_obj_t *ui_LabelInfo = NULL;lv_obj_t *ui_LabelInfo1 = NULL;lv_obj_t *ui_LabelStatus = NULL;lv_obj_t *ui_ContainerCelestial = NULL;lv_obj_t *ui_LabelCelestial = NULL;lv_obj_t *ui_LabelBodies = NULL;lv_obj_t *ui_LabelHc = NULL;lv_obj_t *ui_LabelZn = NULL;lv_obj_t *ui_LabelVariables = NULL;lv_obj_t *ui_ContainerChart = NULL;lv_obj_t *ui_LabelChartStatus = NULL;lv_obj_t *ui_LabelChartAttribution = NULL;lv_obj_t *ui_LabelCOGTitle2 = NULL;lv_obj_t *ui_LabelCOGValue2 = NULL;lv_obj_t *ui_LabelHDGValue2 = NULL;lv_obj_t *ui_LabelHDGTitle2 = NULL;lv_obj_t *ui_LabelSOGTitle2 = NULL;lv_obj_t *ui_LabelSOGValue2 = NULL;lv_obj_t *ui_LabelDPTValue2 = NULL;lv_obj_t *ui_LabelDPTTitle2 = NULL;lv_obj_t *ui_ContainerTopBar = NULL;lv_obj_t *ui_LabelSoC = NULL;lv_obj_t *ui_BarBatteryIndicator = NULL;
+lv_obj_t *ui_ScreenMain = NULL;lv_obj_t *ui_ContainerNavigation = NULL;lv_obj_t *ui_LabelCOGTitle = NULL;lv_obj_t *ui_LabelCOGValue = NULL;lv_obj_t *ui_LabelHDGValue = NULL;lv_obj_t *ui_LabelHDGTitle = NULL;lv_obj_t *ui_LabelSOGTitle = NULL;lv_obj_t *ui_LabelSOGValue = NULL;lv_obj_t *ui_LabelDPTValue = NULL;lv_obj_t *ui_LabelDPTTitle = NULL;lv_obj_t *ui_LabelPOSValue = NULL;lv_obj_t *ui_LabelPOSTitle = NULL;lv_obj_t *ui_ContainerBatteries = NULL;lv_obj_t *ui_LabelHouseVTitle = NULL;lv_obj_t *ui_LabelHouseVValue = NULL;lv_obj_t *ui_LabelStartVValue = NULL;lv_obj_t *ui_LabelStartVTitle = NULL;lv_obj_t *ui_LabelHouseSOCTitle = NULL;lv_obj_t *ui_LabelHouseSOCValue = NULL;lv_obj_t *ui_LabelHouseATitle = NULL;lv_obj_t *ui_LabelHouseAValue = NULL;lv_obj_t *ui_LabelBatteries = NULL;lv_obj_t *ui_ContainerWeather = NULL;lv_obj_t *ui_LabelTemperatureTitle = NULL;lv_obj_t *ui_LabelTemperatureValue = NULL;lv_obj_t *ui_LabelHumidityValue = NULL;lv_obj_t *ui_LabelHumidityTitle = NULL;lv_obj_t *ui_LabelPressureTitle = NULL;lv_obj_t *ui_LabelPressureValue = NULL;lv_obj_t *ui_LabelWeather = NULL;lv_obj_t *ui_ContainerEngineroom = NULL;lv_obj_t *ui_LabelOilPressureTitle = NULL;lv_obj_t *ui_LabelOilPressureValue = NULL;lv_obj_t *ui_LabelExhaustCTitle = NULL;lv_obj_t *ui_LabelExhaustCValue = NULL;lv_obj_t *ui_LabelFuelLValue = NULL;lv_obj_t *ui_LabelFuelLTitle = NULL;lv_obj_t *ui_LabelFreshwaterLTitle = NULL;lv_obj_t *ui_LabelFreshwaterLValue = NULL;lv_obj_t *ui_LabelEngineroom = NULL;lv_obj_t *ui_ContainerAttitude = NULL;lv_obj_t *ui_LabelBowUpTitle = NULL;lv_obj_t *ui_LabelBowUpValue = NULL;lv_obj_t *ui_LabelStbdValue = NULL;lv_obj_t *ui_LabelStbdTitle = NULL;lv_obj_t *ui_LabelBowDownTitle = NULL;lv_obj_t *ui_LabelBowDownValue = NULL;lv_obj_t *ui_LabelAttitude = NULL;lv_obj_t *ui_LabelPortTitle = NULL;lv_obj_t *ui_LabelPortValue = NULL;lv_obj_t *ui_ContainerSetup = NULL;lv_obj_t *ui_LabelBrightness = NULL;lv_obj_t *ui_LabelBrightnessValue = NULL;lv_obj_t *ui_LabelSetup = NULL;lv_obj_t *ui_SliderBrightness = NULL;lv_obj_t *ui_SwitchPreventSleep = NULL;lv_obj_t *ui_LabelPreventSleepValue = NULL;lv_obj_t *ui_LabelPreventSleep = NULL;lv_obj_t *ui_SwitchDemoMode = NULL;lv_obj_t *ui_LabelDemoMode = NULL;lv_obj_t *ui_SliderWaketime = NULL;lv_obj_t *ui_LabelWaketime = NULL;lv_obj_t *ui_SwitchNightMode = NULL;lv_obj_t *ui_LabelNightMode = NULL;lv_obj_t *ui_LabelRaiseToWake = NULL;lv_obj_t *ui_SwitchRaiseToWake = NULL;lv_obj_t *ui_ContainerClock = NULL;lv_obj_t *ui_LabelTimeLocal = NULL;lv_obj_t *ui_LabelDay = NULL;lv_obj_t *ui_LabelDate = NULL;lv_obj_t *ui_LabelTimeUTC = NULL;lv_obj_t *ui_LabelDateUTC = NULL;lv_obj_t *ui_ContainerMenu = NULL;lv_obj_t *ui_ImgButtonNavigation = NULL;lv_obj_t *ui_ImgButtonBatteries = NULL;lv_obj_t *ui_ImgButtonEngine = NULL;lv_obj_t *ui_ImgButtonWeather = NULL;lv_obj_t *ui_ImgButtonSetup = NULL;lv_obj_t *ui_ImgButtonClock = NULL;lv_obj_t *ui_ImgButtonAttitude = NULL;lv_obj_t *ui_ImgButtonCelestial = NULL;lv_obj_t *ui_ImgButtonChart = NULL;lv_obj_t *ui_ImgButtonBatteriesNight = NULL;lv_obj_t *ui_ImgButtonNavigationNight = NULL;lv_obj_t *ui_ImgButtonEngineNight = NULL;lv_obj_t *ui_ImgButtonWeatherNight = NULL;lv_obj_t *ui_ImgButtonSetupNight = NULL;lv_obj_t *ui_ImgButtonClockNight = NULL;lv_obj_t *ui_ImgButtonAttitudeNight = NULL;lv_obj_t *ui_ImgButtonCelestialNight = NULL;lv_obj_t *ui_ImgButtonChartNight = NULL;lv_obj_t *ui_ContainerStartup = NULL;lv_obj_t *ui_LabelSkippersWatch = NULL;lv_obj_t *ui_LabelVersion = NULL;lv_obj_t *ui_ContainerStatus = NULL;lv_obj_t *ui_ContainerStatusInfo = NULL;lv_obj_t *ui_LabelInfo = NULL;lv_obj_t *ui_LabelInfo1 = NULL;lv_obj_t *ui_LabelStatus = NULL;lv_obj_t *ui_ContainerCelestial = NULL;lv_obj_t *ui_LabelCelestial = NULL;lv_obj_t *ui_LabelBodies = NULL;lv_obj_t *ui_LabelHc = NULL;lv_obj_t *ui_LabelZn = NULL;lv_obj_t *ui_LabelVariables = NULL;lv_obj_t *ui_ContainerChart = NULL;lv_obj_t *ui_LabelChartStatus = NULL;lv_obj_t *ui_LabelChartAttribution = NULL;lv_obj_t *ui_LabelCOGTitle2 = NULL;lv_obj_t *ui_LabelCOGValue2 = NULL;lv_obj_t *ui_LabelHDGValue2 = NULL;lv_obj_t *ui_LabelHDGTitle2 = NULL;lv_obj_t *ui_LabelSOGTitle2 = NULL;lv_obj_t *ui_LabelSOGValue2 = NULL;lv_obj_t *ui_LabelDPTValue2 = NULL;lv_obj_t *ui_LabelDPTTitle2 = NULL;lv_obj_t *ui_ContainerTopBar = NULL;lv_obj_t *ui_LabelSoC = NULL;lv_obj_t *ui_BarBatteryIndicator = NULL;
 // event funtions
 
 // build funtions
@@ -444,7 +444,7 @@ if (lv_slider_get_mode(ui_SliderBrightness)==LV_SLIDER_MODE_RANGE ) lv_slider_se
 lv_obj_set_width( ui_SliderBrightness, 300);
 lv_obj_set_height( ui_SliderBrightness, 20);
 lv_obj_set_x( ui_SliderBrightness, 0 );
-lv_obj_set_y( ui_SliderBrightness, -40 );
+lv_obj_set_y( ui_SliderBrightness, -35 );
 lv_obj_set_align( ui_SliderBrightness, LV_ALIGN_BOTTOM_MID );
 lv_obj_set_style_bg_color(ui_SliderBrightness, lv_color_hex(0x666666), LV_PART_MAIN | LV_STATE_DEFAULT );
 lv_obj_set_style_bg_opa(ui_SliderBrightness, 255, LV_PART_MAIN| LV_STATE_DEFAULT);
@@ -460,8 +460,9 @@ if (lv_obj_get_style_pad_top(ui_SliderBrightness,LV_PART_MAIN) > 0) lv_obj_set_s
 ui_SwitchPreventSleep = lv_switch_create(ui_ContainerSetup);
 lv_obj_set_width( ui_SwitchPreventSleep, 50);
 lv_obj_set_height( ui_SwitchPreventSleep, 25);
-lv_obj_set_x( ui_SwitchPreventSleep, -2 );
-lv_obj_set_y( ui_SwitchPreventSleep, 60 );
+lv_obj_set_x( ui_SwitchPreventSleep, 20 );
+lv_obj_set_y( ui_SwitchPreventSleep, -150 );
+lv_obj_set_align( ui_SwitchPreventSleep, LV_ALIGN_LEFT_MID );
 
 ui_LabelPreventSleepValue = lv_label_create(ui_ContainerSetup);
 lv_obj_set_width( ui_LabelPreventSleepValue, LV_SIZE_CONTENT);  /// 1
@@ -476,20 +477,24 @@ lv_obj_set_style_text_font(ui_LabelPreventSleepValue, &ui_font_FontLabel32, LV_P
 ui_LabelPreventSleep = lv_label_create(ui_ContainerSetup);
 lv_obj_set_width( ui_LabelPreventSleep, LV_SIZE_CONTENT);  /// 1
 lv_obj_set_height( ui_LabelPreventSleep, LV_SIZE_CONTENT);   /// 1
+lv_obj_set_x( ui_LabelPreventSleep, 20 );
+lv_obj_set_y( ui_LabelPreventSleep, 0 );
 lv_label_set_text(ui_LabelPreventSleep,"Don't\nsleep");
 lv_obj_set_style_text_font(ui_LabelPreventSleep, &ui_font_FontLabel24, LV_PART_MAIN| LV_STATE_DEFAULT);
 
 ui_SwitchDemoMode = lv_switch_create(ui_ContainerSetup);
 lv_obj_set_width( ui_SwitchDemoMode, 50);
 lv_obj_set_height( ui_SwitchDemoMode, 25);
-lv_obj_set_x( ui_SwitchDemoMode, -30 );
-lv_obj_set_y( ui_SwitchDemoMode, 60 );
-lv_obj_set_align( ui_SwitchDemoMode, LV_ALIGN_TOP_RIGHT );
+lv_obj_set_x( ui_SwitchDemoMode, -50 );
+lv_obj_set_y( ui_SwitchDemoMode, -40 );
+lv_obj_set_align( ui_SwitchDemoMode, LV_ALIGN_RIGHT_MID );
 
 ui_LabelDemoMode = lv_label_create(ui_ContainerSetup);
 lv_obj_set_width( ui_LabelDemoMode, LV_SIZE_CONTENT);  /// 1
 lv_obj_set_height( ui_LabelDemoMode, LV_SIZE_CONTENT);   /// 1
-lv_obj_set_align( ui_LabelDemoMode, LV_ALIGN_TOP_RIGHT );
+lv_obj_set_x( ui_LabelDemoMode, -20 );
+lv_obj_set_y( ui_LabelDemoMode, -90 );
+lv_obj_set_align( ui_LabelDemoMode, LV_ALIGN_RIGHT_MID );
 lv_label_set_text(ui_LabelDemoMode,"Demo\nmode");
 lv_obj_set_style_text_font(ui_LabelDemoMode, &ui_font_FontLabel24, LV_PART_MAIN| LV_STATE_DEFAULT);
 
@@ -500,7 +505,7 @@ if (lv_slider_get_mode(ui_SliderWaketime)==LV_SLIDER_MODE_RANGE ) lv_slider_set_
 lv_obj_set_width( ui_SliderWaketime, 300);
 lv_obj_set_height( ui_SliderWaketime, 20);
 lv_obj_set_x( ui_SliderWaketime, 0 );
-lv_obj_set_y( ui_SliderWaketime, -150 );
+lv_obj_set_y( ui_SliderWaketime, -115 );
 lv_obj_set_align( ui_SliderWaketime, LV_ALIGN_BOTTOM_MID );
 lv_obj_set_style_bg_color(ui_SliderWaketime, lv_color_hex(0x666666), LV_PART_MAIN | LV_STATE_DEFAULT );
 lv_obj_set_style_bg_opa(ui_SliderWaketime, 255, LV_PART_MAIN| LV_STATE_DEFAULT);
@@ -517,7 +522,7 @@ ui_LabelWaketime = lv_label_create(ui_ContainerSetup);
 lv_obj_set_width( ui_LabelWaketime, LV_SIZE_CONTENT);  /// 1
 lv_obj_set_height( ui_LabelWaketime, LV_SIZE_CONTENT);   /// 1
 lv_obj_set_x( ui_LabelWaketime, 0 );
-lv_obj_set_y( ui_LabelWaketime, -110 );
+lv_obj_set_y( ui_LabelWaketime, -80 );
 lv_obj_set_align( ui_LabelWaketime, LV_ALIGN_BOTTOM_MID );
 lv_label_set_text(ui_LabelWaketime,"Wake time");
 lv_obj_set_style_text_font(ui_LabelWaketime, &ui_font_FontLabel24, LV_PART_MAIN| LV_STATE_DEFAULT);
@@ -525,16 +530,34 @@ lv_obj_set_style_text_font(ui_LabelWaketime, &ui_font_FontLabel24, LV_PART_MAIN|
 ui_SwitchNightMode = lv_switch_create(ui_ContainerSetup);
 lv_obj_set_width( ui_SwitchNightMode, 50);
 lv_obj_set_height( ui_SwitchNightMode, 25);
-lv_obj_set_x( ui_SwitchNightMode, -15 );
-lv_obj_set_y( ui_SwitchNightMode, 60 );
-lv_obj_set_align( ui_SwitchNightMode, LV_ALIGN_TOP_MID );
+lv_obj_set_x( ui_SwitchNightMode, -50 );
+lv_obj_set_y( ui_SwitchNightMode, -150 );
+lv_obj_set_align( ui_SwitchNightMode, LV_ALIGN_RIGHT_MID );
 
 ui_LabelNightMode = lv_label_create(ui_ContainerSetup);
 lv_obj_set_width( ui_LabelNightMode, LV_SIZE_CONTENT);  /// 1
 lv_obj_set_height( ui_LabelNightMode, LV_SIZE_CONTENT);   /// 1
-lv_obj_set_align( ui_LabelNightMode, LV_ALIGN_TOP_MID );
+lv_obj_set_x( ui_LabelNightMode, -25 );
+lv_obj_set_y( ui_LabelNightMode, 0 );
+lv_obj_set_align( ui_LabelNightMode, LV_ALIGN_TOP_RIGHT );
 lv_label_set_text(ui_LabelNightMode,"Night\nmode");
 lv_obj_set_style_text_font(ui_LabelNightMode, &ui_font_FontLabel24, LV_PART_MAIN| LV_STATE_DEFAULT);
+
+ui_LabelRaiseToWake = lv_label_create(ui_ContainerSetup);
+lv_obj_set_width( ui_LabelRaiseToWake, LV_SIZE_CONTENT);  /// 1
+lv_obj_set_height( ui_LabelRaiseToWake, LV_SIZE_CONTENT);   /// 1
+lv_obj_set_x( ui_LabelRaiseToWake, 20 );
+lv_obj_set_y( ui_LabelRaiseToWake, -90 );
+lv_obj_set_align( ui_LabelRaiseToWake, LV_ALIGN_LEFT_MID );
+lv_label_set_text(ui_LabelRaiseToWake,"Raise to\nwake");
+lv_obj_set_style_text_font(ui_LabelRaiseToWake, &ui_font_FontLabel24, LV_PART_MAIN| LV_STATE_DEFAULT);
+
+ui_SwitchRaiseToWake = lv_switch_create(ui_ContainerSetup);
+lv_obj_set_width( ui_SwitchRaiseToWake, 50);
+lv_obj_set_height( ui_SwitchRaiseToWake, 25);
+lv_obj_set_x( ui_SwitchRaiseToWake, 20 );
+lv_obj_set_y( ui_SwitchRaiseToWake, -40 );
+lv_obj_set_align( ui_SwitchRaiseToWake, LV_ALIGN_LEFT_MID );
 
 ui_ContainerClock = lv_obj_create(ui_ScreenMain);
 lv_obj_remove_style_all(ui_ContainerClock);
@@ -1045,6 +1068,8 @@ ui_SliderWaketime= NULL;
 ui_LabelWaketime= NULL;
 ui_SwitchNightMode= NULL;
 ui_LabelNightMode= NULL;
+ui_LabelRaiseToWake= NULL;
+ui_SwitchRaiseToWake= NULL;
 ui_ContainerClock= NULL;
 ui_LabelTimeLocal= NULL;
 ui_LabelDay= NULL;

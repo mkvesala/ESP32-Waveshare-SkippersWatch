@@ -77,6 +77,8 @@ extern lv_obj_t *ui_SliderWaketime;
 extern lv_obj_t *ui_LabelWaketime;
 extern lv_obj_t *ui_SwitchNightMode;
 extern lv_obj_t *ui_LabelNightMode;
+extern lv_obj_t *ui_LabelRaiseToWake;
+extern lv_obj_t *ui_SwitchRaiseToWake;
 extern lv_obj_t *ui_ContainerClock;
 extern lv_obj_t *ui_LabelTimeLocal;
 extern lv_obj_t *ui_LabelDay;
